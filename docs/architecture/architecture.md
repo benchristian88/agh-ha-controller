@@ -1,0 +1,262 @@
+# Application Architecture
+
+## 1. Purpose
+
+AGH HA Controller coordinates multiple AdGuard Home instances as a single operational cluster.
+
+It does not replace AdGuard Home and it does not serve DNS. It provides the management and observability layer that AdGuard Home does not natively provide across nodes.
+
+## 2. System context
+
+```mermaid
+flowchart LR
+    U[Administrator browser] --> C[AGH HA Controller]
+    C --> DB[(PostgreSQL)]
+    C --> A[AdGuard Home Node A]
+    C --> B[AdGuard Home Node B]
+    F1[Optional Forwarder A] --> C
+    F2[Optional Forwarder B] --> C
+    DNS1[DNS clients] --> A
+    DNS2[DNS clients] --> B
+```
+
+DNS clients communicate directly with AdGuard Home nodes. The controller is never required to answer a DNS request.
+
+## 3. Core components
+
+### 3.1 Controller API
+
+Responsibilities:
+
+- Authentication and session management.
+- Node onboarding.
+- Desired configuration management.
+- Revision creation and comparison.
+- Deployment orchestration.
+- Drift and reconciliation state.
+- Statistics and query-log APIs.
+- Audit logging.
+- UI backend.
+
+### 3.2 Reconciliation engine
+
+Responsibilities:
+
+- Poll observed node configuration.
+- Normalise configuration into a canonical model.
+- Compare desired and observed states.
+- Record drift.
+- Apply policy:
+  - Enforce.
+  - Alert only.
+  - Manual adoption.
+- Verify convergence after deployment.
+- Retry transient failures safely.
+
+### 3.3 AdGuard Home adapter
+
+A version-aware client for the official AdGuard Home REST API.
+
+Responsibilities:
+
+- Authentication.
+- Capability discovery.
+- Reading configuration.
+- Applying supported settings.
+- Reading health and version.
+- Reading statistics.
+- Reading query-log records.
+- Translating API payloads into controller domain types.
+- Mapping errors into stable controller error categories.
+
+The rest of the application must not depend directly on raw AdGuard Home API payloads.
+
+### 3.4 PostgreSQL
+
+PostgreSQL stores:
+
+- Users and sessions.
+- Clusters and nodes.
+- Encrypted node credentials.
+- Draft configurations.
+- Immutable revisions.
+- Deployment and per-node deployment results.
+- Observed snapshots.
+- Drift events.
+- Statistics snapshots.
+- Query events during the polling phase.
+- Audit records.
+- Forwarder checkpoints.
+
+### 3.5 Frontend
+
+The frontend provides an AdGuard Home-inspired dark interface with added HA concepts.
+
+Primary navigation:
+
+- Dashboard
+- Query log
+- Statistics
+- DNS settings
+- Filters
+- Clients
+- DNS rewrites
+- Nodes
+- Configuration
+- Change history
+- Log forwarders
+- Users
+- System settings
+
+### 3.6 Optional forwarder
+
+A later Go service installed beside each AdGuard Home node.
+
+It reads the node query log, maintains a checkpoint, batches events, compresses payloads, retries failed delivery, and spools locally when the controller is unavailable.
+
+## 4. Source-of-truth model
+
+The controller stores four separate forms of state.
+
+### Desired state
+
+The configuration operators intend the cluster to run.
+
+### Effective state
+
+The result of merging shared configuration with node-specific overrides.
+
+### Observed state
+
+The normalised configuration read from a node.
+
+### Applied state
+
+The exact revision and effective configuration last successfully deployed to a node.
+
+These concepts must remain distinct.
+
+## 5. Configuration deployment flow
+
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant Controller
+    participant DB
+    participant NodeA
+    participant NodeB
+
+    Admin->>Controller: Save configuration
+    Controller->>Controller: Validate and normalise
+    Controller->>DB: Create immutable revision
+    Admin->>Controller: Deploy revision
+    Controller->>NodeA: Apply effective config
+    NodeA-->>Controller: Success
+    Controller->>NodeA: Read back and verify
+    Controller->>NodeB: Apply effective config
+    NodeB-->>Controller: Success
+    Controller->>NodeB: Read back and verify
+    Controller->>DB: Mark deployment converged
+```
+
+The initial strategy is sequential deployment to reduce blast radius. Parallel deployment may be added later as an explicit option.
+
+## 6. Drift detection flow
+
+1. Poll node state.
+2. Convert raw API output into the canonical model.
+3. Remove non-semantic or volatile fields.
+4. Apply stable ordering.
+5. Calculate canonical hash.
+6. Compare with the effective desired state.
+7. Record drift if different.
+8. Apply cluster policy.
+9. Re-read and verify after correction.
+
+## 7. Availability model
+
+### Controller unavailable
+
+- DNS remains operational.
+- Existing AdGuard Home configuration remains active.
+- Configuration changes cannot be deployed.
+- Statistics ingestion pauses.
+- Forwarders spool locally where available.
+
+### One AdGuard Home node unavailable
+
+- Other nodes continue serving DNS if clients or the network use both resolvers.
+- Controller reports degraded cluster health.
+- Deployments may pause or continue based on policy.
+- The unavailable node reconciles when it returns.
+
+### Database unavailable
+
+- Controller becomes read-limited or unavailable.
+- No configuration deployment is attempted.
+- DNS remains operational.
+
+## 8. Node capabilities
+
+AdGuard Home versions may expose different APIs and settings.
+
+Each node record should maintain:
+
+- Product version.
+- API compatibility result.
+- Capability flags.
+- Last successful capability discovery time.
+- Unsupported managed fields.
+- Upgrade recommendation.
+
+A deployment must fail validation before mutation when a target node cannot support the requested effective configuration.
+
+## 9. Background jobs
+
+Initial jobs:
+
+- Node health polling.
+- Capability refresh.
+- Configuration observation.
+- Drift reconciliation.
+- Statistics collection.
+- Query-log polling.
+- Retention and aggregation.
+- Deployment execution.
+- Session cleanup.
+
+Jobs should use persisted state where loss of progress matters.
+
+## 10. Observability
+
+The controller should expose:
+
+- Structured logs.
+- Request IDs.
+- Deployment IDs.
+- Job execution metrics.
+- Node polling latency.
+- Reconciliation success and failure counts.
+- Query ingestion lag.
+- Database health.
+- HTTP health and readiness endpoints.
+
+## 11. Scaling approach
+
+The first target is a homelab cluster with two to five nodes.
+
+Use PostgreSQL for all data initially. Introduce partitioning and rollups before considering another database.
+
+ClickHouse is a future option only if real query-event volume makes PostgreSQL operationally unsuitable.
+
+## 12. Architectural boundaries
+
+The following are explicitly out of scope for the initial releases:
+
+- Acting as a DNS proxy.
+- Implementing a new DNS server.
+- Active-active DHCP.
+- Automatic network load balancing.
+- Controller high availability.
+- Multi-tenant MSP administration.
+- Kubernetes-first deployment.

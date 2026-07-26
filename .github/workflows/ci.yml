@@ -1,0 +1,17 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify repository scaffold
+        run: |
+          test -f README.md
+          test -f AGENTS.md
+          test -f docs/architecture/architecture.md
+          test -f docs/roadmap/roadmap.md

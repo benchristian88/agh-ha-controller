@@ -1,0 +1,19 @@
+server:
+  address: ":8080"
+  publicBaseURL: "https://agh-ha.example.test"
+
+database:
+  url: "postgres://aghha:change-me@127.0.0.1:5432/aghha?sslmode=disable"
+
+security:
+  sessionSecretEnvironmentVariable: "SESSION_SECRET"
+  credentialEncryptionKeyEnvironmentVariable: "CREDENTIAL_ENCRYPTION_KEY"
+
+jobs:
+  nodeHealthInterval: "30s"
+  observationInterval: "5m"
+  statisticsInterval: "1m"
+
+logging:
+  level: "info"
+  format: "json"

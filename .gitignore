@@ -1,0 +1,34 @@
+# macOS
+.DS_Store
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# Go
+bin/
+coverage.out
+*.test
+
+# Node
+node_modules/
+dist/
+.vite/
+coverage/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Runtime
+data/
+logs/
+tmp/
+
+# Docker
+docker-compose.override.yml

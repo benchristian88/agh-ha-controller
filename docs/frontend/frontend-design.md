@@ -1,0 +1,193 @@
+# Frontend Design
+
+## Design goal
+
+The frontend should feel immediately familiar to an AdGuard Home user while clearly exposing HA concepts that do not exist in a single-node product.
+
+It should be calm, operational, information-dense, and suitable for daily use.
+
+## Visual direction
+
+Use an original implementation inspired by AdGuard Home dark mode.
+
+Do not copy source code, trademarks beyond nominative product references, or proprietary assets.
+
+### Theme characteristics
+
+- Dark blue-grey application background.
+- Slightly lighter sidebar and cards.
+- Green primary action and healthy-state accent.
+- Blue for informational state.
+- Amber for warning or pending state.
+- Red for failure or blocked state.
+- Low-contrast borders.
+- Moderate corner radius.
+- Minimal shadow.
+- Clear typography.
+- Compact but accessible controls.
+
+## Navigation
+
+### AdGuard Home functions
+
+- Dashboard
+- Query log
+- Statistics
+- DNS settings
+- Filters
+- Clients
+- DNS rewrites
+
+### HA management
+
+- Nodes
+- Configuration
+- Change history
+- Deployments
+- Drift
+- Log forwarders
+
+### System
+
+- Users
+- Audit log
+- Settings
+- About
+
+## Global controls
+
+The header should contain:
+
+- Current cluster.
+- Current scope:
+  - Entire cluster.
+  - A specific node.
+- Cluster health.
+- Logged-in user.
+- Optional active deployment indicator.
+
+## Dashboard
+
+### Metric cards
+
+- DNS queries.
+- Blocked queries.
+- Average processing time.
+- Active revision.
+- Healthy nodes.
+- Drifted nodes.
+- Ingestion lag.
+
+### Cluster traffic
+
+Show combined trend with optional per-node series.
+
+### Node status
+
+For each node:
+
+- Name.
+- Address.
+- Version.
+- Health.
+- Traffic share.
+- Latency.
+- Applied revision.
+- Drift status.
+- Last seen.
+
+### Recent activity
+
+- Revision created.
+- Deployment started.
+- Deployment succeeded or failed.
+- Drift detected.
+- Drift corrected.
+- Node became unreachable.
+- Forwarder lag increased.
+
+### Query log preview
+
+Include a node column.
+
+## Configuration experience
+
+Configuration pages should separate:
+
+- Shared cluster settings.
+- Node overrides.
+- Unsupported settings.
+- Observed-only settings.
+
+Every save creates a draft update. Publishing creates a revision.
+
+Before deployment, show:
+
+- Summary of changes.
+- Affected nodes.
+- Compatibility warnings.
+- Restart requirements.
+- Node-specific effective values.
+
+## Change history
+
+Revision list:
+
+- Revision number.
+- Created time.
+- Author.
+- Summary.
+- Deployment status.
+- Active or historical state.
+
+Comparison view:
+
+- Previous value.
+- New value.
+- Scope.
+- Affected nodes.
+- Secret values redacted.
+- Semantic explanation where possible.
+
+## Drift page
+
+Each drift record should show:
+
+- Node.
+- Detection time.
+- Changed section.
+- Desired value.
+- Observed value.
+- Policy.
+- Resolution.
+- Related audit event.
+
+Actions:
+
+- Restore desired state.
+- Adopt change into draft.
+- Ignore field.
+- Put node into maintenance.
+
+## Responsive behaviour
+
+Desktop is the primary administration surface.
+
+At narrow widths:
+
+- Sidebar becomes a drawer.
+- Metric cards wrap.
+- Tables reduce secondary columns.
+- Detail panels stack.
+- Critical node health remains visible.
+- Complex configuration diffs may use a focused full-screen view.
+
+## Accessibility
+
+- WCAG AA contrast target.
+- Keyboard navigation.
+- Visible focus states.
+- Native controls where possible.
+- Text labels in addition to colour.
+- Status announcements for deployment progress.
+- No critical information conveyed by charts alone.
