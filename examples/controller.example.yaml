@@ -1,3 +1,5 @@
+# Documentation-only mapping of the release 0.1 settings. The controller reads
+# environment variables in 0.1; use .env.example as the executable template.
 server:
   address: ":8080"
   publicBaseURL: "https://agh-ha.example.test"

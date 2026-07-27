@@ -1,3 +1,5 @@
+# Future controller deployment sketch only. For the implemented Release 0.1
+# development and CI environment, use ../../compose.test.yml from the root.
 services:
   postgres:
     image: postgres:17

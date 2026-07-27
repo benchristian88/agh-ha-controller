@@ -46,3 +46,10 @@ Recommended:
 | 0.8 | Production event ingestion |
 | 0.9 | Operate and maintain HA safely |
 | 1.0 | Community-ready production release |
+
+## Current implementation status
+
+| Milestone | Status | Notes |
+|---|---|---|
+| 0.1 | Implemented; release validation pending | Core code, reproducible local environment, tests, UI, migrations, and CI are present. Real-node, Debian LXC, backup/restore, hosted CI, and DNS-outage gates remain open. |
+| 0.2–1.0 | Planned | Historical scope and sequencing are unchanged. |

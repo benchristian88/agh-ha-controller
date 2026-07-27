@@ -12,6 +12,35 @@ Check:
 - Disk capacity.
 - Query ingestion lag.
 
+For Release 0.1, `/health` proves the process is serving and `/ready` additionally proves PostgreSQL connectivity. Query ingestion and deployment checks do not exist yet.
+
+If readiness fails, the controller must not be treated as able to accept state changes. AdGuard Home DNS remains independent.
+
+## Release 0.1 startup
+
+Required runtime values:
+
+- `DATABASE_URL`
+- `PUBLIC_BASE_URL`
+- `SESSION_SECRET` with at least 32 bytes of entropy
+- `CREDENTIAL_ENCRYPTION_KEY`, base64 encoding exactly 32 bytes
+
+Generate secrets with `openssl rand -base64 48` and `openssl rand -base64 32`. Store them in the protected systemd environment file and back them up separately from PostgreSQL.
+
+`PUBLIC_BASE_URL` must be the externally visible origin without credentials, a path, query, or fragment. Its scheme controls the Secure attribute on browser cookies.
+
+On startup the controller validates configuration, connects to PostgreSQL, applies embedded migrations when enabled, constructs security primitives, starts health/session workers, then opens HTTP. Any prerequisite failure stops startup.
+
+## Node status error codes
+
+- `NODE_UNREACHABLE`: network or timeout failure.
+- `NODE_TLS_FAILED`: certificate, hostname, or TLS failure.
+- `NODE_AUTHENTICATION_FAILED`: AdGuard Home rejected credentials.
+- `NODE_INVALID_RESPONSE`: status endpoint was incompatible or malformed.
+- `NODE_DNS_NOT_RUNNING`: the administration API responded but reported DNS stopped.
+
+Correct the underlying issue and use “Test” in the Nodes page. Direct AdGuard Home DNS operation should be checked independently before changing or removing a node.
+
 ## Node unreachable
 
 1. Confirm node network reachability.

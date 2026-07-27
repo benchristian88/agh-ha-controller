@@ -19,6 +19,7 @@ node_modules/
 dist/
 .vite/
 coverage/
+*.tsbuildinfo
 
 # Editors
 .vscode/

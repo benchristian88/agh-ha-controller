@@ -1,43 +1,49 @@
 # AdGuard Home Node API Adapter
 
-## Purpose
+## Release 0.1 purpose
 
-Define the internal contract between AGH HA Controller and AdGuard Home.
+The adapter is the only package that consumes raw AdGuard Home HTTP payloads. Release 0.1 performs a read-only status probe at:
 
-## Adapter responsibilities
+```text
+GET {baseUrl}/control/status
+```
 
-- Authenticate.
-- Detect version.
-- Detect capabilities.
-- Fetch status.
-- Fetch configuration sections.
-- Apply configuration sections.
-- Fetch statistics.
-- Fetch query log.
-- Map raw errors.
-- Redact sensitive data.
-
-## Internal interface concept
+The adapter uses HTTP Basic authentication, requires a bounded request timeout, caps response bodies at 1 MiB, rejects redirects, and returns only the stable domain result:
 
 ```go
-type Client interface {
-    Status(ctx context.Context) (Status, error)
-    Capabilities(ctx context.Context) (Capabilities, error)
-    ReadConfiguration(ctx context.Context) (ObservedConfiguration, error)
-    ApplyConfiguration(ctx context.Context, EffectiveConfiguration) error
-    Statistics(ctx context.Context, window TimeWindow) (Statistics, error)
-    QueryLog(ctx context.Context, cursor Cursor) (QueryPage, error)
+type NodeProbeResult struct {
+    Version       string
+    Compatibility Compatibility
+    Running       bool
+    LatencyMS     int
 }
 ```
 
-The final interface may be split into smaller capability-specific interfaces.
+Raw payloads and authentication values do not cross the adapter boundary.
+
+## Transport trust
+
+Each node selects one explicit policy:
+
+- `system`: HTTPS using the host system trust store;
+- `custom_ca`: HTTPS using system roots plus a stored node-specific private CA;
+- `insecure_http`: plaintext HTTP, visibly discouraged and valid only for an `http` URL.
+
+There is no option that skips TLS certificate or hostname verification. Node requests connect directly and do not use ambient proxy configuration, avoiding accidental credential forwarding to an HTTP proxy.
 
 ## Compatibility
 
-Each API operation must declare:
+The tested Release 0.1 contract is AdGuard Home `v0.107.x`. Later versions with the compatible status payload are reported as supported. Older versions are reported as unsupported and malformed or unversioned responses as unknown/incompatible.
 
-- Minimum tested AdGuard Home version.
-- Known incompatible versions.
-- Required capability flags.
-- Expected restart behaviour.
-- Secret handling requirements.
+This compatibility statement covers only status and version. Configuration capability discovery is Release 0.2 scope.
+
+## Error mapping
+
+The adapter distinguishes:
+
+- `NODE_UNREACHABLE` for bounded network and timeout failures;
+- `NODE_TLS_FAILED` for certificate, hostname, or TLS handshake failures;
+- `NODE_AUTHENTICATION_FAILED` for HTTP 401 or 403;
+- `NODE_INVALID_RESPONSE` for other status codes, oversized bodies, or malformed payloads.
+
+Messages are safe for API responses and never include the supplied credentials or node response body.

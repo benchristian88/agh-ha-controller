@@ -28,3 +28,7 @@ A backup is not considered valid until:
 - Credentials decrypt.
 - Nodes can be observed.
 - Enforcement can remain disabled during validation.
+
+Release 0.1 has no configuration enforcement, so restore validation is observation-only by construction. A 0.1 restore must additionally confirm that an existing browser session is invalid if `SESSION_SECRET` changed and that stored node credentials decrypt only when the original credential key is restored.
+
+Automated backup and restore commands are not implemented in 0.1. The release gate requires a manual PostgreSQL plus runtime-secret smoke test on the reference Debian LXC before the release can be declared complete.

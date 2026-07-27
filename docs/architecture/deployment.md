@@ -48,6 +48,14 @@ Planned units:
 
 The controller and worker may begin as one binary and one service.
 
+Release 0.1 implements `agh-ha-controller.service` as the combined API and worker process. The installation must place:
+
+- `agh-ha-controller` in `/usr/local/bin`;
+- the Vite `web/dist` contents in `/usr/local/share/agh-ha-controller/web`;
+- runtime secrets in `/etc/agh-ha-controller/agh-ha-controller.env` readable only by the service account.
+
+The service does not bind any DNS port. Browser HTTPS is normally terminated by a local reverse proxy in 0.1; `PUBLIC_BASE_URL` must still be the externally visible HTTPS URL so session cookies are marked Secure.
+
 ## Installation modes
 
 ### Debian package or install script
@@ -57,6 +65,8 @@ Preferred early community deployment.
 ### Docker Compose
 
 Supported after the systemd reference deployment is stable.
+
+The repository-root `compose.test.yml` is a Release 0.1 development and CI fixture only. It supplies PostgreSQL and two status-contract simulators while the controller runs from source on the host. It is deliberately not a controller deployment image and does not change the systemd-first decision in ADR-0014.
 
 ### Proxmox community LXC script
 

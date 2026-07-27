@@ -24,3 +24,4 @@ Architecture Decision Records capture durable decisions and their rationale.
 | [ADR-0018](ADR-0018-defer-controller-ha-until-after-the-single-controller-product-is-stable.md) | Accepted | Defer controller HA until after the single-controller product is stable |
 | [ADR-0019](ADR-0019-limit-early-dhcp-support-to-safe-inventory-and-single-active-node-workflows.md) | Accepted | Limit early DHCP support to safe inventory and single-active-node workflows |
 | [ADR-0020](ADR-0020-defer-final-licensing-selection-pending-legal-and-commercial-review.md) | Proposed | Defer final licensing selection pending legal and commercial review |
+| [ADR-0021](ADR-0021-release-0-1-runtime-and-security-foundations.md) | Accepted | Define Release 0.1 runtime and security foundations |

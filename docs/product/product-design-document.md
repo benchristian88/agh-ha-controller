@@ -2,10 +2,13 @@
 
 # Product Design Document
 
-**Document version:** 0.1  
-**Product stage:** Pre-implementation architecture baseline  
-**Status:** Living source of truth  
-**Last updated:** 26 July 2026  
+**Document version:** 0.1.1
+
+**Product stage:** Release 0.1 implementation; external validation pending
+
+**Status:** Living source of truth
+
+**Last updated:** 27 July 2026
 **Intended audience:** Product owner, maintainers, contributors, AI coding agents, security reviewers, and future commercial partners
 
 ---
@@ -17,6 +20,10 @@ This Product Design Document defines the agreed product direction, operating mod
 It is intentionally broader than a conventional software specification. It combines product intent, system design, operating assumptions, user experience, delivery sequencing, and architectural rationale so that future implementation decisions can be tested against a stable source of truth.
 
 This document is authoritative for product intent. More specialised documents under `docs/` remain authoritative for detailed implementation contracts when they are more specific. Architecture Decision Records under `docs/decisions/` explain why major choices were made.
+
+Release 0.1 implementation details and validation status are recorded in `docs/product/feature-ledger.md` and the Release 0.1 reconciliation section of `docs/roadmap/roadmap.md`. ADR-0021 resolves the runtime and security choices that were open in the original baseline.
+
+Release 0.1 also includes the repository-root `compose.test.yml`, two authenticated AdGuard status-contract simulators, a PostgreSQL 17 service, sourceable local fixtures, and non-skipping `make test-local`/`make test-local-race` entry points. This development fixture does not supersede the systemd-first deployment decision or satisfy the real-node release gate.
 
 ### Decision labels used in this document
 
@@ -2102,21 +2109,21 @@ The project should avoid vanity metrics that reward installations without succes
 
 ## 100. Open decisions
 
-The following remain open or require implementation discovery:
+The following list is retained as the historical open-decision index. ADR-0021 resolved items 5–8 and the Release 0.1 portions of items 10 and 13; their annotations below record the implemented answer. The remaining items are still open at the scope stated.
 
 1. Final product and repository naming conventions.
 2. Final licence and commercial model.
 3. Minimum and maximum supported AdGuard Home versions for each release.
 4. Exact canonical configuration schema.
-5. Whether first release embeds PostgreSQL setup or treats it as external.
-6. Migration framework and SQL tooling.
-7. Frontend component library, if any.
-8. HTTP router and persistence libraries for Go.
+5. **Resolved for Release 0.1:** PostgreSQL is an external service.
+6. **Resolved for Release 0.1:** migrations are embedded, append-only SQL executed by the controller migration runner.
+7. **Resolved for Release 0.1:** the frontend uses accessible native controls and repository CSS without a component library.
+8. **Resolved for Release 0.1:** the backend uses `net/http` and `pgx` with explicit repository interfaces.
 9. Exact deployment failure policy when a later node fails.
-10. Exact TLS trust-on-first-use or pinning experience.
+10. **Resolved for Release 0.1:** node trust is explicit system trust, custom CA, or plaintext HTTP; trust-on-first-use and pinning remain future decisions.
 11. Notification channels and release timing.
 12. Query-event deduplication identity under every log mode.
-13. Whether the controller serves frontend and API on one origin in all packaging modes.
+13. **Resolved for Release 0.1:** the controller serves the installed React directory and API on one origin; future packaging modes may revisit delivery without changing the same-origin security contract.
 14. Scope of DHCP support and safeguards.
 15. Whether API tokens are required before 1.0.
 16. Definition and packaging of the Proxmox community installer.
@@ -2148,6 +2155,7 @@ These should be resolved through ADRs when they become material.
 - ADR-0017: Use a monorepo and documentation-first delivery model
 - ADR-0018: Defer controller HA until after the single-controller product is stable
 - ADR-0019: Limit early DHCP support to safe inventory and single-active-node workflows
+- ADR-0021: Define Release 0.1 runtime and security foundations
 
 ## 102. Proposed decision
 
@@ -4863,6 +4871,8 @@ These requirements are the initial traceability baseline. Release plans should i
 
 ## E.1 Release 0.1 gate
 
+The exact clean-checkout local command is `make bootstrap && make test-local`. It executes the PostgreSQL migration/API workflow against the committed Compose environment rather than treating database setup as an undocumented prerequisite.
+
 - [ ] Fresh Debian 13 LXC installation documented and repeated.
 - [ ] Database migration creates all 0.1 schema objects.
 - [ ] First-run administrator flow tested.
@@ -4938,6 +4948,8 @@ These requirements are the initial traceability baseline. Release plans should i
 # Annex F — Decision and Discovery Backlog
 
 ## F.1 Decisions required before implementation of Release 0.1
+
+All items in this subsection were resolved for the implemented release by ADR-0021. They remain listed to preserve the original discovery record.
 
 - Select Go HTTP router and database access approach.
 - Select migration tooling.

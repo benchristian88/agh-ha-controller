@@ -1,6 +1,6 @@
 # AGH HA Controller
 
-AGH HA Controller is an open-source management plane for running two or more AdGuard Home instances as a coordinated, highly available DNS service.
+AGH HA Controller is a management plane for running two or more AdGuard Home instances as a coordinated, highly available DNS service.
 
 AdGuard Home remains the DNS engine. AGH HA Controller provides the shared control plane for configuration, authentication, revision history, deployment, drift detection, statistics aggregation, and eventually central query-log ingestion.
 
@@ -21,7 +21,7 @@ AGH HA Controller is intended to solve that gap by providing:
 
 ## Project status
 
-This repository is currently a design and implementation scaffold.
+Release 0.1 is implemented with a reproducible local test environment containing PostgreSQL 17 and two authenticated AdGuard Home status-contract simulators. External release gates still require a hosted CI run, two real AdGuard Home nodes, a fresh Debian 13 LXC install, backup/restore, and a live DNS independence test. See the [feature ledger](docs/product/feature-ledger.md) for exact implemented and deferred behavior.
 
 The first meaningful product milestone is the configuration-control MVP:
 
@@ -60,7 +60,7 @@ The initial reference deployment assumes:
 
 The complete architecture is documented in [docs/architecture/architecture.md](docs/architecture/architecture.md).
 
-## Proposed technology stack
+## Technology stack
 
 ### Controller backend
 
@@ -102,16 +102,43 @@ examples/             Example configuration
 docs/                 Product, architecture, design, and operations docs
 ```
 
-## Getting started
+## Release 0.1 local environment
 
-The source code has not yet been implemented. Begin with:
+Prerequisites are Go 1.24, Node.js 22 with npm, Docker Engine, Docker Compose v2.20 or newer, `make`, and `rg`. PostgreSQL does not need to be installed on the host.
 
-1. Read `AGENTS.md`.
-2. Read `docs/architecture/architecture.md`.
-3. Read `docs/roadmap/roadmap.md`.
-4. Review `docs/database/database-design.md`.
-5. Review `docs/frontend/frontend-design.md`.
-6. Implement Release 0.1 from the roadmap.
+From a clean checkout, install dependencies and run the complete local suite:
+
+```bash
+make bootstrap
+make test-local
+make test-env-down
+```
+
+`make test-local` starts PostgreSQL and two authenticated AdGuard status-contract simulators, runs every Go package including the database migration/API integration workflow, and runs the frontend tests. It fails instead of skipping when a dependency or integration check is unavailable.
+
+To run the controller against the same environment:
+
+```bash
+make bootstrap
+make test-env-up
+. ./scripts/local-test-env.sh
+make migrate
+make build
+make dev
+```
+
+Open `http://127.0.0.1:8080` and use these exact local-only values:
+
+1. Create the administrator with `admin@example.test`, display name `Local Administrator`, and password `local-controller-password`.
+2. Create a cluster named `Local DNS`.
+3. Add Node A with URL `http://127.0.0.1:3101`, trust policy `Explicit plaintext HTTP`, username `agh-admin`, and password `node-secret-value`.
+4. Add Node B with URL `http://127.0.0.1:3102` and the same policy and credentials.
+
+The committed credentials and cryptographic keys are intentionally public test fixtures. Never use them outside this disposable environment.
+
+Stop containers while preserving the local database with `make test-env-down`. Destroy all test data with `make test-env-clean`, or recreate a clean running environment with `make test-env-reset`.
+
+Detailed environment behavior and individual commands are in [local development](docs/development/local-development.md).
 
 ## Initial development order
 

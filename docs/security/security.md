@@ -26,6 +26,19 @@ Future:
 - Role-based access control.
 - API tokens.
 
+### Release 0.1 implementation
+
+- Passwords use Argon2id with the salt and cost parameters encoded in each hash.
+- Setup is serialized and can create only the first local administrator.
+- Successful authentication creates a random opaque session token and a separate random CSRF token.
+- PostgreSQL stores only purpose-separated HMAC-SHA-256 token hashes using the base64-decoded `SESSION_SECRET` (at least 32 bytes).
+- Session cookies are HTTP-only and SameSite=Strict; both session and CSRF cookies are Secure when the public URL is HTTPS.
+- Unsafe authenticated requests require the CSRF cookie value in `X-CSRF-Token` and verify it against the stored hash.
+- Login failures use a dummy password hash for unknown users, return a generic message, are rate-limited in process, and create redacted audit events.
+- Session expiry/revocation is enforced on every authenticated request; expired rows are cleaned in the background.
+
+The 0.1 login limiter resets on controller restart. Durable distributed throttling is deferred until multiple controller processes are supported.
+
 ## Node credentials
 
 - Encrypt at rest.
@@ -35,6 +48,8 @@ Future:
 - Support rotation.
 - Prefer a dedicated AdGuard Home administrative account when supported.
 
+Release 0.1 encrypts a JSON credential payload with AES-256-GCM, authenticates the node UUID as additional data, and records the algorithm and key version. The runtime key must decode to exactly 32 bytes and is never stored in PostgreSQL. API response types contain no credential or envelope fields. Node removal destroys its stored ciphertext, nonce, and custom CA after exact-name confirmation and optimistic-concurrency validation.
+
 ## Transport security
 
 - Use HTTPS between browser and controller.
@@ -42,6 +57,8 @@ Future:
 - Support trusted CA validation.
 - Consider certificate pinning for homelab nodes.
 - Do not default to silently ignoring invalid certificates.
+
+Node policy is explicitly `system`, `custom_ca`, or `insecure_http`. There is no skip-verification mode. The adapter connects directly rather than inheriting HTTP proxy settings, caps bodies, rejects redirects, and separates TLS, authentication, reachability, and invalid-response failures.
 
 ## Browser security
 
@@ -52,6 +69,8 @@ Future:
 - Output encoding.
 - No secrets in browser storage.
 - No sensitive data in URLs.
+
+The same-origin server emits a restrictive Content Security Policy, frame denial, no-sniff, no-referrer, permissions restrictions, and `Cache-Control: no-store` on API responses. The frontend keeps credentials only in transient form state and never puts them in URLs or persistent browser storage.
 
 ## Audit events
 

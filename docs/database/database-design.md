@@ -18,6 +18,20 @@ PostgreSQL is the initial primary database.
 
 ## Core tables
 
+### Release 0.1 implemented schema
+
+Migration `000001_release_0_1` creates only the foundation tables needed by the release:
+
+- `users`
+- `sessions`
+- `clusters`
+- `nodes`
+- `audit_events`
+
+The migration runner owns `schema_migrations`, including the version, name, SHA-256 checksum, and application time. Tables described later in this document are planned for their corresponding roadmap releases and do not exist in the 0.1 schema.
+
+Release 0.1 mutable cluster and node records use integer optimistic versions. Node health updates do not increment the operator-facing `record_version`, so polling cannot create false edit conflicts.
+
 ### users
 
 - id
@@ -68,6 +82,8 @@ PostgreSQL is the initial primary database.
 - capabilities_json
 - created_at
 - updated_at
+
+The implemented node credential envelope uses separate `encrypted_credentials`, `credential_nonce`, `credential_key_version`, and `credential_algorithm` columns. `custom_ca_pem` is write-only through the API. `deleted_at` preserves node identity after removal while credential and CA material are destroyed.
 
 ### configuration_drafts
 
@@ -238,6 +254,8 @@ The database stores:
 - Encryption metadata.
 
 The encryption key is supplied through controller runtime configuration and is not stored in the database.
+
+Release 0.1 uses AES-256-GCM. The node UUID is authenticated additional data, preventing an envelope copied between node records from decrypting successfully. Key version `1` is recorded for future explicit rotation support.
 
 ## Optimistic concurrency
 

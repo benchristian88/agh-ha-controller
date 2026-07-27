@@ -24,6 +24,12 @@ DNS clients communicate directly with AdGuard Home nodes. The controller is neve
 
 ## 3. Core components
 
+### Release 0.1 implementation status
+
+The implemented foundation is one Go process containing the API, static frontend server, immediate/interval health poller, and expired-session cleanup. It uses PostgreSQL for users, sessions, clusters, nodes, health results, and audit events. The React build is installed as a directory and served by the Go process on the API origin.
+
+The process only calls AdGuard Home's read-only `/control/status` endpoint in 0.1. It contains no DNS listener, DNS proxy, configuration reader, or configuration writer. Configuration, reconciliation, telemetry, and forwarder components described below remain staged work for their roadmap releases.
+
 ### 3.1 Controller API
 
 Responsibilities:
@@ -211,6 +217,8 @@ Each node record should maintain:
 
 A deployment must fail validation before mutation when a target node cannot support the requested effective configuration.
 
+Release 0.1 stores a status-contract compatibility value (`supported`, `unsupported`, or `unknown`) and the observed product version. Detailed capability documents and unsupported managed fields start in Release 0.2.
+
 ## 9. Background jobs
 
 Initial jobs:
@@ -226,6 +234,14 @@ Initial jobs:
 - Session cleanup.
 
 Jobs should use persisted state where loss of progress matters.
+
+Implemented in Release 0.1:
+
+- Health polling runs immediately at startup and on a configured interval, with at most four simultaneous node probes.
+- Each probe has an explicit timeout and durably updates the node's latest safe status fields.
+- Expired and long-revoked sessions are cleaned hourly.
+
+These tasks are idempotent and do not need a durable job queue. Deployment and reconciliation jobs will require persisted progress in later releases.
 
 ## 10. Observability
 

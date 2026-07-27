@@ -1,6 +1,6 @@
 # Web Frontend
 
-This directory will contain the React and TypeScript administration interface.
+This directory contains the React and TypeScript administration interface for Release 0.1.
 
 Read:
 
@@ -8,4 +8,4 @@ Read:
 - `docs/frontend/design-system.md`
 - `docs/frontend/ui-navigation.md`
 
-The current directory structure is intentionally organised by product feature.
+The directory structure is organised by product feature. Use the exact repository-level environment and validation commands in `../README.md`; frontend-only commands are available through the scripts in `package.json`.

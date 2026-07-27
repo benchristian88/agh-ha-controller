@@ -8,6 +8,8 @@ Type=simple
 User=aghha
 Group=aghha
 EnvironmentFile=/etc/agh-ha-controller/agh-ha-controller.env
+Environment=WEB_DIST_DIR=/usr/local/share/agh-ha-controller/web
+WorkingDirectory=/var/lib/agh-ha-controller
 ExecStart=/usr/local/bin/agh-ha-controller
 Restart=on-failure
 RestartSec=5

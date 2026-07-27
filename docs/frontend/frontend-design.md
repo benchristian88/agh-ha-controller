@@ -6,6 +6,12 @@ The frontend should feel immediately familiar to an AdGuard Home user while clea
 
 It should be calm, operational, information-dense, and suitable for daily use.
 
+## Release 0.1 implementation
+
+The first implemented surface includes one-time setup, login, cluster creation and selection, a health dashboard, node list/onboarding/edit/test/removal, and an audit table. It uses the project-owned dark tokens, native forms, visible focus, textual status badges, responsive layouts, typed API access, and explicit loading, empty, stale, cached-with-refresh-error, and failure states.
+
+The dashboard does not render zero-value traffic charts before telemetry exists. Configuration, deployment, drift, statistics, and query-log navigation remains absent until those execution paths are implemented.
+
 ## Visual direction
 
 Use an original implementation inspired by AdGuard Home dark mode.

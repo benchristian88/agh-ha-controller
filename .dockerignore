@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+bin
+data
+logs
+tmp
+coverage.out
+web/node_modules
+web/dist
+web/coverage
+*.pem
+*.key

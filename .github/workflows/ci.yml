@@ -5,13 +5,41 @@ on:
   pull_request:
 
 jobs:
-  scaffold:
+  test:
     runs-on: ubuntu-latest
+    env:
+      TEST_DATABASE_URL: postgres://aghha:aghha-local-test@127.0.0.1:55432/aghha?sslmode=disable
+      TEST_NODE_A_URL: http://127.0.0.1:3101
+      TEST_NODE_B_URL: http://127.0.0.1:3102
+      TEST_NODE_USERNAME: agh-admin
+      TEST_NODE_PASSWORD: node-secret-value
     steps:
       - uses: actions/checkout@v4
-      - name: Verify repository scaffold
-        run: |
-          test -f README.md
-          test -f AGENTS.md
-          test -f docs/architecture/architecture.md
-          test -f docs/roadmap/roadmap.md
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm ci
+      - name: Check formatting
+        run: make fmt-check
+      - name: Lint and vet
+        run: make lint
+      - name: Test Release 0.1 local workflow
+        run: make test-local
+      - name: Race-test backend and migrations
+        run: make test-local-race
+      - name: Audit production frontend dependencies
+        working-directory: web
+        run: npm audit --omit=dev
+      - name: Build release inputs
+        run: make build
+      - name: Stop local test environment
+        if: always()
+        run: make test-env-down

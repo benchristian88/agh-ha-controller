@@ -8,6 +8,8 @@ The roadmap prioritises configuration control before central statistics because 
 
 ## Release 0.1 — Foundation
 
+**Current status (27 July 2026): Partially completed — implementation is present; external release validation is pending.**
+
 ### Outcomes
 
 - Controller can start reliably.
@@ -36,6 +38,42 @@ The roadmap prioritises configuration control before central statistics because 
 - Credentials are not exposed in logs or API responses.
 - Node health updates automatically.
 - DNS operation is unaffected by controller shutdown.
+
+### Implementation reconciliation
+
+Completed in the repository:
+
+- Go controller, migration command, PostgreSQL schema and repositories.
+- One-time local administrator setup, Argon2id login, expiring/revocable sessions, CSRF, and throttling.
+- AES-256-GCM node credential envelopes with external key material.
+- Audited cluster create/list/get/update and node create/list/get/update/test/disable/remove workflows.
+- Read-only AdGuard Home status/version adapter with system trust, custom CA, and explicit plaintext policy.
+- Immediate and interval health polling with stale/partial-failure dashboard states.
+- Dark React dashboard, node management, and audit surfaces.
+- Liveness/readiness endpoints and CI definitions for format, vet, race tests, PostgreSQL integration, frontend validation, dependency audit, and builds.
+- Reproducible Compose test environment with PostgreSQL 17, two authenticated status-contract nodes, non-skipping Make targets, and exact clean-checkout README commands.
+
+Partially completed or validation pending:
+
+- PostgreSQL migration and API integration tests run through `make test-local`; a hosted execution result is still pending.
+- Two-node onboarding is contract-tested; two real AdGuard Home nodes have not yet been recorded as passing.
+- CI is configured but a hosted workflow result is not available in this repository state.
+- systemd packaging is defined, but a fresh Debian 13 LXC installation has not been repeated.
+- Controller shutdown has no DNS code path and leaves the local contract node running, but the required real DNS outage test remains pending.
+- The documented manual PostgreSQL plus secret backup/restore smoke test remains pending.
+
+Deliberately deferred from 0.1:
+
+- Detailed capability documents and configuration observation remain 0.2 work.
+- Account management, password recovery/change, and durable distributed rate limiting are follow-on authentication work; 0.1 provides the initial administrator and secure local session flow.
+- Cluster deletion is withheld until historical revision/deployment relationships have a safe lifecycle design.
+
+New follow-on dependencies:
+
+- Select and provision the real AdGuard Home versions used for the initial compatibility statement.
+- Add browser-driven setup/login/two-node tests to the reference environment.
+- Exercise HTTPS reverse-proxy cookie behavior and Debian file placement.
+- Complete backup/restore and uninterrupted-DNS evidence before changing this release to complete.
 
 ## Release 0.2 — Configuration inventory
 

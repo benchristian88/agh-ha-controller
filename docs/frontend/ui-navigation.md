@@ -29,6 +29,21 @@
 /system/about
 ```
 
+## Release 0.1 routes
+
+The implemented shell currently exposes:
+
+```text
+/
+  setup or login when unauthenticated
+  cluster health dashboard when authenticated
+
+/ha/nodes
+/system/audit
+```
+
+Cluster selection remains global application state. Later documented routes are intentionally not rendered as placeholder navigation; they appear when their backend workflows are implemented.
+
 ## Route principles
 
 - URLs should be stable and bookmarkable.
