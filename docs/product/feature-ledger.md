@@ -17,8 +17,15 @@ This ledger records implemented behavior separately from roadmap intent. “Impl
 | Dashboard shell | Implemented | Responsive dark shell, cluster selector, node cards, textual states, stale and partial failure, no meaningless telemetry charts | Browser accessibility and packaged visual smoke tests |
 | Audit foundation | Implemented | Append-only application API; login/setup/cluster/node/credential/manual-test/logout records; request IDs; safe metadata; audit UI | Export intentionally deferred; database permission hardening follow-up |
 | Liveness and readiness | Implemented | Public process liveness and PostgreSQL-aware readiness | Reference monitoring/systemd exercise |
-| Local test environment | Implemented; hosted run pending | Root Compose project with PostgreSQL 17 and two authenticated status simulators; sourceable fixture environment; non-skipping integration/race Make targets; exact README workflow | Successful execution on a Docker-capable host and hosted CI |
-| CI baseline | Implemented; remote run pending | Compose environment startup, Go format/vet/race tests/build, PostgreSQL/two-node integration workflow, frontend Biome/type/test/build, production dependency audit | Successful GitHub Actions run |
+| CI baseline | Implemented; remote run pending | PostgreSQL service, Go format/vet/race tests/build, two-node HTTP contract workflow, frontend Biome/type/test/build, production dependency audit, Compose definition validation | Successful GitHub Actions run |
+
+## Release 0.1.1 installation
+
+| Feature | Status | Implementation and evidence | Remaining release validation |
+|---|---|---|---|
+| Docker Compose installation | Implemented; host smoke test pending | Multi-stage source build, non-root/read-only controller, same-origin UI/API, PostgreSQL 17 persistence, readiness checks, protected environment inputs | Fresh Docker-enabled LXC install, restart, upgrade, and backup/restore exercise |
+| Debian/systemd installation | Implemented; LXC smoke test pending | Git-checkout build installer, local PostgreSQL provisioning, service account, generated root-only secrets, hardened unit, idempotent secret preservation | Fresh Debian 13 LXC install and upgrade rerun |
+| Initial administrator after install | Implemented | Empty database exposes setup UI; transactionally locked first administrator/session/audit creation; later attempts return conflict; regression test covers repetition | Browser-driven packaged-build test in both installation modes |
 
 ## Deliberately deferred
 
@@ -27,7 +34,7 @@ This ledger records implemented behavior separately from roadmap intent. “Impl
 - Statistics and query logs: Releases 0.5 and 0.6.
 - Additional local-user management, password change/recovery, durable or distributed login throttling, OIDC, and RBAC: follow-on security scope.
 - Automated backup/restore tooling and an audit export: later operational releases; manual 0.1 validation remains required.
-- Controller Docker deployment and Proxmox installers: Release 1.0. The 0.1 Compose file is test infrastructure, not a deployment mode.
+- Proxmox community installer, signed/prebuilt artifacts, and automated upgrade/rollback remain later release work.
 
 ## Known limitations
 
@@ -35,4 +42,4 @@ This ledger records implemented behavior separately from roadmap intent. “Impl
 - Health work is in-process and intentionally not represented as durable jobs; only its latest result is durable.
 - The built React directory is installed alongside the Go binary rather than embedded in it.
 - `insecure_http` exists for explicit homelab compatibility and exposes node credentials to that management network; it is never selected implicitly.
-- Real-node onboarding, Debian packaging, backup/restore, and live DNS outage gates require external environments and must not be inferred from the deterministic local contract simulators.
+- Real-node onboarding, packaged-host backup/restore, and live DNS outage gates require external validation.

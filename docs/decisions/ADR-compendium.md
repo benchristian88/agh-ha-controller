@@ -1161,3 +1161,35 @@ Release 0.1 supports the AdGuard Home `/control/status` contract for version fam
 ## Review triggers
 
 Review this decision when health work becomes stateful, API traffic requires multiple controller processes, key rotation is implemented, the supported AdGuard Home version range changes, or packaging requires a single embedded binary.
+
+---
+
+# ADR-0022: Support git-based systemd and Docker Compose installation in 0.1.1
+
+**Status:** Accepted
+
+**Date:** 28 July 2026
+
+**Decision owners:** Project owner and maintainers
+**Related release:** 0.1.1
+
+## Context
+
+ADR-0014 selected Debian LXC and systemd as the reference deployment and deferred Docker Compose until the application runtime was stable. Release 0.1 established the combined process, same-origin frontend, PostgreSQL schema, runtime validation, and health endpoints. Operators now need complete installation from a git checkout on Docker-enabled or directly built hosts.
+
+## Decision
+
+Keep Debian 13 LXC/systemd as the reference topology and support two source-based installation paths in 0.1.1: a Debian installer that builds and provisions the service and PostgreSQL, and a production Docker Compose stack that builds a non-root controller image and runs persistent PostgreSQL 17.
+
+Both paths run the same binary, use embedded migrations, serve UI and API on one origin, and keep the controller out of the DNS path.
+
+## Consequences
+
+- Docker installation is delivered earlier than ADR-0014 anticipated.
+- Git and a build toolchain or Docker builder are required.
+- Runtime secrets must be protected and backed up separately from PostgreSQL.
+- Prebuilt signed artifacts, automated rollback, and the Proxmox community installer remain deferred.
+
+## Review triggers
+
+Review when signed artifacts are published, external PostgreSQL becomes a supported Compose topology, or automated upgrade and rollback are introduced.

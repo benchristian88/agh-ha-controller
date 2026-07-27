@@ -2,15 +2,7 @@
 
 ## Implemented
 
-- `local-test-env.sh`: sourceable, public fixture environment for the disposable Release 0.1 PostgreSQL and two-node setup.
-
-Use it only after `make test-env-up`:
-
-```bash
-. ./scripts/local-test-env.sh
-```
-
-Environment lifecycle, migration, test, and build commands live in the root Makefile so local and CI execution use the same entry points.
+- `install-systemd.sh`: build and install Release 0.1.1 from a git checkout on a Debian LXC or host. It provisions the service account, local PostgreSQL database, protected runtime environment, frontend, binary, and systemd unit. Existing runtime secrets are preserved on rerun.
 
 ## Planned
 

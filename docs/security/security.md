@@ -39,6 +39,8 @@ Future:
 
 The 0.1 login limiter resets on controller restart. Durable distributed throttling is deferred until multiple controller processes are supported.
 
+Release 0.1.1 installation keeps these boundaries unchanged. The Docker controller runs as a fixed non-root user with a read-only root filesystem and no-new-privileges. The systemd unit uses an unprivileged service account, filesystem protections, and a root-only environment file. Docker `.env` and systemd runtime environment files contain recovery-critical secrets and must never be committed, logged, or copied into diagnostics.
+
 ## Node credentials
 
 - Encrypt at rest.

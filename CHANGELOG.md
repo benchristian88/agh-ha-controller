@@ -6,6 +6,24 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ## Unreleased
 
+## 0.1.1 - 2026-07-28
+
+### Added
+
+- Production Dockerfile and Docker Compose installation with PostgreSQL persistence, health checks, non-root/read-only controller runtime, and source builds.
+- Git-checkout Debian/systemd installer that builds the application, provisions PostgreSQL and the service account, generates protected secrets, and preserves existing runtime configuration on upgrade.
+- Explicit regression coverage that the one-time initial administrator setup cannot be repeated.
+
+### Changed
+
+- Default build and runtime version is 0.1.1.
+- Installation, architecture, operations, security, product, and roadmap documentation now describe the supported Docker and systemd paths.
+- CI uses its PostgreSQL service directly.
+
+### Removed
+
+- Disposable local Compose/node-simulator environment and its Make/script/documentation surface.
+
 ### Added
 
 - Release 0.1 PostgreSQL schema and checksum-protected migration runner.
@@ -15,7 +33,6 @@ The project intends to follow Semantic Versioning once the first public release 
 - Read-only AdGuard Home health/version adapter and automatic polling.
 - React dark-mode setup, login, dashboard, node-management, and audit surfaces.
 - Health/readiness endpoints, request IDs, stable API errors, build tooling, tests, and CI.
-- Reproducible local Compose environment with PostgreSQL 17, two authenticated node-contract simulators, Make targets, and clean-checkout README commands.
 - ADR-0021 and Release 0.1 feature ledger.
 
 ### Changed

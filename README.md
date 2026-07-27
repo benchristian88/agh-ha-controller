@@ -21,7 +21,7 @@ AGH HA Controller is intended to solve that gap by providing:
 
 ## Project status
 
-Release 0.1 is implemented with a reproducible local test environment containing PostgreSQL 17 and two authenticated AdGuard Home status-contract simulators. External release gates still require a hosted CI run, two real AdGuard Home nodes, a fresh Debian 13 LXC install, backup/restore, and a live DNS independence test. See the [feature ledger](docs/product/feature-ledger.md) for exact implemented and deferred behavior.
+Release 0.1.1 adds complete git-based installation paths for Docker Compose and direct Debian/systemd builds. The foundation includes first-run administrator creation, secure sessions, cluster/node management, encrypted node credentials, status polling, the dark web UI, audit records, and health endpoints. Configuration control remains scheduled for later releases; see the [feature ledger](docs/product/feature-ledger.md).
 
 The first meaningful product milestone is the configuration-control MVP:
 
@@ -62,6 +62,14 @@ The complete architecture is documented in [docs/architecture/architecture.md](d
 
 ## Technology stack
 
+### Services implemented in 0.1.1
+
+- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, one-time administrator setup and login, cluster/node management, encrypted credential access, health polling, session cleanup, audit access, and `/health` plus `/ready` endpoints.
+- PostgreSQL 17: the external system of record for users, sessions, clusters, nodes, encrypted credential envelopes, health state, migrations, and audit events.
+- AdGuard Home nodes: independently installed DNS services contacted only through the read-only administration status API in this release. They are not containers or subprocesses of the controller and continue serving DNS during controller outages.
+
+The forwarder, configuration reconciliation, deployments, statistics ingestion, and query-log ingestion shown elsewhere in the product roadmap are not implemented services in 0.1.1.
+
 ### Controller backend
 
 - Go
@@ -82,11 +90,7 @@ The complete architecture is documented in [docs/architecture/architecture.md](d
 
 ### Forwarder
 
-- Go static binary
-- systemd service
-- Local disk spool
-- At-least-once delivery
-- Controller-side deduplication
+Planned for a later release: Go static binary, systemd service, local disk spool, at-least-once delivery, and controller-side deduplication.
 
 ## Repository layout
 
@@ -102,43 +106,44 @@ examples/             Example configuration
 docs/                 Product, architecture, design, and operations docs
 ```
 
-## Release 0.1 local environment
+## Install with Docker Compose
 
-Prerequisites are Go 1.24, Node.js 22 with npm, Docker Engine, Docker Compose v2.20 or newer, `make`, and `rg`. PostgreSQL does not need to be installed on the host.
-
-From a clean checkout, install dependencies and run the complete local suite:
+On an LXC or host with Git, Docker Engine, and Docker Compose v2:
 
 ```bash
-make bootstrap
-make test-local
-make test-env-down
+git clone https://github.com/benchristian88/agh-ha-controller.git
+cd agh-ha-controller
+cp .env.example .env
+openssl rand -hex 24
+openssl rand -base64 48
+openssl rand -base64 32
 ```
 
-`make test-local` starts PostgreSQL and two authenticated AdGuard status-contract simulators, runs every Go package including the database migration/API integration workflow, and runs the frontend tests. It fails instead of skipping when a dependency or integration check is unavailable.
-
-To run the controller against the same environment:
+Put those three generated values into `POSTGRES_PASSWORD`, `SESSION_SECRET`, and `CREDENTIAL_ENCRYPTION_KEY` in `.env`. Set `PUBLIC_BASE_URL` to the URL browsers use, then run:
 
 ```bash
-make bootstrap
-make test-env-up
-. ./scripts/local-test-env.sh
-make migrate
-make build
-make dev
+docker compose up --build --detach
+docker compose ps
 ```
 
-Open `http://127.0.0.1:8080` and use these exact local-only values:
+The stack builds the Go controller and React UI from the checkout, runs PostgreSQL 17 with a persistent named volume, applies embedded migrations, and exposes port 8080 by default. Use `docker compose logs -f controller` for startup diagnostics. Back up the PostgreSQL volume and `.env`; losing `CREDENTIAL_ENCRYPTION_KEY` makes stored node credentials unrecoverable.
 
-1. Create the administrator with `admin@example.test`, display name `Local Administrator`, and password `local-controller-password`.
-2. Create a cluster named `Local DNS`.
-3. Add Node A with URL `http://127.0.0.1:3101`, trust policy `Explicit plaintext HTTP`, username `agh-admin`, and password `node-secret-value`.
-4. Add Node B with URL `http://127.0.0.1:3102` and the same policy and credentials.
+## Install directly with systemd
 
-The committed credentials and cryptographic keys are intentionally public test fixtures. Never use them outside this disposable environment.
+The reference path is Debian 13, including an unprivileged Debian LXC. Install PostgreSQL, Go 1.24, Node.js 22/npm, Git, Make, and OpenSSL, clone the repository, then run:
 
-Stop containers while preserving the local database with `make test-env-down`. Destroy all test data with `make test-env-clean`, or recreate a clean running environment with `make test-env-reset`.
+```bash
+cd agh-ha-controller
+sudo PUBLIC_BASE_URL=https://controller.example.test ./scripts/install-systemd.sh
+```
 
-Detailed environment behavior and individual commands are in [local development](docs/development/local-development.md).
+The installer builds from source, creates the `aghha` service account and PostgreSQL database, generates protected secrets, installs the binary/UI, enables the hardened service, and preserves `/etc/agh-ha-controller/agh-ha-controller.env` on reruns. Inspect it with `systemctl status agh-ha-controller` and `journalctl -u agh-ha-controller -f`.
+
+After either installation, open `PUBLIC_BASE_URL`. When the database has no users, the application shows “Create your administrator.” That transaction creates the only initial administrator and signs it in; setup returns HTTP 409 after any user exists. Then create a cluster and add each AdGuard Home node.
+
+Upgrade a git installation by backing up PostgreSQL and runtime secrets, pulling the desired tag, and rerunning `docker compose up --build --detach` or `scripts/install-systemd.sh`. Embedded append-only migrations run at startup.
+
+Development and test commands are documented in [local development](docs/development/local-development.md).
 
 ## Initial development order
 

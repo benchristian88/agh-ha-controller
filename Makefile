@@ -1,16 +1,10 @@
-.PHONY: bootstrap fmt fmt-check test test-race test-env-up test-env-down test-env-clean test-env-reset test-integration test-local test-local-race lint dev build migrate migrate-down clean
+.PHONY: bootstrap fmt fmt-check test test-race test-integration lint dev build migrate migrate-down compose-config compose-build clean
 
 GO ?= go
 NPM ?= npm
 COMPOSE ?= docker compose
-TEST_COMPOSE_FILE ?= compose.test.yml
-LOCAL_TEST_DATABASE_URL ?= postgres://aghha:aghha-local-test@127.0.0.1:55432/aghha?sslmode=disable
-LOCAL_TEST_NODE_A_URL ?= http://127.0.0.1:3101
-LOCAL_TEST_NODE_B_URL ?= http://127.0.0.1:3102
-LOCAL_TEST_NODE_USERNAME ?= agh-admin
-LOCAL_TEST_NODE_PASSWORD ?= node-secret-value
 GO_FILES := $(shell rg --files -g '*.go')
-VERSION ?= 0.1.0-dev
+VERSION ?= 0.1.1
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || printf unknown)
 BUILT_AT ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -X github.com/benchristian88/agh-ha-controller/internal/version.Version=$(VERSION) -X github.com/benchristian88/agh-ha-controller/internal/version.Commit=$(COMMIT) -X github.com/benchristian88/agh-ha-controller/internal/version.BuiltAt=$(BUILT_AT)
@@ -34,28 +28,9 @@ test:
 test-race:
 	$(GO) test -race ./...
 
-test-env-up:
-	$(COMPOSE) -f $(TEST_COMPOSE_FILE) up --build --detach --wait
-
-test-env-down:
-	$(COMPOSE) -f $(TEST_COMPOSE_FILE) down --remove-orphans
-
-test-env-clean:
-	$(COMPOSE) -f $(TEST_COMPOSE_FILE) down --volumes --remove-orphans
-
-test-env-reset:
-	$(COMPOSE) -f $(TEST_COMPOSE_FILE) down --volumes --remove-orphans
-	$(COMPOSE) -f $(TEST_COMPOSE_FILE) up --build --detach --wait
-
-test-integration: test-env-up
-	TEST_DATABASE_URL='$(LOCAL_TEST_DATABASE_URL)' TEST_NODE_A_URL='$(LOCAL_TEST_NODE_A_URL)' TEST_NODE_B_URL='$(LOCAL_TEST_NODE_B_URL)' TEST_NODE_USERNAME='$(LOCAL_TEST_NODE_USERNAME)' TEST_NODE_PASSWORD='$(LOCAL_TEST_NODE_PASSWORD)' $(GO) test -count=1 ./tests/integration
-
-test-local: test-env-up
-	TEST_DATABASE_URL='$(LOCAL_TEST_DATABASE_URL)' TEST_NODE_A_URL='$(LOCAL_TEST_NODE_A_URL)' TEST_NODE_B_URL='$(LOCAL_TEST_NODE_B_URL)' TEST_NODE_USERNAME='$(LOCAL_TEST_NODE_USERNAME)' TEST_NODE_PASSWORD='$(LOCAL_TEST_NODE_PASSWORD)' $(GO) test -count=1 ./...
-	cd web && $(NPM) test
-
-test-local-race: test-env-up
-	TEST_DATABASE_URL='$(LOCAL_TEST_DATABASE_URL)' TEST_NODE_A_URL='$(LOCAL_TEST_NODE_A_URL)' TEST_NODE_B_URL='$(LOCAL_TEST_NODE_B_URL)' TEST_NODE_USERNAME='$(LOCAL_TEST_NODE_USERNAME)' TEST_NODE_PASSWORD='$(LOCAL_TEST_NODE_PASSWORD)' $(GO) test -race -count=1 ./...
+test-integration:
+	@test -n "$(TEST_DATABASE_URL)" || { echo "TEST_DATABASE_URL is required"; exit 1; }
+	$(GO) test -count=1 ./tests/integration
 
 lint:
 	$(GO) vet ./...
@@ -75,6 +50,12 @@ migrate:
 
 migrate-down:
 	$(GO) run ./cmd/migrate -direction down
+
+compose-config:
+	$(COMPOSE) config --quiet
+
+compose-build:
+	$(COMPOSE) build
 
 clean:
 	$(GO) clean

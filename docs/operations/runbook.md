@@ -31,6 +31,14 @@ Generate secrets with `openssl rand -base64 48` and `openssl rand -base64 32`. S
 
 On startup the controller validates configuration, connects to PostgreSQL, applies embedded migrations when enabled, constructs security primitives, starts health/session workers, then opens HTTP. Any prerequisite failure stops startup.
 
+## Release 0.1.1 installation checks
+
+For Docker Compose, run `docker compose ps`, inspect `docker compose logs --tail=100 controller`, and request `/ready`. Both services must be healthy. PostgreSQL state is in the `postgres-data` named volume; runtime secrets are in the untracked `.env` and must be backed up separately.
+
+For systemd, run `systemctl status agh-ha-controller`, inspect `journalctl -u agh-ha-controller`, and request `/ready`. The runtime environment is `/etc/agh-ha-controller/agh-ha-controller.env` with mode `0600`; the installer preserves it during an upgrade rerun.
+
+Before either upgrade path, back up PostgreSQL and runtime secrets. A failed migration prevents controller startup and leaves DNS nodes serving independently. On a database with no users, opening the UI starts the one-time administrator flow. After creation, setup status is false and repeated setup requests return conflict.
+
 ## Node status error codes
 
 - `NODE_UNREACHABLE`: network or timeout failure.

@@ -58,15 +58,13 @@ The service does not bind any DNS port. Browser HTTPS is normally terminated by 
 
 ## Installation modes
 
-### Debian package or install script
+### Git checkout and systemd
 
-Preferred early community deployment.
+The Debian 13 LXC reference path builds the Go binary and React assets from a git checkout. `scripts/install-systemd.sh` provisions the local PostgreSQL database, an unprivileged `aghha` service account, the protected environment file, installed assets, and the hardened combined controller/worker unit. Reruns preserve existing secrets and database state.
 
 ### Docker Compose
 
-Supported after the systemd reference deployment is stable.
-
-The repository-root `compose.test.yml` is a Release 0.1 development and CI fixture only. It supplies PostgreSQL and two status-contract simulators while the controller runs from source on the host. It is deliberately not a controller deployment image and does not change the systemd-first decision in ADR-0014.
+Release 0.1.1 supports a root `docker-compose.yml` for Docker-enabled LXC or host installation. It builds a multi-stage image from the checkout, runs the controller as a non-root user on a read-only filesystem, serves the installed frontend on the same origin, and runs PostgreSQL 17 with a persistent named volume. Runtime secrets come from an untracked `.env` file. The controller remains a single process and never publishes or listens on a DNS port.
 
 ### Proxmox community LXC script
 

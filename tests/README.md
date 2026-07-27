@@ -1,17 +1,11 @@
 # Tests
 
-- `integration/`: PostgreSQL, API, migration, encryption, audit, and two-node workflow.
-- `support/aghstub/`: authenticated AdGuard Home Release 0.1 status-contract simulator.
-- `e2e/`: reserved for browser-driven critical workflows.
+- `integration/release_0_1_test.go`: PostgreSQL migration and Release 0.1/0.1.1 API workflow.
 
-From a clean checkout, run the non-skipping Release 0.1 suite with:
+Run unit and frontend tests with `make test`. Run the database workflow against an explicitly supplied empty PostgreSQL database:
 
 ```bash
-make bootstrap
-make test-local
-make test-env-down
+TEST_DATABASE_URL='postgres://user:password@127.0.0.1:5432/aghha_test?sslmode=disable' make test-integration
 ```
 
-Run `make test-integration` for only the PostgreSQL/API workflow or `make test-local-race` for the complete Go race suite. The Compose environment is defined in `compose.test.yml`; its exact addresses and credentials are documented in the repository README.
-
-Direct `go test ./...` remains useful for fast development: it uses in-process node servers and skips the PostgreSQL workflow when `TEST_DATABASE_URL` is absent. It is not the complete local release command.
+The test creates an isolated schema and uses in-process HTTP servers for the two AdGuard Home status endpoints. Optional `TEST_NODE_A_URL` and `TEST_NODE_B_URL` values can target external compatible nodes.

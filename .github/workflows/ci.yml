@@ -8,11 +8,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      TEST_DATABASE_URL: postgres://aghha:aghha-local-test@127.0.0.1:55432/aghha?sslmode=disable
-      TEST_NODE_A_URL: http://127.0.0.1:3101
-      TEST_NODE_B_URL: http://127.0.0.1:3102
-      TEST_NODE_USERNAME: agh-admin
-      TEST_NODE_PASSWORD: node-secret-value
+      TEST_DATABASE_URL: postgres://aghha:aghha-ci@127.0.0.1:5432/aghha?sslmode=disable
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: aghha
+          POSTGRES_USER: aghha
+          POSTGRES_PASSWORD: aghha-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aghha -d aghha"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -31,15 +41,19 @@ jobs:
         run: make fmt-check
       - name: Lint and vet
         run: make lint
-      - name: Test Release 0.1 local workflow
-        run: make test-local
+      - name: Test backend, migrations, and frontend
+        run: make test
       - name: Race-test backend and migrations
-        run: make test-local-race
+        run: make test-race
       - name: Audit production frontend dependencies
         working-directory: web
         run: npm audit --omit=dev
       - name: Build release inputs
         run: make build
-      - name: Stop local test environment
-        if: always()
-        run: make test-env-down
+      - name: Validate production container definition
+        run: docker compose config --quiet
+        env:
+          POSTGRES_PASSWORD: unused
+          PUBLIC_BASE_URL: http://controller.example.test:8080
+          SESSION_SECRET: c3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3M=
+          CREDENTIAL_ENCRYPTION_KEY: MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=

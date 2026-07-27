@@ -23,7 +23,7 @@ This document is authoritative for product intent. More specialised documents un
 
 Release 0.1 implementation details and validation status are recorded in `docs/product/feature-ledger.md` and the Release 0.1 reconciliation section of `docs/roadmap/roadmap.md`. ADR-0021 resolves the runtime and security choices that were open in the original baseline.
 
-Release 0.1 also includes the repository-root `compose.test.yml`, two authenticated AdGuard status-contract simulators, a PostgreSQL 17 service, sourceable local fixtures, and non-skipping `make test-local`/`make test-local-race` entry points. This development fixture does not supersede the systemd-first deployment decision or satisfy the real-node release gate.
+Release 0.1.1 adds git-based Debian/systemd and Docker Compose installation while preserving the systemd reference topology and the same controller/database boundaries. ADR-0022 records the decision to bring supported Docker installation forward.
 
 ### Decision labels used in this document
 
@@ -1621,7 +1621,7 @@ The controller may initially include PostgreSQL on the same LXC. This provides t
 1. Development binary and manual configuration.
 2. systemd installation.
 3. repeatable Debian install script or package.
-4. Docker Compose.
+4. Docker Compose (delivered early in Release 0.1.1; signed image distribution remains future work).
 5. Proxmox community LXC script.
 6. signed release artifacts and upgrade tooling.
 
@@ -2001,7 +2001,7 @@ Controller becomes source of truth and keeps nodes converged.
 ## 96. Release 1.0 — Community production release
 
 - Debian installation;
-- Docker Compose;
+- hardened and published Docker Compose artifacts;
 - Proxmox LXC installer;
 - upgrade and rollback tooling;
 - security hardening;
@@ -2156,6 +2156,7 @@ These should be resolved through ADRs when they become material.
 - ADR-0018: Defer controller HA until after the single-controller product is stable
 - ADR-0019: Limit early DHCP support to safe inventory and single-active-node workflows
 - ADR-0021: Define Release 0.1 runtime and security foundations
+- ADR-0022: Support git-based systemd and Docker Compose installation in 0.1.1
 
 ## 102. Proposed decision
 
@@ -2812,7 +2813,7 @@ Preferred early community deployment.
 
 ### Docker Compose
 
-Supported after the systemd reference deployment is stable.
+Supported from Release 0.1.1 as a git-checkout source build while systemd remains the reference deployment.
 
 ### Proxmox community LXC script
 
@@ -4241,7 +4242,7 @@ This is the first release that demonstrates the complete core value proposition.
 ### Scope
 
 - Debian installation.
-- Docker Compose.
+- Hardened published Docker Compose artifacts (source-build Compose delivered in 0.1.1).
 - Proxmox LXC installer.
 - Upgrade and rollback tooling.
 - Backup and restore documentation.
@@ -4871,7 +4872,7 @@ These requirements are the initial traceability baseline. Release plans should i
 
 ## E.1 Release 0.1 gate
 
-The exact clean-checkout local command is `make bootstrap && make test-local`. It executes the PostgreSQL migration/API workflow against the committed Compose environment rather than treating database setup as an undocumented prerequisite.
+The PostgreSQL migration/API workflow requires an explicit `TEST_DATABASE_URL`; unit and frontend suites remain runnable with `make test`.
 
 - [ ] Fresh Debian 13 LXC installation documented and repeated.
 - [ ] Database migration creates all 0.1 schema objects.

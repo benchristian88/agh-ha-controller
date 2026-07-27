@@ -64,6 +64,11 @@ func TestRelease01OperatorWorkflow(t *testing.T) {
 		t.Fatalf("setup status = %d, body = %s", setupResponse.StatusCode, readBody(t, setupResponse))
 	}
 	_ = readBody(t, setupResponse)
+	repeatedSetup := doJSON(t, client, http.MethodPost, server.URL+"/api/v1/setup", setupBody, "")
+	if repeatedSetup.StatusCode != http.StatusConflict {
+		t.Fatalf("repeated setup status = %d, want 409; body = %s", repeatedSetup.StatusCode, readBody(t, repeatedSetup))
+	}
+	_ = readBody(t, repeatedSetup)
 	csrf := cookieValue(jar.Cookies(baseURL), "aghha_csrf")
 	if csrf == "" || cookieValue(jar.Cookies(baseURL), "aghha_session") == "" {
 		t.Fatal("setup did not issue session and CSRF cookies")

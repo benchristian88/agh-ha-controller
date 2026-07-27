@@ -15,6 +15,11 @@
 
 ## Artifacts
 
+Implemented for 0.1.1:
+
+- Source-build Docker image and Compose definition.
+- Git-checkout systemd installer.
+
 Planned:
 
 - Linux amd64 binary.

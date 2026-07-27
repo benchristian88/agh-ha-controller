@@ -29,7 +29,7 @@ Use real or containerised AdGuard Home versions for:
 - Statistics.
 - Compatibility behaviour.
 
-`tests/integration/release_0_1_test.go` uses an isolated schema in real PostgreSQL. It verifies migration up/down/up, first setup, secure cookies, authenticated cluster creation, two-node onboarding, absence of credentials in responses, encrypted database storage, required audit actions, and controller/node process independence. `make test-local` supplies PostgreSQL and two containerised contract nodes, so this workflow cannot skip. Direct `go test` runs retain in-process node fallback and skip only when `TEST_DATABASE_URL` is intentionally absent.
+`tests/integration/release_0_1_test.go` uses an isolated schema in real PostgreSQL. It verifies migration up/down/up, one-time first-admin setup, repeat-setup rejection, secure cookies, authenticated cluster creation, two-node onboarding, absence of credentials in responses, encrypted database storage, required audit actions, and controller/node process independence. `make test-integration` requires `TEST_DATABASE_URL`; ordinary `go test` runs skip this package only when that variable is absent.
 
 ## Contract tests
 
@@ -51,7 +51,7 @@ Critical workflows:
 8. Roll back revision.
 9. Search combined query log.
 
-The 0.1 API workflow, two-node local environment, and React production build are automated today. Browser-driven setup/login/node workflows remain a release-gate dependency; configuration through query-log workflows remain assigned to later releases.
+The 0.1 API workflow and React production build are automated today. Browser-driven setup/login/node workflows and packaged installation smoke tests remain release-gate dependencies; configuration through query-log workflows remain assigned to later releases.
 
 ## Failure tests
 

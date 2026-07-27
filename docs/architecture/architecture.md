@@ -30,6 +30,8 @@ The implemented foundation is one Go process containing the API, static frontend
 
 The process only calls AdGuard Home's read-only `/control/status` endpoint in 0.1. It contains no DNS listener, DNS proxy, configuration reader, or configuration writer. Configuration, reconciliation, telemetry, and forwarder components described below remain staged work for their roadmap releases.
 
+Release 0.1.1 packages this same process through two git-based paths: the reference Debian/systemd installer and a production Docker Compose stack with PostgreSQL. Packaging does not change the process, database, same-origin frontend, or DNS-independence boundaries.
+
 ### 3.1 Controller API
 
 Responsibilities:

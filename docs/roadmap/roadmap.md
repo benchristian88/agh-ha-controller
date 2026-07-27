@@ -51,11 +51,10 @@ Completed in the repository:
 - Immediate and interval health polling with stale/partial-failure dashboard states.
 - Dark React dashboard, node management, and audit surfaces.
 - Liveness/readiness endpoints and CI definitions for format, vet, race tests, PostgreSQL integration, frontend validation, dependency audit, and builds.
-- Reproducible Compose test environment with PostgreSQL 17, two authenticated status-contract nodes, non-skipping Make targets, and exact clean-checkout README commands.
 
 Partially completed or validation pending:
 
-- PostgreSQL migration and API integration tests run through `make test-local`; a hosted execution result is still pending.
+- PostgreSQL migration and API integration tests run when an explicit `TEST_DATABASE_URL` is supplied; a hosted execution result is still pending.
 - Two-node onboarding is contract-tested; two real AdGuard Home nodes have not yet been recorded as passing.
 - CI is configured but a hosted workflow result is not available in this repository state.
 - systemd packaging is defined, but a fresh Debian 13 LXC installation has not been repeated.
@@ -74,6 +73,35 @@ New follow-on dependencies:
 - Add browser-driven setup/login/two-node tests to the reference environment.
 - Exercise HTTPS reverse-proxy cookie behavior and Debian file placement.
 - Complete backup/restore and uninterrupted-DNS evidence before changing this release to complete.
+
+## Release 0.1.1 — Git-based installation
+
+**Current status (28 July 2026): Partially completed — implementation is present; fresh-host validation is pending.**
+
+Completed in the repository:
+
+- Production multi-stage controller image and Docker Compose stack with PostgreSQL 17 persistence and health checks.
+- Non-root, read-only container execution with no DNS port or DNS data-path responsibility.
+- Debian/systemd installer that builds from a git checkout, provisions PostgreSQL and the service identity, generates protected secrets, and installs the existing hardened service.
+- One-time first-administrator behavior verified by database locking and repeat-setup regression coverage.
+- Installation, upgrade, architecture, security, operations, README, feature-ledger, and release documentation.
+
+Partially completed or validation pending:
+
+- Fresh Docker-enabled LXC and Debian 13 LXC installation smoke tests.
+- Restart and git-based upgrade reruns for both installation modes.
+- PostgreSQL plus runtime-secret backup/restore using each packaged topology.
+- Browser-driven first-admin setup on each packaged build.
+
+Deliberately deferred:
+
+- Prebuilt images/binaries, checksums, SBOM, release signing, automatic rollback, and Proxmox community installation.
+- External PostgreSQL Compose profiles and controller high availability.
+
+New follow-on dependencies:
+
+- Publish immutable git tags so operators can select and roll back source versions predictably.
+- Add packaged-install smoke jobs on a Docker host and clean Debian LXC.
 
 ## Release 0.2 — Configuration inventory
 
@@ -265,7 +293,7 @@ This is the first release that demonstrates the complete core value proposition.
 ### Scope
 
 - Debian installation.
-- Docker Compose.
+- Hardened published Docker Compose artifacts (source-build Compose delivered in 0.1.1).
 - Proxmox LXC installer.
 - Upgrade and rollback tooling.
 - Backup and restore documentation.
