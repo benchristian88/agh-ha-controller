@@ -15,7 +15,8 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath \
+RUN mkdir -p /tmp/go-build && \
+    CGO_ENABLED=0 GOCACHE=/tmp/go-build GOTMPDIR=/tmp/go-build go build -p 1 -trimpath \
     -ldflags "-s -w -X github.com/benchristian88/agh-ha-controller/internal/version.Version=${VERSION} -X github.com/benchristian88/agh-ha-controller/internal/version.Commit=${COMMIT} -X github.com/benchristian88/agh-ha-controller/internal/version.BuiltAt=${BUILT_AT}" \
     -o /out/agh-ha-controller ./cmd/controller
 
