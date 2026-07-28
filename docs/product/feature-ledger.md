@@ -41,6 +41,7 @@ Operator validation on 29 July 2026 proved both Docker and systemd production-bu
 | Configuration UI | Implemented | Loading/error/empty states, refresh, warnings, comparison, equality, import boundary | Packaged browser/accessibility check |
 | systemd ripgrep warning | Fixed | Make source discovery uses portable `find`; installer no longer indirectly needs `rg` | Clean systemd upgrade rerun |
 | Empty-draft configuration page | Fixed in 0.2.1 | API omits an absent draft; UI normalises both omitted and legacy `null` values before rendering | Production browser recheck after upgrade |
+| Atomic systemd runtime upgrade | Fixed in 0.2.2 | Installer explicitly restarts and verifies the unit after replacing the binary/UI, preventing mixed frontend/API versions | Production systemd upgrade rerun |
 
 ## Deliberately deferred
 

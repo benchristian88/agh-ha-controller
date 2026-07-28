@@ -41,7 +41,7 @@ if ! id "${service_user}" >/dev/null 2>&1; then
 fi
 
 make -C "${repo_dir}" bootstrap
-make -C "${repo_dir}" VERSION=0.2.1 build
+make -C "${repo_dir}" VERSION=0.2.2 build
 
 install -d -o root -g root -m 0755 "${environment_dir}" /usr/local/share/agh-ha-controller
 install -d -o "${service_user}" -g "${service_group}" -m 0750 "${state_dir}"
@@ -79,6 +79,11 @@ fi
 
 install -o root -g root -m 0644 "${repo_dir}/packaging/systemd/agh-ha-controller.service" /etc/systemd/system/agh-ha-controller.service
 systemctl daemon-reload
-systemctl enable --now agh-ha-controller.service
+systemctl enable agh-ha-controller.service
+# `enable --now` starts an inactive unit but deliberately leaves an already
+# running process untouched. Always restart after replacing the binary and UI
+# so an upgrade cannot serve a new frontend against an old API process.
+systemctl restart agh-ha-controller.service
+systemctl is-active --quiet agh-ha-controller.service
 systemctl --no-pager --full status agh-ha-controller.service
 echo "Installation complete. Open ${public_base_url} to create the initial administrator."

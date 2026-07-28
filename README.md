@@ -147,7 +147,7 @@ Canonical schema v1 covers upstream/bootstrap/fallback/private reverse DNS, filt
 
 After either installation, open `PUBLIC_BASE_URL`. When the database has no users, the application shows “Create your administrator.” That transaction creates the only initial administrator and signs it in; setup returns HTTP 409 after any user exists. Then create a cluster and add each AdGuard Home node.
 
-Upgrade a git installation by backing up PostgreSQL and runtime secrets, pulling the desired tag, and rerunning `docker compose up --build --detach` or `scripts/install-systemd.sh`. Embedded append-only migrations run at startup.
+Upgrade a git installation by backing up PostgreSQL and runtime secrets, pulling the desired tag, and rerunning `docker compose up --build --detach` or `scripts/install-systemd.sh`. Embedded append-only migrations run at startup. Release 0.2.2 and later systemd upgrades explicitly restart and verify the service after installing the binary and UI, preventing mixed frontend/API versions.
 
 Development and test commands are documented in [local development](docs/development/local-development.md).
 

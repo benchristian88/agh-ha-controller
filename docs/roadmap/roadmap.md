@@ -140,6 +140,7 @@ Completed in the repository:
 - Configuration inventory UI with refresh, warnings, semantic equality, detailed comparison, and import boundary messaging.
 - Portable production Make source discovery fixing the non-fatal systemd ripgrep warning reported during successful 0.1.1 validation.
 - Release 0.2.1 fixes the blank Configuration page seen when 0.2.0 returned `draft: null` before the first import.
+- Release 0.2.2 fixes systemd upgrade reruns that installed the new frontend and binary without restarting an already-running older controller process.
 
 Deliberately deferred:
 

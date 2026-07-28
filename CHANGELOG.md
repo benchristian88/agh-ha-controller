@@ -6,6 +6,12 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ## Unreleased
 
+## 0.2.2 - 2026-07-29
+
+### Fixed
+
+- Restart and verify the systemd service after replacing release artifacts. Previous upgrade reruns used `systemctl enable --now`, which left an already-running older API process serving a newly installed frontend.
+
 ## 0.2.1 - 2026-07-29
 
 ### Fixed

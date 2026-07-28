@@ -37,6 +37,8 @@ For Docker Compose, run `docker compose ps`, inspect `docker compose logs --tail
 
 For systemd, run `systemctl status agh-ha-controller`, inspect `journalctl -u agh-ha-controller`, and request `/ready`. The runtime environment is `/etc/agh-ha-controller/agh-ha-controller.env` with mode `0600`; the installer preserves it during an upgrade rerun.
 
+Release 0.2.2 and later restart and verify the unit after installing new artifacts. On an earlier upgrade, a new frontend combined with `API route was not found` indicates the old controller process is still running; use `systemctl restart agh-ha-controller` and verify `/api/v1/system/version` before retrying.
+
 Before either upgrade path, back up PostgreSQL and runtime secrets. A failed migration prevents controller startup and leaves DNS nodes serving independently. On a database with no users, opening the UI starts the one-time administrator flow. After creation, setup status is false and repeated setup requests return conflict.
 
 ## Node status error codes
