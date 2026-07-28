@@ -12,6 +12,10 @@ The first implemented surface includes one-time setup, login, cluster creation a
 
 The dashboard does not render zero-value traffic charts before telemetry exists. Configuration, deployment, drift, statistics, and query-log navigation remains absent until those execution paths are implemented.
 
+## Release 0.2 implementation
+
+`/ha/configuration` provides a read-only inventory for the selected cluster. It models initial loading, empty clusters, collection failures, compatibility warnings, successful semantic equality, detailed section/scope differences, and optimistic import conflicts. Import confirmation explicitly states that no node is changed and that the resulting draft is neither published nor deployable.
+
 ## Visual direction
 
 Use an original implementation inspired by AdGuard Home dark mode.

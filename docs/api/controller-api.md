@@ -1,6 +1,6 @@
 # Controller API
 
-## Release 0.1 contract
+## Release 0.2 contract
 
 The controller serves its browser UI and JSON API from the same origin. JSON routes are versioned under:
 
@@ -93,13 +93,26 @@ Create and update use:
 
 `credentials` are required on create and optional on update. If supplied on update, username and password must be supplied together and the action is audited as credential rotation. `customCaPem` is required when first selecting `custom_ca`, is write-only, and may be omitted on later updates to retain it.
 
-Before saving an enabled node, the controller verifies status, authentication, TLS policy, version, and DNS running state. It never changes AdGuard Home configuration in 0.1.
+Before saving an enabled node, the controller verifies status, authentication, TLS policy, version, and DNS running state. It never changes AdGuard Home configuration in 0.2.
 
 Node responses include identity, URL, trust policy, enabled state, health, compatibility, version, polling timestamps, latency, safe error code, and `recordVersion`. They never include credentials, ciphertext, nonces, CA contents, or authentication headers. The cluster node-list envelope also includes `refreshedAt` and `staleAfterSeconds`; the latter is three configured health intervals so the UI freshness state follows runtime polling configuration.
 
 The manual `test-connection` action atomically stores its safe observed result and an audit event with a success or failure outcome. Background interval polls update health without generating high-volume audit records.
 
 Node removal requires `recordVersion` and `confirmName`. It soft-removes the record, disables polling, destroys the stored encrypted credential and CA material, and writes an audit record.
+
+## Configuration inventory routes
+
+```text
+POST /api/v1/nodes/{nodeId}/observations
+GET  /api/v1/clusters/{clusterId}/configuration-inventory
+GET  /api/v1/configuration-comparisons?leftSnapshotId={uuid}&rightSnapshotId={uuid}
+POST /api/v1/clusters/{clusterId}/configuration-draft/import
+```
+
+Observation performs bounded, authenticated GET requests only and stores either an immutable canonical schema-v1 snapshot or an immutable failed attempt with a safe error code. Inventory returns the latest attempt for each node, current capability profiles, and the optional cluster draft. Comparison returns `equal` plus differences grouped by section, field, and `shared_managed`, `node_specific_managed`, `observed_only`, or `unsupported` scope.
+
+Import accepts `snapshotId`, `expectedVersion`, and `confirmed: true`. It rejects failed snapshots, cross-cluster snapshots, missing confirmation, and stale draft versions. The transaction updates the draft and writes `configuration.draft_imported`. It never publishes or deploys configuration.
 
 ## Audit and version routes
 
@@ -119,4 +132,4 @@ GET /ready   # PostgreSQL connectivity and mutation readiness
 
 ## Later contracts
 
-Configuration observation and capability inventory begin in 0.2. Drafts, revisions, deployments, rollback, and drift begin in 0.3. Statistics and query-event contracts begin in 0.5 and 0.6. Their earlier route sketches are not implemented 0.1 contracts.
+Published immutable revisions, deployments, rollback, and drift begin in 0.3. Statistics and query-event contracts begin in 0.5 and 0.6.

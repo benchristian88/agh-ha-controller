@@ -32,6 +32,8 @@ The process only calls AdGuard Home's read-only `/control/status` endpoint in 0.
 
 Release 0.1.1 packages this same process through two git-based paths: the reference Debian/systemd installer and a production Docker Compose stack with PostgreSQL. Packaging does not change the process, database, same-origin frontend, or DNS-independence boundaries.
 
+Release 0.2 adds a read-only configuration-inventory service inside the same process. It reads supported AdGuard Home administration endpoints, translates raw payloads into canonical schema v1, stores immutable observation attempts and current capability profiles, and provides semantic comparison and an explicitly confirmed non-authoritative draft import. It does not add a node writer, deployment engine, active revision, drift enforcement, or DNS path.
+
 ### 3.1 Controller API
 
 Responsibilities:

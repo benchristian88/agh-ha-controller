@@ -3,6 +3,7 @@ import { EmptyState, ErrorState, Loading } from "./components/Feedback";
 import { AuditPage } from "./features/audit/AuditPage";
 import { LoginPage, SetupPage } from "./features/auth/AuthPages";
 import { ClusterCreate } from "./features/clusters/ClusterCreate";
+import { ConfigurationPage } from "./features/configuration/ConfigurationPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { NodesPage } from "./features/nodes/NodesPage";
 import { ApiError, api } from "./lib/api";
@@ -144,6 +145,8 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
       </EmptyState>
     );
   else if (path === "/ha/nodes") content = <NodesPage cluster={selected} />;
+  else if (path === "/ha/configuration")
+    content = <ConfigurationPage cluster={selected} />;
   else if (path === "/system/audit") content = <AuditPage />;
   else content = <DashboardPage cluster={selected} />;
 
@@ -165,6 +168,12 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
           <p className="nav-label">HA management</p>
           <NavLink href="/ha/nodes" current={path === "/ha/nodes"}>
             Nodes
+          </NavLink>
+          <NavLink
+            href="/ha/configuration"
+            current={path === "/ha/configuration"}
+          >
+            Configuration
           </NavLink>
           <p className="nav-label">System</p>
           <NavLink href="/system/audit" current={path === "/system/audit"}>

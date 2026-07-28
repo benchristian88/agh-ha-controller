@@ -58,6 +58,73 @@ export interface AuditEvent {
   createdAt: string;
 }
 
+export interface ConfigurationDocument {
+  schemaVersion: number;
+  shared: {
+    dns: {
+      upstreamDns: string[];
+      bootstrapDns: string[];
+      fallbackDns: string[];
+      privateReverseDns: string[];
+    };
+    filtering: {
+      enabled: boolean;
+      updateIntervalHours: number;
+      filterUrls: string[];
+      userRules: string[];
+    };
+  };
+  nodeSpecific: { bindHosts: string[]; dnsPort: number };
+  observedOnly: { productVersion: string };
+  unsupported: { section: string; reason: string }[];
+}
+
+export interface ConfigurationSnapshot {
+  id: string;
+  nodeId: string;
+  observedAt: string;
+  schemaVersion: number;
+  document?: ConfigurationDocument;
+  canonicalHash?: string;
+  nodeVersion?: string;
+  collectionStatus: "succeeded" | "failed";
+  errorCode?: string;
+}
+
+export interface CapabilityProfile {
+  nodeId: string;
+  productVersion: string;
+  compatibility: string;
+  schemaVersion: number;
+  features: Record<string, boolean>;
+  warnings: string[];
+  refreshedAt: string;
+}
+
+export interface ConfigurationDraft {
+  id: string;
+  clusterId: string;
+  sourceSnapshotId: string;
+  schemaVersion: number;
+  document: ConfigurationDocument;
+  canonicalHash: string;
+  version: number;
+  updatedAt: string;
+}
+
+export interface ConfigurationDifference {
+  section: string;
+  field: string;
+  scope:
+    | "shared_managed"
+    | "node_specific_managed"
+    | "observed_only"
+    | "unsupported";
+  left: unknown;
+  right: unknown;
+  summary: string;
+}
+
 export interface ApiErrorBody {
   code: string;
   message: string;

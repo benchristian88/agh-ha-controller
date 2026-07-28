@@ -51,6 +51,7 @@ Recommended:
 
 | Milestone | Status | Notes |
 |---|---|---|
-| 0.1 | Implemented; release validation pending | Core code, tests, UI, migrations, and CI are present. Real-node, backup/restore, hosted CI, and DNS-outage gates remain open. |
-| 0.1.1 | Implemented; installation validation pending | Git-based Docker Compose and Debian/systemd installation, production container build, first-admin regression coverage, and operator documentation are present. Fresh-host, upgrade, and backup/restore evidence remains open. |
-| 0.2–1.0 | Planned | Historical scope and sequencing are unchanged. |
+| 0.1 | Complete | Foundation and production-build LXC functionality validated by the operator. |
+| 0.1.1 | Complete | Docker and systemd production-build installs validated; the non-fatal ripgrep build warning is fixed in 0.2. |
+| 0.2 | Implemented; production validation pending | Canonical inventory, capabilities, snapshots, diffs, confirmed draft import, UI, migration, fixtures, and docs are present. |
+| 0.3–1.0 | Planned | Historical scope and sequencing are unchanged. |

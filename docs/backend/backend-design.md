@@ -40,6 +40,10 @@ Optional later node-side process for query-log ingestion.
 - `internal/api`: standard-library route registration, DTO decoding, authentication/CSRF middleware, security headers, error mapping, request IDs, and frontend serving.
 - `internal/config`: environment-only runtime configuration and secret validation.
 - `internal/version`: build-injected controller version metadata.
+- `internal/configuration`: canonical schema v1, deterministic normalisation, hashing, ownership-aware structured differences.
+- `internal/inventory`: read-only observation, capability, comparison, and audited draft-import orchestration.
+
+Release 0.2 extends `internal/adguard` with narrow configuration reads for `/control/dns_info` and `/control/filtering/status`. Raw payloads, counters, generated IDs, and timestamps remain inside the adapter.
 
 `cmd/controller` wires these boundaries and owns graceful process lifecycle. `cmd/migrate` is a thin explicit migration entry point.
 

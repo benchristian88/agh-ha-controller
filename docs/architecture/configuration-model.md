@@ -60,7 +60,7 @@ nodes:
       - 192.168.3.11
 ```
 
-This example is illustrative, not a final public schema.
+Release 0.2 freezes canonical schema version 1. Its implemented fields are DNS upstream, bootstrap, fallback, and private reverse resolvers; filtering enablement, update interval, enabled filter URLs, and custom rules; node-specific bind hosts and DNS port; observed-only product version; and explicit unsupported-area records. TLS, DHCP, clients, rewrites, and services remain outside schema v1.
 
 ## Revision lifecycle
 
@@ -86,6 +86,8 @@ Canonicalisation must:
 - Preserve comments and operator labels separately from deployable state.
 - Produce deterministic serialisation.
 
+Schema v1 preserves order for upstream resolvers, fallback resolvers, and custom filtering rules. It treats bootstrap resolvers, private reverse resolvers, bind hosts, and enabled filter URLs as unordered sets. Runtime cache counters, filter IDs, filter display names, rule counts, and last-update timestamps are discarded at the adapter boundary.
+
 ## Configuration ownership
 
 Each field should eventually be classified as:
@@ -104,11 +106,11 @@ On first node onboarding:
 1. Read supported configuration.
 2. Normalise it.
 3. Present import summary.
-4. Create an initial draft.
-5. Require explicit operator acceptance.
-6. Create Revision 1.
-7. Mark the imported node as converged.
-8. Compare additional nodes against Revision 1.
+4. Require explicit operator acceptance.
+5. Create or replace the cluster's optimistic inventory draft.
+6. Compare additional nodes against that draft or source snapshot.
+
+Release 0.2 stops here. Publishing immutable Revision 1, selecting an active revision, and recording convergence begin in Release 0.3.
 
 The controller must not overwrite a newly added node before showing the differences.
 

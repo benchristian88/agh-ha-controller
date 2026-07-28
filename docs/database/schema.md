@@ -18,6 +18,8 @@ The first implemented pair is:
 000001_release_0_1.down.sql
 ```
 
+Release 0.2 adds `000002_release_0_2.up.sql` and `.down.sql`. Upgrade is append-only from 0.1/0.1.1 and preserves all foundation records.
+
 Migration files are embedded in the `migrations` Go package. The runner takes a PostgreSQL advisory lock, executes each version in a transaction, and rejects checksum changes to previously applied versions. The controller applies pending migrations by default; `cmd/migrate` provides explicit up and single-step development down modes.
 
 ## JSON usage

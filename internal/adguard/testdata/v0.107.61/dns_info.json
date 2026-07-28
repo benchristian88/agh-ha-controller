@@ -1,0 +1,1 @@
+{"upstream_dns":["https://dns.example/dns-query"],"bootstrap_dns":["1.1.1.1","9.9.9.9"],"fallback_dns":null,"local_ptr_upstreams":[],"bind_hosts":["0.0.0.0","127.0.0.1"],"port":53,"cache_size":4194304,"cache_hits":1,"cache_misses":5000}

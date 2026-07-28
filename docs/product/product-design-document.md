@@ -2,7 +2,7 @@
 
 # Product Design Document
 
-**Document version:** 0.1.1
+**Document version:** 0.2.0
 
 **Product stage:** Release 0.1 implementation; external validation pending
 
@@ -24,6 +24,8 @@ This document is authoritative for product intent. More specialised documents un
 Release 0.1 implementation details and validation status are recorded in `docs/product/feature-ledger.md` and the Release 0.1 reconciliation section of `docs/roadmap/roadmap.md`. ADR-0021 resolves the runtime and security choices that were open in the original baseline.
 
 Release 0.1.1 adds git-based Debian/systemd and Docker Compose installation while preserving the systemd reference topology and the same controller/database boundaries. ADR-0022 records the decision to bring supported Docker installation forward.
+
+Release 0.2 freezes canonical configuration schema v1 as a read-only DNS/filtering inventory. ADR-0023 resolves the historical import ambiguity: confirmed import creates an optimistic non-authoritative draft only; immutable publication and convergence remain Release 0.3.
 
 ### Decision labels used in this document
 
@@ -2157,6 +2159,7 @@ These should be resolved through ADRs when they become material.
 - ADR-0019: Limit early DHCP support to safe inventory and single-active-node workflows
 - ADR-0021: Define Release 0.1 runtime and security foundations
 - ADR-0022: Support git-based systemd and Docker Compose installation in 0.1.1
+- ADR-0023: Freeze Release 0.2 as a read-only configuration inventory
 
 ## 102. Proposed decision
 
@@ -4887,15 +4890,17 @@ The PostgreSQL migration/API workflow requires an explicit `TEST_DATABASE_URL`; 
 
 ## E.2 Release 0.2 gate
 
-- [ ] Canonical schema version is documented.
-- [ ] Supported feature areas are listed.
-- [ ] At least two supported AdGuard Home versions have contract fixtures.
-- [ ] Equivalent node configurations compare equal.
-- [ ] Material differences are grouped by feature and scope.
-- [ ] Import creates a draft and requires confirmation.
-- [ ] Adding Node B never overwrites it before review.
-- [ ] Unsupported and observed-only fields are visible.
-- [ ] False-drift regression fixtures exist.
+- [x] Canonical schema version is documented.
+- [x] Supported feature areas are listed.
+- [x] At least two supported AdGuard Home versions have contract fixtures.
+- [x] Equivalent node configurations compare equal.
+- [x] Material differences are grouped by feature and scope.
+- [x] Import creates a draft and requires confirmation.
+- [x] Adding Node B never overwrites it before review.
+- [x] Unsupported and observed-only fields are visible.
+- [x] False-drift regression fixtures exist.
+
+The repository implementation gate is satisfied. Production upgrade and real-node smoke validation remain required before the roadmap marks Release 0.2 complete.
 
 ## E.3 Release 0.3 core MVP gate
 
@@ -4962,6 +4967,8 @@ All items in this subsection were resolved for the implemented release by ADR-00
 - Confirm same-origin frontend and API packaging.
 
 ## F.2 Decisions required before Release 0.2
+
+Resolved by ADR-0023 and the Release 0.2 implementation. The list is retained as historical discovery context.
 
 - Freeze canonical configuration schema version 1.
 - Define field ownership catalogue.

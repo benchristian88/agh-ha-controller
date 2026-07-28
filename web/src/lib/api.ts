@@ -2,8 +2,12 @@ import type {
   ApiErrorBody,
   AuditEvent,
   AuthResponse,
+  CapabilityProfile,
   CertificatePolicy,
   Cluster,
+  ConfigurationDifference,
+  ConfigurationDraft,
+  ConfigurationSnapshot,
   Node,
 } from "./types";
 
@@ -146,6 +150,34 @@ export const api = {
       method: "POST",
       body: "{}",
     }),
+  observeNode: (nodeId: string) =>
+    request<ConfigurationSnapshot>(`/api/v1/nodes/${nodeId}/observations`, {
+      method: "POST",
+      body: "{}",
+    }),
+  configurationInventory: (clusterId: string) =>
+    request<{
+      schemaVersion: number;
+      snapshots: ConfigurationSnapshot[];
+      capabilities: CapabilityProfile[];
+      draft?: ConfigurationDraft;
+    }>(`/api/v1/clusters/${clusterId}/configuration-inventory`),
+  compareConfigurations: (leftSnapshotId: string, rightSnapshotId: string) =>
+    request<{ equal: boolean; differences: ConfigurationDifference[] }>(
+      `/api/v1/configuration-comparisons?leftSnapshotId=${encodeURIComponent(leftSnapshotId)}&rightSnapshotId=${encodeURIComponent(rightSnapshotId)}`,
+    ),
+  importConfiguration: (
+    clusterId: string,
+    snapshotId: string,
+    expectedVersion: number,
+  ) =>
+    request<ConfigurationDraft>(
+      `/api/v1/clusters/${clusterId}/configuration-draft/import`,
+      {
+        method: "POST",
+        body: JSON.stringify({ snapshotId, expectedVersion, confirmed: true }),
+      },
+    ),
   auditEvents: () =>
     request<{ items: AuditEvent[] }>("/api/v1/audit-events?limit=100"),
 };

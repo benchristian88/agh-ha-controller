@@ -1193,3 +1193,15 @@ Both paths run the same binary, use embedded migrations, serve UI and API on one
 ## Review triggers
 
 Review when signed artifacts are published, external PostgreSQL becomes a supported Compose topology, or automated upgrade and rollback are introduced.
+
+---
+
+# ADR-0023: Freeze Release 0.2 as a read-only configuration inventory
+
+**Status:** Accepted
+
+**Date:** 2026-07-29
+
+**Related release:** 0.2
+
+Freeze canonical schema version 1 around read-only DNS and filtering inventory. Store immutable observation attempts separately from mutable capability profiles. Explicitly confirmed import creates or replaces one optimistic non-authoritative draft per cluster; it does not publish a revision, claim convergence, deploy, or mutate nodes. Preserve order where AdGuard Home semantics are ordered, normalise set-like fields, and discard known runtime/generated fields at the adapter boundary. Compatibility fixtures cover v0.107.52 and v0.107.61. Full context and consequences are recorded in the standalone ADR-0023.

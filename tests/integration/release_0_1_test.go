@@ -24,6 +24,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/auth"
 	"github.com/benchristian88/agh-ha-controller/internal/database"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 )
 
 func TestRelease01OperatorWorkflow(t *testing.T) {
@@ -42,8 +43,9 @@ func TestRelease01OperatorWorkflow(t *testing.T) {
 	}
 	probe := adguard.NewProbe(2 * time.Second)
 	management := domain.NewManagementService(store, credentialCipher, probe)
+	inventoryService := inventory.NewService(store, credentialCipher, adguard.NewConfigurationReader(probe))
 	server := httptest.NewServer(controllerapi.NewServer(
-		authService, management, store, store,
+		authService, management, inventoryService, store, store,
 		slog.New(slog.NewTextHandler(io.Discard, nil)), false, "http://controller.example.test",
 		30*time.Second, t.TempDir(),
 	).Handler())

@@ -16,6 +16,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/config"
 	"github.com/benchristian88/agh-ha-controller/internal/database"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 	"github.com/benchristian88/agh-ha-controller/internal/jobs"
 	"github.com/benchristian88/agh-ha-controller/internal/version"
 )
@@ -61,12 +62,13 @@ func run() error {
 	}
 	probe := adguard.NewProbe(configuration.NodeRequestTimeout)
 	management := domain.NewManagementService(store, credentialCipher, probe)
+	inventoryService := inventory.NewService(store, credentialCipher, adguard.NewConfigurationReader(probe))
 	healthPoller := jobs.NewHealthPoller(store, credentialCipher, probe, configuration.NodeHealthInterval, logger)
 	go healthPoller.Run(rootContext)
 	go jobs.RunSessionCleanup(rootContext, store, logger)
 
 	apiServer := controllerapi.NewServer(
-		authService, management, store, store, logger,
+		authService, management, inventoryService, store, store, logger,
 		configuration.SecureCookies(), configuration.PublicBaseURL.String(),
 		configuration.NodeHealthInterval, configuration.WebDistDirectory,
 	)

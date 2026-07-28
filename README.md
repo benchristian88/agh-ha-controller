@@ -21,7 +21,7 @@ AGH HA Controller is intended to solve that gap by providing:
 
 ## Project status
 
-Release 0.1.1 adds complete git-based installation paths for Docker Compose and direct Debian/systemd builds. The foundation includes first-run administrator creation, secure sessions, cluster/node management, encrypted node credentials, status polling, the dark web UI, audit records, and health endpoints. Configuration control remains scheduled for later releases; see the [feature ledger](docs/product/feature-ledger.md).
+Release 0.2 implements read-only configuration inventory. Operators can collect version-aware DNS and filtering snapshots, see explicit capabilities and unsupported areas, compare nodes semantically, and import a reviewed snapshot into a non-authoritative draft. Releases 0.1 and 0.1.1 have been production-build validated through both Docker and systemd installs. Publishing, deployment, and drift correction remain Release 0.3; see the [feature ledger](docs/product/feature-ledger.md).
 
 The first meaningful product milestone is the configuration-control MVP:
 
@@ -62,13 +62,13 @@ The complete architecture is documented in [docs/architecture/architecture.md](d
 
 ## Technology stack
 
-### Services implemented in 0.1.1
+### Services implemented in 0.2
 
-- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, one-time administrator setup and login, cluster/node management, encrypted credential access, health polling, session cleanup, audit access, and `/health` plus `/ready` endpoints.
-- PostgreSQL 17: the external system of record for users, sessions, clusters, nodes, encrypted credential envelopes, health state, migrations, and audit events.
-- AdGuard Home nodes: independently installed DNS services contacted only through the read-only administration status API in this release. They are not containers or subprocesses of the controller and continue serving DNS during controller outages.
+- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, health polling, read-only configuration observation, capability discovery, semantic comparison, confirmed draft import, session cleanup, audit access, and operational probes.
+- PostgreSQL 17: the system of record for foundation data plus capability profiles, immutable observation attempts, canonical hashes/documents, and one optimistic inventory draft per cluster.
+- AdGuard Home nodes: independent DNS services contacted through read-only `/control/status`, `/control/dns_info`, and `/control/filtering/status` requests. They continue serving DNS during controller outages.
 
-The forwarder, configuration reconciliation, deployments, statistics ingestion, and query-log ingestion shown elsewhere in the product roadmap are not implemented services in 0.1.1.
+The controller has no AdGuard Home configuration writer in 0.2. Published revisions, deployments, reconciliation, statistics ingestion, query-log ingestion, and the forwarder remain later milestones.
 
 ### Controller backend
 
@@ -137,7 +137,13 @@ cd agh-ha-controller
 sudo PUBLIC_BASE_URL=https://controller.example.test ./scripts/install-systemd.sh
 ```
 
-The installer builds from source, creates the `aghha` service account and PostgreSQL database, generates protected secrets, installs the binary/UI, enables the hardened service, and preserves `/etc/agh-ha-controller/agh-ha-controller.env` on reruns. Inspect it with `systemctl status agh-ha-controller` and `journalctl -u agh-ha-controller -f`.
+The installer builds from source without requiring ripgrep, creates the `aghha` service account and PostgreSQL database, generates protected secrets, installs the binary/UI, enables the hardened service, and preserves `/etc/agh-ha-controller/agh-ha-controller.env` on reruns. Inspect it with `systemctl status agh-ha-controller` and `journalctl -u agh-ha-controller -f`.
+
+## Configuration inventory
+
+After adding nodes, open `/ha/configuration`. Refresh each node to create an immutable observation, compare two successful snapshots, and review differences grouped as shared-managed, node-specific, observed-only, or unsupported. Import requires confirmation and creates only a mutable draft; it never changes a node or makes the controller authoritative.
+
+Canonical schema v1 covers upstream/bootstrap/fallback/private reverse DNS, filtering enablement and interval, enabled filter subscriptions, custom rules, bind hosts, and DNS port. TLS, DHCP, clients, rewrites, and service controls are deliberately deferred.
 
 After either installation, open `PUBLIC_BASE_URL`. When the database has no users, the application shows “Create your administrator.” That transaction creates the only initial administrator and signs it in; setup returns HTTP 409 after any user exists. Then create a cluster and add each AdGuard Home node.
 

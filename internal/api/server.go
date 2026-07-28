@@ -15,6 +15,7 @@ import (
 
 	"github.com/benchristian88/agh-ha-controller/internal/auth"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 )
 
 const (
@@ -35,6 +36,7 @@ type HealthChecker interface {
 type Server struct {
 	auth           *auth.Service
 	management     *domain.ManagementService
+	inventory      *inventory.Service
 	audit          AuditReader
 	health         HealthChecker
 	logger         *slog.Logger
@@ -45,9 +47,9 @@ type Server struct {
 	mux            *http.ServeMux
 }
 
-func NewServer(authService *auth.Service, management *domain.ManagementService, audit AuditReader, health HealthChecker, logger *slog.Logger, secureCookies bool, publicBaseURL string, healthInterval time.Duration, webDist string) *Server {
+func NewServer(authService *auth.Service, management *domain.ManagementService, inventoryService *inventory.Service, audit AuditReader, health HealthChecker, logger *slog.Logger, secureCookies bool, publicBaseURL string, healthInterval time.Duration, webDist string) *Server {
 	server := &Server{
-		auth: authService, management: management, audit: audit, health: health,
+		auth: authService, management: management, inventory: inventoryService, audit: audit, health: health,
 		logger: logger, secureCookies: secureCookies, publicBaseURL: publicBaseURL, healthInterval: healthInterval,
 		webDist: webDist, mux: http.NewServeMux(),
 	}
@@ -77,6 +79,10 @@ func (s *Server) routes() {
 	s.mux.Handle("PATCH /api/v1/nodes/{nodeId}", s.authenticated(true, http.HandlerFunc(s.handleUpdateNode)))
 	s.mux.Handle("DELETE /api/v1/nodes/{nodeId}", s.authenticated(true, http.HandlerFunc(s.handleDeleteNode)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/test-connection", s.authenticated(true, http.HandlerFunc(s.handleTestNode)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/observations", s.authenticated(true, http.HandlerFunc(s.handleObserveNode)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/configuration-inventory", s.authenticated(false, http.HandlerFunc(s.handleConfigurationInventory)))
+	s.mux.Handle("GET /api/v1/configuration-comparisons", s.authenticated(false, http.HandlerFunc(s.handleConfigurationComparison)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-draft/import", s.authenticated(true, http.HandlerFunc(s.handleImportConfiguration)))
 	s.mux.Handle("GET /api/v1/audit-events", s.authenticated(false, http.HandlerFunc(s.handleAuditEvents)))
 	s.mux.Handle("GET /api/v1/system/version", s.authenticated(false, http.HandlerFunc(s.handleVersion)))
 	s.mux.HandleFunc("/", s.handleFrontend)

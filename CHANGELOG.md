@@ -6,6 +6,23 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ## Unreleased
 
+## 0.2.0 - 2026-07-29
+
+### Added
+
+- Canonical configuration schema v1 for read-only DNS and filtering inventory.
+- Version-aware capability profiles and immutable successful/failed node snapshots.
+- Ownership-aware semantic diff API and configuration comparison UI.
+- Explicit, audited import into an optimistic non-authoritative cluster draft.
+- AdGuard Home v0.107.52 and v0.107.61 compatibility fixtures.
+- Migration `000002_release_0_2` and ADR-0023.
+
+### Changed
+
+- Default controller and web version is 0.2.0.
+- Production Make builds no longer require ripgrep, fixing the systemd installer warning.
+- Roadmap records operator validation of Releases 0.1 and 0.1.1.
+
 ## 0.1.1 - 2026-07-28
 
 ### Added

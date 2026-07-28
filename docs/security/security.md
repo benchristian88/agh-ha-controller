@@ -74,6 +74,8 @@ Node policy is explicitly `system`, `custom_ca`, or `insecure_http`. There is no
 
 The same-origin server emits a restrictive Content Security Policy, frame denial, no-sniff, no-referrer, permissions restrictions, and `Cache-Control: no-store` on API responses. The frontend keeps credentials only in transient form state and never puts them in URLs or persistent browser storage.
 
+Release 0.2 configuration collection reuses decrypted node credentials only inside the service/adapter call and performs GET requests only. Raw node payloads are not logged or stored. Canonical documents exclude credentials and known secret material; failed observations retain only stable safe error codes.
+
 ## Audit events
 
 Audit:

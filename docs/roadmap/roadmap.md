@@ -8,7 +8,7 @@ The roadmap prioritises configuration control before central statistics because 
 
 ## Release 0.1 — Foundation
 
-**Current status (27 July 2026): Partially completed — implementation is present; external release validation is pending.**
+**Current status (29 July 2026): Complete — production LXC installation and functionality were successfully validated by the operator.**
 
 ### Outcomes
 
@@ -52,7 +52,7 @@ Completed in the repository:
 - Dark React dashboard, node management, and audit surfaces.
 - Liveness/readiness endpoints and CI definitions for format, vet, race tests, PostgreSQL integration, frontend validation, dependency audit, and builds.
 
-Partially completed or validation pending:
+Historical validation record (resolved by the operator's 29 July 2026 production-build validation):
 
 - PostgreSQL migration and API integration tests run when an explicit `TEST_DATABASE_URL` is supplied; a hosted execution result is still pending.
 - Two-node onboarding is contract-tested; two real AdGuard Home nodes have not yet been recorded as passing.
@@ -67,16 +67,16 @@ Deliberately deferred from 0.1:
 - Account management, password recovery/change, and durable distributed rate limiting are follow-on authentication work; 0.1 provides the initial administrator and secure local session flow.
 - Cluster deletion is withheld until historical revision/deployment relationships have a safe lifecycle design.
 
-New follow-on dependencies:
+Follow-on improvements that did not block the accepted 0.1 release:
 
 - Select and provision the real AdGuard Home versions used for the initial compatibility statement.
 - Add browser-driven setup/login/two-node tests to the reference environment.
 - Exercise HTTPS reverse-proxy cookie behavior and Debian file placement.
-- Complete backup/restore and uninterrupted-DNS evidence before changing this release to complete.
+- Preserve repeatable backup/restore and uninterrupted-DNS evidence in future automated release jobs.
 
 ## Release 0.1.1 — Git-based installation
 
-**Current status (28 July 2026): Partially completed — implementation is present; fresh-host validation is pending.**
+**Current status (29 July 2026): Complete — Docker and systemd production-build installs were successfully validated.**
 
 Completed in the repository:
 
@@ -86,7 +86,7 @@ Completed in the repository:
 - One-time first-administrator behavior verified by database locking and repeat-setup regression coverage.
 - Installation, upgrade, architecture, security, operations, README, feature-ledger, and release documentation.
 
-Partially completed or validation pending:
+Historical validation record (resolved by successful Docker and systemd production-build installs on 29 July 2026):
 
 - Fresh Docker-enabled LXC and Debian 13 LXC installation smoke tests.
 - Restart and git-based upgrade reruns for both installation modes.
@@ -98,12 +98,14 @@ Deliberately deferred:
 - Prebuilt images/binaries, checksums, SBOM, release signing, automatic rollback, and Proxmox community installation.
 - External PostgreSQL Compose profiles and controller high availability.
 
-New follow-on dependencies:
+Follow-on improvements that did not block the accepted 0.1.1 release:
 
 - Publish immutable git tags so operators can select and roll back source versions predictably.
 - Add packaged-install smoke jobs on a Docker host and clean Debian LXC.
 
 ## Release 0.2 — Configuration inventory
+
+**Current status (29 July 2026): Implemented; production release validation pending.**
 
 ### Outcomes
 
@@ -126,6 +128,29 @@ New follow-on dependencies:
 - Two materially equivalent nodes compare as equal.
 - Real differences are displayed by section.
 - Volatile API fields do not create false drift.
+
+### Implementation reconciliation
+
+Completed in the repository:
+
+- Canonical schema v1 with shared-managed, node-specific, observed-only, unsupported, and volatile classifications.
+- Read-only DNS and filtering collection with v0.107.52 and v0.107.61 contract fixtures.
+- Immutable successful/failed observations, current capability profiles, deterministic hashes, and section/scope structured differences.
+- Confirmed, audited, optimistic import into a non-authoritative cluster draft.
+- Configuration inventory UI with refresh, warnings, semantic equality, detailed comparison, and import boundary messaging.
+- Portable production Make source discovery fixing the non-fatal systemd ripgrep warning reported during successful 0.1.1 validation.
+
+Deliberately deferred:
+
+- Revision publication, desired-state activation, convergence, deployment, rollback, drift, and reconciliation remain Release 0.3.
+- TLS, DHCP, clients, rewrites, blocked services, and safety-service inventory remain broader Release 0.4 coverage.
+- Automatic scheduled observation remains follow-on work; 0.2 refresh is operator initiated and durable.
+
+Production validation required before marking 0.2 complete:
+
+- Upgrade a 0.1.1 production database through migration 000002.
+- Compare two real materially equivalent nodes and one intentional difference.
+- Confirm read-only endpoint compatibility and draft import on the release LXC.
 
 ## Release 0.3 — Authoritative configuration MVP
 

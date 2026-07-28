@@ -111,3 +111,13 @@ It must exclude:
 - Node credentials.
 - TLS private keys.
 - Raw query logs by default.
+The 29 July 2026 production validation completed both Docker and systemd installs successfully. A non-fatal `make: rg: no such file or directory` message on systemd came from Make source discovery; Release 0.2 uses portable `find` and does not require ripgrep for installation.
+
+## Release 0.2 configuration inventory checks
+
+1. Open **Configuration** for the selected cluster.
+2. Refresh each enabled node; confirm DNS and filtering capabilities and a successful immutable snapshot.
+3. Compare equivalent nodes and confirm semantic equality.
+4. Introduce or identify one safe real difference and confirm its section and ownership scope.
+5. Review and import one snapshot; confirm the inventory draft version increments and audit contains `configuration.draft_imported`.
+6. Confirm no node configuration changed. Release 0.2 has no writer or deployment route.

@@ -30,6 +30,8 @@ Migration `000001_release_0_1` creates only the foundation tables needed by the 
 
 The migration runner owns `schema_migrations`, including the version, name, SHA-256 checksum, and application time. Tables described later in this document are planned for their corresponding roadmap releases and do not exist in the 0.1 schema.
 
+Migration `000002_release_0_2` adds `node_capability_profiles`, `observed_snapshots`, and `configuration_drafts`. Capability profiles are mutable current discovery results. Observation rows are immutable success or failure attempts. Drafts are mutable, optimistic, one-per-cluster inventory workspaces and are not revisions or desired state.
+
 Release 0.1 mutable cluster and node records use integer optimistic versions. Node health updates do not increment the operator-facing `record_version`, so polling cannot create false edit conflicts.
 
 ### users

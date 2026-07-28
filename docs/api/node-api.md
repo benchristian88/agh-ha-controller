@@ -1,6 +1,6 @@
 # AdGuard Home Node API Adapter
 
-## Release 0.1 purpose
+## Release 0.2 purpose
 
 The adapter is the only package that consumes raw AdGuard Home HTTP payloads. Release 0.1 performs a read-only status probe at:
 
@@ -35,7 +35,7 @@ There is no option that skips TLS certificate or hostname verification. Node req
 
 The tested Release 0.1 contract is AdGuard Home `v0.107.x`. Later versions with the compatible status payload are reported as supported. Older versions are reported as unsupported and malformed or unversioned responses as unknown/incompatible.
 
-This compatibility statement covers only status and version. Configuration capability discovery is Release 0.2 scope.
+Release 0.2 additionally reads `GET /control/dns_info` and `GET /control/filtering/status`. Contract fixtures cover v0.107.52 and v0.107.61. DNS and filtering are the only schema-v1 supported feature areas; unsupported areas are visible rather than silently discarded. All calls remain read-only.
 
 ## Error mapping
 

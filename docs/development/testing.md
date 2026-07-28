@@ -15,6 +15,8 @@ Target:
 
 Release 0.1 unit and contract coverage includes UUID and URL invariants, password hashing, session/CSRF purpose separation, AES-GCM encryption and node binding, configuration validation, AdGuard status parsing, version compatibility, authentication/TLS failure separation, custom CA trust, health polling outcomes, and frontend health freshness/partial-failure semantics.
 
+Release 0.2 adds canonical hash/equality, ordered-field differences, and raw v0.107.52/v0.107.61 configuration fixtures whose volatile counters, generated IDs, labels, counts, and timestamps must not create differences.
+
 ## Integration tests
 
 Use real PostgreSQL.

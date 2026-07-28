@@ -39,6 +39,7 @@ The implemented shell currently exposes:
   cluster health dashboard when authenticated
 
 /ha/nodes
+/ha/configuration
 /system/audit
 ```
 
