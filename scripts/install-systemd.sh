@@ -41,7 +41,7 @@ if ! id "${service_user}" >/dev/null 2>&1; then
 fi
 
 make -C "${repo_dir}" bootstrap
-make -C "${repo_dir}" VERSION=0.2.0 build
+make -C "${repo_dir}" VERSION=0.2.1 build
 
 install -d -o root -g root -m 0755 "${environment_dir}" /usr/local/share/agh-ha-controller
 install -d -o "${service_user}" -g "${service_group}" -m 0750 "${state_dir}"

@@ -5,7 +5,15 @@ import (
 	"strconv"
 
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 )
+
+type configurationInventoryResponse struct {
+	SchemaVersion int                           `json:"schemaVersion"`
+	Snapshots     []inventory.Snapshot          `json:"snapshots"`
+	Capabilities  []inventory.CapabilityProfile `json:"capabilities"`
+	Draft         *inventory.Draft              `json:"draft,omitempty"`
+}
 
 func (s *Server) handleObserveNode(response http.ResponseWriter, request *http.Request) {
 	snapshot, err := s.inventory.Observe(request.Context(), request.PathValue("nodeId"))
@@ -22,7 +30,12 @@ func (s *Server) handleConfigurationInventory(response http.ResponseWriter, requ
 		s.writeError(response, request, err)
 		return
 	}
-	writeJSON(response, http.StatusOK, map[string]any{"schemaVersion": 1, "snapshots": snapshots, "capabilities": profiles, "draft": draft})
+	writeJSON(response, http.StatusOK, configurationInventoryResponse{
+		SchemaVersion: 1,
+		Snapshots:     snapshots,
+		Capabilities:  profiles,
+		Draft:         draft,
+	})
 }
 
 func (s *Server) handleConfigurationComparison(response http.ResponseWriter, request *http.Request) {

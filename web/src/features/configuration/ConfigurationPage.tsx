@@ -34,7 +34,7 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
       setNodes(nodeResult.items);
       setSnapshots(inventory.snapshots);
       setCapabilities(inventory.capabilities);
-      setDraft(inventory.draft);
+      setDraft(normaliseDraft(inventory.draft));
       setError(undefined);
     } catch (caught) {
       setError(caught);
@@ -112,7 +112,7 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
       {error !== undefined && (
         <ErrorState error={error} retry={() => void load()} />
       )}
-      {draft !== undefined && (
+      {draft != null && (
         <div className="notice notice--info">
           <strong>Inventory draft v{draft.version}</strong>
           <br />
@@ -292,6 +292,12 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
       </section>
     </>
   );
+}
+
+export function normaliseDraft(
+  draft: ConfigurationDraft | null | undefined,
+): ConfigurationDraft | undefined {
+  return draft ?? undefined;
 }
 
 function formatValue(value: unknown): string {

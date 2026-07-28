@@ -6,6 +6,12 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ## Unreleased
 
+## 0.2.1 - 2026-07-29
+
+### Fixed
+
+- Prevent the Configuration page from crashing when a cluster has no imported draft. The API now omits an absent draft, while the UI remains compatible with the `draft: null` response emitted by 0.2.0.
+
 ## 0.2.0 - 2026-07-29
 
 ### Added

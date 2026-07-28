@@ -110,7 +110,7 @@ GET  /api/v1/configuration-comparisons?leftSnapshotId={uuid}&rightSnapshotId={uu
 POST /api/v1/clusters/{clusterId}/configuration-draft/import
 ```
 
-Observation performs bounded, authenticated GET requests only and stores either an immutable canonical schema-v1 snapshot or an immutable failed attempt with a safe error code. Inventory returns the latest attempt for each node, current capability profiles, and the optional cluster draft. Comparison returns `equal` plus differences grouped by section, field, and `shared_managed`, `node_specific_managed`, `observed_only`, or `unsupported` scope.
+Observation performs bounded, authenticated GET requests only and stores either an immutable canonical schema-v1 snapshot or an immutable failed attempt with a safe error code. Inventory returns the latest attempt for each node, current capability profiles, and the optional cluster draft. The `draft` member is omitted when no draft exists; 0.2.1 also tolerates the `draft: null` value returned by the original 0.2.0 handler. Comparison returns `equal` plus differences grouped by section, field, and `shared_managed`, `node_specific_managed`, `observed_only`, or `unsupported` scope.
 
 Import accepts `snapshotId`, `expectedVersion`, and `confirmed: true`. It rejects failed snapshots, cross-cluster snapshots, missing confirmation, and stale draft versions. The transaction updates the draft and writes `configuration.draft_imported`. It never publishes or deploys configuration.
 
