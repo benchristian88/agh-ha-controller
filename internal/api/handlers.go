@@ -114,9 +114,10 @@ func (s *Server) handleMe(response http.ResponseWriter, request *http.Request) {
 }
 
 type clusterInput struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Version     int    `json:"version,omitempty"`
+	Name                 string                      `json:"name"`
+	Description          string                      `json:"description"`
+	ReconciliationPolicy domain.ReconciliationPolicy `json:"reconciliationPolicy,omitempty"`
+	Version              int                         `json:"version,omitempty"`
 }
 
 func (s *Server) handleListClusters(response http.ResponseWriter, request *http.Request) {
@@ -134,7 +135,7 @@ func (s *Server) handleCreateCluster(response http.ResponseWriter, request *http
 		s.writeError(response, request, err)
 		return
 	}
-	cluster, err := s.management.CreateCluster(request.Context(), actor(request.Context()), domain.CreateClusterInput{Name: input.Name, Description: input.Description})
+	cluster, err := s.management.CreateCluster(request.Context(), actor(request.Context()), domain.CreateClusterInput{Name: input.Name, Description: input.Description, ReconciliationPolicy: input.ReconciliationPolicy})
 	if err != nil {
 		s.writeError(response, request, err)
 		return
@@ -160,7 +161,7 @@ func (s *Server) handleUpdateCluster(response http.ResponseWriter, request *http
 		s.writeError(response, request, err)
 		return
 	}
-	cluster, err := s.management.UpdateCluster(request.Context(), actor(request.Context()), request.PathValue("clusterId"), input.Version, domain.CreateClusterInput{Name: input.Name, Description: input.Description})
+	cluster, err := s.management.UpdateCluster(request.Context(), actor(request.Context()), request.PathValue("clusterId"), input.Version, domain.CreateClusterInput{Name: input.Name, Description: input.Description, ReconciliationPolicy: input.ReconciliationPolicy})
 	if err != nil {
 		s.writeError(response, request, err)
 		return
@@ -289,6 +290,24 @@ func (s *Server) handleTestNode(response http.ResponseWriter, request *http.Requ
 		return
 	}
 	writeJSON(response, http.StatusOK, result)
+}
+
+func (s *Server) handleNodeMaintenance(response http.ResponseWriter, request *http.Request) {
+	var input struct {
+		Enabled       bool `json:"enabled"`
+		RecordVersion int  `json:"recordVersion"`
+	}
+	if err := decodeJSON(response, request, &input); err != nil {
+		s.writeError(response, request, err)
+		return
+	}
+	node, err := s.management.SetNodeMaintenance(request.Context(), actor(request.Context()), request.PathValue("nodeId"), input.Enabled, input.RecordVersion)
+	if err != nil {
+		s.writeError(response, request, err)
+		return
+	}
+	response.Header().Set("ETag", entityTag(node.RecordVersion))
+	writeJSON(response, http.StatusOK, node)
 }
 
 func (s *Server) handleAuditEvents(response http.ResponseWriter, request *http.Request) {

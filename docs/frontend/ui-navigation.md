@@ -29,7 +29,7 @@
 /system/about
 ```
 
-## Release 0.1 routes
+## Implemented routes through Release 0.3
 
 The implemented shell currently exposes:
 
@@ -40,10 +40,11 @@ The implemented shell currently exposes:
 
 /ha/nodes
 /ha/configuration
+/ha/deployments
 /system/audit
 ```
 
-Cluster selection remains global application state. Later documented routes are intentionally not rendered as placeholder navigation; they appear when their backend workflows are implemented.
+`/ha/configuration` combines desired draft authoring, observations/import, immutable revision history, comparison, preview, deploy, and rollback. `/ha/deployments` combines deployment timeline/detail, reconciliation policy, and drift actions. Cluster selection remains global application state. The more granular planned revision/deployment/drift detail URLs remain future navigation refinements and are not rendered as placeholders.
 
 ## Route principles
 

@@ -1,6 +1,7 @@
 package adguard
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -32,11 +33,14 @@ type dnsInfoResponse struct {
 }
 
 type filterStatusResponse struct {
-	FilteringEnabled bool `json:"filtering_enabled"`
-	Interval         int  `json:"interval"`
+	FilteringEnabled *bool `json:"filtering_enabled"`
+	Enabled          *bool `json:"enabled"`
+	Interval         int   `json:"interval"`
 	Filters          []struct {
-		Enabled bool   `json:"enabled"`
-		URL     string `json:"url"`
+		Enabled   bool   `json:"enabled"`
+		URL       string `json:"url"`
+		Name      string `json:"name"`
+		Whitelist bool   `json:"whitelist"`
 	} `json:"filters"`
 	UserRules []string `json:"user_rules"`
 }
@@ -66,17 +70,111 @@ func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request dom
 func configurationDocument(version string, dns dnsInfoResponse, filtering filterStatusResponse) configuration.Document {
 	filterURLs := make([]string, 0, len(filtering.Filters))
 	for _, filter := range filtering.Filters {
-		if filter.Enabled {
+		if filter.Enabled && !filter.Whitelist {
 			filterURLs = append(filterURLs, filter.URL)
 		}
 	}
+	enabled := false
+	if filtering.Enabled != nil {
+		enabled = *filtering.Enabled
+	} else if filtering.FilteringEnabled != nil {
+		enabled = *filtering.FilteringEnabled
+	}
 	return configuration.Document{
 		SchemaVersion: configuration.SchemaVersion,
-		Shared:        configuration.Shared{DNS: configuration.DNS{UpstreamDNS: dns.UpstreamDNS, BootstrapDNS: dns.BootstrapDNS, FallbackDNS: dns.FallbackDNS, PrivateReverseDNS: dns.PrivateReverseDNS}, Filtering: configuration.Filtering{Enabled: filtering.FilteringEnabled, UpdateInterval: filtering.Interval, FilterURLs: filterURLs, UserRules: filtering.UserRules}},
+		Shared:        configuration.Shared{DNS: configuration.DNS{UpstreamDNS: dns.UpstreamDNS, BootstrapDNS: dns.BootstrapDNS, FallbackDNS: dns.FallbackDNS, PrivateReverseDNS: dns.PrivateReverseDNS}, Filtering: configuration.Filtering{Enabled: enabled, UpdateInterval: filtering.Interval, FilterURLs: filterURLs, UserRules: filtering.UserRules}},
 		NodeSpecific:  configuration.NodeSpecific{BindHosts: dns.BindHosts, DNSPort: dns.Port},
 		ObservedOnly:  configuration.ObservedOnly{ProductVersion: version},
 		Unsupported:   []configuration.Unsupported{{Section: "services", Reason: "blocked services and safety services are scheduled for release 0.4"}, {Section: "tls_dhcp", Reason: "TLS and DHCP inventory are scheduled for release 0.4"}},
 	}
+}
+
+// ApplyConfiguration mutates only schema-v1 fields exposed by AdGuard Home's
+// supported HTTP API.  Listener addresses and ports have no supported writer;
+// callers must preflight them against observed state before invoking this.
+func (r *ConfigurationReader) ApplyConfiguration(ctx context.Context, request domain.NodeProbeRequest, desired configuration.Document) error {
+	desired = configuration.Canonicalise(desired)
+	var currentFilters filterStatusResponse
+	if err := r.get(ctx, request, "/control/filtering/status", &currentFilters); err != nil {
+		return err
+	}
+	if err := r.post(ctx, request, "/control/dns_config", map[string]any{
+		"upstream_dns": desired.Shared.DNS.UpstreamDNS, "bootstrap_dns": desired.Shared.DNS.BootstrapDNS,
+		"fallback_dns": desired.Shared.DNS.FallbackDNS, "local_ptr_upstreams": desired.Shared.DNS.PrivateReverseDNS,
+	}); err != nil {
+		return err
+	}
+	if err := r.post(ctx, request, "/control/filtering/config", map[string]any{
+		"enabled": desired.Shared.Filtering.Enabled, "interval": desired.Shared.Filtering.UpdateInterval,
+	}); err != nil {
+		return err
+	}
+	targets := make(map[string]struct{}, len(desired.Shared.Filtering.FilterURLs))
+	for _, target := range desired.Shared.Filtering.FilterURLs {
+		targets[strings.ToLower(target)] = struct{}{}
+		found := false
+		for _, current := range currentFilters.Filters {
+			if !current.Whitelist && strings.EqualFold(current.URL, target) {
+				found = true
+				if !current.Enabled {
+					if err := r.post(ctx, request, "/control/filtering/set_url", map[string]any{"url": current.URL, "whitelist": false, "data": map[string]any{"name": current.Name, "url": current.URL, "enabled": true}}); err != nil {
+						return err
+					}
+				}
+				break
+			}
+		}
+		if !found {
+			if err := r.post(ctx, request, "/control/filtering/add_url", map[string]any{"name": "Managed by AGH HA Controller", "url": target, "whitelist": false}); err != nil {
+				return err
+			}
+		}
+	}
+	for _, current := range currentFilters.Filters {
+		if _, wanted := targets[strings.ToLower(current.URL)]; !current.Whitelist && current.Enabled && !wanted {
+			if err := r.post(ctx, request, "/control/filtering/set_url", map[string]any{"url": current.URL, "whitelist": false, "data": map[string]any{"name": current.Name, "url": current.URL, "enabled": false}}); err != nil {
+				return err
+			}
+		}
+	}
+	return r.post(ctx, request, "/control/filtering/set_rules", map[string]any{"rules": desired.Shared.Filtering.UserRules})
+}
+
+func (r *ConfigurationReader) post(ctx context.Context, request domain.NodeProbeRequest, path string, payload any) error {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("encode AdGuard Home configuration request: %w", err)
+	}
+	transport, err := r.probe.transport(request.CertificatePolicy, request.CustomCAPEM)
+	if err != nil {
+		return err
+	}
+	defer transport.CloseIdleConnections()
+	endpoint, err := configurationEndpoint(request.BaseURL, path)
+	if err != nil {
+		return domain.NewError(domain.ErrorNodeResponse, "the node URL is invalid")
+	}
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create AdGuard Home mutation request: %w", err)
+	}
+	httpRequest.SetBasicAuth(request.Credentials.Username, request.Credentials.Password)
+	httpRequest.Header.Set("Accept", "application/json")
+	httpRequest.Header.Set("Content-Type", "application/json")
+	client := &http.Client{Transport: transport, Timeout: r.probe.timeout, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
+	response, err := client.Do(httpRequest)
+	if err != nil {
+		return classifyNetworkError(err)
+	}
+	defer response.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, maxConfigurationBody))
+	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
+		return domain.NewError(domain.ErrorNodeAuth, "the node rejected its stored credentials")
+	}
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return domain.NewError(domain.ErrorNodeApply, "the node rejected a configuration change")
+	}
+	return nil
 }
 
 func (r *ConfigurationReader) get(ctx context.Context, request domain.NodeProbeRequest, path string, target any) error {

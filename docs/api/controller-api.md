@@ -1,6 +1,6 @@
 # Controller API
 
-## Release 0.2 contract
+## Release 0.3 contract
 
 The controller serves its browser UI and JSON API from the same origin. JSON routes are versioned under:
 
@@ -93,7 +93,7 @@ Create and update use:
 
 `credentials` are required on create and optional on update. If supplied on update, username and password must be supplied together and the action is audited as credential rotation. `customCaPem` is required when first selecting `custom_ca`, is write-only, and may be omitted on later updates to retain it.
 
-Before saving an enabled node, the controller verifies status, authentication, TLS policy, version, and DNS running state. It never changes AdGuard Home configuration in 0.2.
+Before saving an enabled node, the controller verifies status, authentication, TLS policy, version, and DNS running state. Configuration changes occur only through explicit Release 0.3 deployment resources.
 
 Node responses include identity, URL, trust policy, enabled state, health, compatibility, version, polling timestamps, latency, safe error code, and `recordVersion`. They never include credentials, ciphertext, nonces, CA contents, or authentication headers. The cluster node-list envelope also includes `refreshedAt` and `staleAfterSeconds`; the latter is three configured health intervals so the UI freshness state follows runtime polling configuration.
 
@@ -108,11 +108,36 @@ POST /api/v1/nodes/{nodeId}/observations
 GET  /api/v1/clusters/{clusterId}/configuration-inventory
 GET  /api/v1/configuration-comparisons?leftSnapshotId={uuid}&rightSnapshotId={uuid}
 POST /api/v1/clusters/{clusterId}/configuration-draft/import
+PUT  /api/v1/clusters/{clusterId}/configuration-draft
+POST /api/v1/clusters/{clusterId}/configuration-draft/validate
 ```
 
 Observation performs bounded, authenticated GET requests only and stores either an immutable canonical schema-v1 snapshot or an immutable failed attempt with a safe error code. Inventory returns the latest attempt for each node, current capability profiles, and the optional cluster draft. The `draft` member is omitted when no draft exists; 0.2.1 also tolerates the `draft: null` value returned by the original 0.2.0 handler. Comparison returns `equal` plus differences grouped by section, field, and `shared_managed`, `node_specific_managed`, `observed_only`, or `unsupported` scope.
 
 Import accepts `snapshotId`, `expectedVersion`, and `confirmed: true`. It rejects failed snapshots, cross-cluster snapshots, missing confirmation, and stale draft versions. The transaction updates the draft and writes `configuration.draft_imported`. It never publishes or deploys configuration.
+
+Draft update accepts `expectedVersion` and a complete schema-v1 desired `document`. It saves canonical mutable intent and returns validation issues. Schema-version mismatch is rejected. Validation returns the same fleet capability/listener preflight used by publication and deployment.
+
+## Revision, deployment, and drift routes
+
+```text
+GET  /api/v1/clusters/{clusterId}/configuration-revisions
+POST /api/v1/clusters/{clusterId}/configuration-revisions
+GET  /api/v1/configuration-revisions/{revisionId}
+GET  /api/v1/configuration-revision-comparisons?leftRevisionId={uuid}&rightRevisionId={uuid}
+POST /api/v1/clusters/{clusterId}/configuration-revisions/{revisionId}/deployment-preview
+POST /api/v1/clusters/{clusterId}/configuration-revisions/{revisionId}/deployments
+POST /api/v1/clusters/{clusterId}/configuration-revisions/{revisionId}/rollback
+GET  /api/v1/clusters/{clusterId}/deployments
+GET  /api/v1/deployments/{deploymentId}
+POST /api/v1/deployments/{deploymentId}/cancel
+GET  /api/v1/clusters/{clusterId}/drift-events
+POST /api/v1/drift-events/{driftId}/restore
+POST /api/v1/drift-events/{driftId}/adopt
+POST /api/v1/nodes/{nodeId}/maintenance
+```
+
+Publication requires a non-empty summary and the current draft version. Preview returns structured semantic changes from the active revision, ordered affected nodes/effective hashes, capability or listener issues, strategy/failure policy, and whether a restart is required (false for schema v1). Deployment creation returns HTTP 202 and a durable queued resource; per-node task details expose only safe errors and verification snapshot identifiers. Cancellation is a request honored at a safe node boundary. Rollback requires explicit confirmation and creates a deployment of a historical immutable revision. Drift restore creates a targeted deployment; adoption writes the observed shared state and node override into the optimistic draft but still requires publication and normal deployment.
 
 ## Audit and version routes
 
@@ -132,4 +157,4 @@ GET /ready   # PostgreSQL connectivity and mutation readiness
 
 ## Later contracts
 
-Published immutable revisions, deployments, rollback, and drift begin in 0.3. Statistics and query-event contracts begin in 0.5 and 0.6.
+Statistics and query-event contracts begin in 0.5 and 0.6.

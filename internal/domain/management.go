@@ -20,6 +20,7 @@ type ManagementRepository interface {
 	SoftDeleteNode(context.Context, string, int, time.Time, AuditEvent) error
 	UpdateNodeHealth(context.Context, string, NodeHealth, Compatibility, string, *int, string, time.Time, bool) error
 	RecordNodeTestResult(context.Context, string, NodeHealth, Compatibility, string, *int, string, time.Time, bool, AuditEvent) error
+	SetNodeMaintenance(context.Context, string, bool, int, time.Time, AuditEvent) error
 }
 
 type CredentialProtector interface {
@@ -48,8 +49,9 @@ type Actor struct {
 }
 
 type CreateClusterInput struct {
-	Name        string
-	Description string
+	Name                 string
+	Description          string
+	ReconciliationPolicy ReconciliationPolicy
 }
 
 func (s *ManagementService) CreateCluster(ctx context.Context, actor Actor, input CreateClusterInput) (Cluster, error) {
@@ -61,13 +63,19 @@ func (s *ManagementService) CreateCluster(ctx context.Context, actor Actor, inpu
 	if len(input.Description) > 2000 {
 		return Cluster{}, Validation("description", "must not exceed 2000 characters")
 	}
+	if input.ReconciliationPolicy == "" {
+		input.ReconciliationPolicy = ReconciliationManual
+	}
+	if !ValidReconciliationPolicy(input.ReconciliationPolicy) {
+		return Cluster{}, Validation("reconciliationPolicy", "must be enforce, alert, or manual")
+	}
 	id, err := NewID()
 	if err != nil {
 		return Cluster{}, err
 	}
 	now := s.now().UTC()
-	cluster := Cluster{ID: id, Name: input.Name, Description: input.Description, Version: 1, CreatedAt: now, UpdatedAt: now}
-	event, err := newUserAudit(actor, "cluster.created", "cluster", id, map[string]any{"name": cluster.Name}, now)
+	cluster := Cluster{ID: id, Name: input.Name, Description: input.Description, ReconciliationPolicy: input.ReconciliationPolicy, Version: 1, CreatedAt: now, UpdatedAt: now}
+	event, err := newUserAudit(actor, "cluster.created", "cluster", id, map[string]any{"name": cluster.Name, "reconciliationPolicy": cluster.ReconciliationPolicy}, now)
 	if err != nil {
 		return Cluster{}, err
 	}
@@ -104,10 +112,24 @@ func (s *ManagementService) UpdateCluster(ctx context.Context, actor Actor, id s
 	if len(input.Description) > 2000 {
 		return Cluster{}, Validation("description", "must not exceed 2000 characters")
 	}
+	if input.ReconciliationPolicy == "" {
+		input.ReconciliationPolicy = cluster.ReconciliationPolicy
+	}
+	if !ValidReconciliationPolicy(input.ReconciliationPolicy) {
+		return Cluster{}, Validation("reconciliationPolicy", "must be enforce, alert, or manual")
+	}
+	previousPolicy := cluster.ReconciliationPolicy
 	cluster.Name = input.Name
 	cluster.Description = input.Description
+	cluster.ReconciliationPolicy = input.ReconciliationPolicy
 	cluster.UpdatedAt = s.now().UTC()
-	event, err := newUserAudit(actor, "cluster.updated", "cluster", id, map[string]any{"name": cluster.Name}, cluster.UpdatedAt)
+	action := "cluster.updated"
+	metadata := map[string]any{"name": cluster.Name, "reconciliationPolicy": cluster.ReconciliationPolicy}
+	if previousPolicy != cluster.ReconciliationPolicy {
+		action = "cluster.reconciliation_policy_changed"
+		metadata["previousReconciliationPolicy"] = previousPolicy
+	}
+	event, err := newUserAudit(actor, action, "cluster", id, metadata, cluster.UpdatedAt)
 	if err != nil {
 		return Cluster{}, err
 	}
@@ -173,7 +195,8 @@ func (s *ManagementService) CreateNode(ctx context.Context, actor Actor, input C
 		CertificatePolicy: input.CertificatePolicy, Enabled: input.Enabled,
 		HealthStatus: health, CompatibilityStatus: probeResult.Compatibility, Version: probeResult.Version,
 		LastSeenAt: &now, LastPolledAt: &now, LatencyMS: &latency, LastErrorCode: errorCode,
-		RecordVersion: 1, CreatedAt: now, UpdatedAt: now,
+		ConvergenceStatus: "pending",
+		RecordVersion:     1, CreatedAt: now, UpdatedAt: now,
 	}
 	event, err := newUserAudit(actor, "node.created", "node", id, map[string]any{
 		"clusterId": input.ClusterID, "name": input.Name, "certificatePolicy": input.CertificatePolicy,
@@ -288,6 +311,11 @@ func (s *ManagementService) UpdateNode(ctx context.Context, actor Actor, id stri
 	record.Node.BaseURL = baseURL
 	record.Node.CertificatePolicy = input.CertificatePolicy
 	record.Node.Enabled = input.Enabled
+	if record.Node.MaintenanceMode {
+		record.Node.ConvergenceStatus = "maintenance"
+	} else {
+		record.Node.ConvergenceStatus = "pending"
+	}
 	if !input.Enabled {
 		record.Node.HealthStatus = NodeDisabled
 		record.Node.LastErrorCode = ""
@@ -378,6 +406,35 @@ func (s *ManagementService) DeleteNode(ctx context.Context, actor Actor, id, con
 		return err
 	}
 	return s.repository.SoftDeleteNode(ctx, id, expectedVersion, now, event)
+}
+
+func (s *ManagementService) SetNodeMaintenance(ctx context.Context, actor Actor, id string, enabled bool, expectedVersion int) (Node, error) {
+	node, err := s.Node(ctx, id)
+	if err != nil {
+		return Node{}, err
+	}
+	if expectedVersion < 1 {
+		return Node{}, Validation("recordVersion", "must be a positive integer")
+	}
+	now := s.now().UTC()
+	event, err := newUserAudit(actor, "node.maintenance_changed", "node", id, map[string]any{
+		"clusterId": node.ClusterID, "enabled": enabled,
+	}, now)
+	if err != nil {
+		return Node{}, err
+	}
+	if err := s.repository.SetNodeMaintenance(ctx, id, enabled, expectedVersion, now, event); err != nil {
+		return Node{}, err
+	}
+	node.MaintenanceMode = enabled
+	node.RecordVersion = expectedVersion + 1
+	if enabled {
+		node.ConvergenceStatus = "maintenance"
+	} else {
+		node.ConvergenceStatus = "pending"
+	}
+	node.UpdatedAt = now
+	return node, nil
 }
 
 func validateNodeCredentials(username, password string) error {

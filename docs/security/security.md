@@ -41,6 +41,14 @@ The 0.1 login limiter resets on controller restart. Durable distributed throttli
 
 Release 0.1.1 installation keeps these boundaries unchanged. The Docker controller runs as a fixed non-root user with a read-only root filesystem and no-new-privileges. The systemd unit uses an unprivileged service account, filesystem protections, and a root-only environment file. Docker `.env` and systemd runtime environment files contain recovery-critical secrets and must never be committed, logged, or copied into diagnostics.
 
+### Release 0.3 mutation controls
+
+- Every draft, publication, deployment, rollback, cancellation, drift action, reconciliation result, maintenance change, and reconciliation-policy change is authenticated and audited; browser mutations retain same-origin CSRF enforcement.
+- Decrypted node credentials exist only for the bounded outbound request and are never placed in deployment errors, drift documents, API payloads, or audit metadata.
+- Deployment validation checks every target before the first mutation. Only supported AdGuard Home HTTP APIs are used; the controller does not receive filesystem or DNS-process privileges on a node.
+- API errors store stable codes and safe messages. Detailed transport failures remain in structured controller logs without request bodies or credentials.
+- Maintenance suppresses automatic mutation, and Enforce is an explicit cluster policy rather than an implicit default.
+
 ## Node credentials
 
 - Encrypt at rest.

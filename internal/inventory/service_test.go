@@ -60,6 +60,9 @@ func (*fakeRepository) UpdateNodeHealth(context.Context, string, domain.NodeHeal
 func (*fakeRepository) RecordNodeTestResult(context.Context, string, domain.NodeHealth, domain.Compatibility, string, *int, string, time.Time, bool, domain.AuditEvent) error {
 	return nil
 }
+func (*fakeRepository) SetNodeMaintenance(context.Context, string, bool, int, time.Time, domain.AuditEvent) error {
+	return nil
+}
 func (*fakeRepository) SaveObservation(context.Context, Snapshot, CapabilityProfile) error {
 	return nil
 }
@@ -95,7 +98,7 @@ func TestImportRequiresConfirmationAndCreatesOnlyDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !repo.imported || draft.Version != 1 || draft.SourceSnapshotID != snapshotID {
+	if !repo.imported || draft.Version != 1 || draft.SourceSnapshotID != snapshotID || draft.Document.NodeOverrides[nodeID].DNSPort != 0 {
 		t.Fatalf("unexpected draft: %#v", draft)
 	}
 }

@@ -32,6 +32,8 @@ The migration runner owns `schema_migrations`, including the version, name, SHA-
 
 Migration `000002_release_0_2` adds `node_capability_profiles`, `observed_snapshots`, and `configuration_drafts`. Capability profiles are mutable current discovery results. Observation rows are immutable success or failure attempts. Drafts are mutable, optimistic, one-per-cluster inventory workspaces and are not revisions or desired state.
 
+Migration `000003_release_0_3` makes drafts authoritative workspaces and adds immutable `configuration_revisions`, `deployments`, ordered `deployment_nodes`, and `drift_events`. Cluster rows hold `reconciliation_policy` and the active-revision relationship. Node rows hold maintenance, applied revision/hash, convergence, and last reconciliation state. Historical deployment, revision, snapshot, and drift relationships use restrictive foreign keys.
+
 Release 0.1 mutable cluster and node records use integer optimistic versions. Node health updates do not increment the operator-facing `record_version`, so polling cannot create false edit conflicts.
 
 ### users
@@ -78,6 +80,10 @@ Release 0.1 mutable cluster and node records use integer optimistic versions. No
 - certificate_policy
 - enabled
 - maintenance_mode
+- applied_revision_id
+- applied_hash
+- convergence_status
+- last_reconciled_at
 - last_seen_at
 - health_status
 - version
@@ -132,7 +138,13 @@ Node overrides may be embedded in the revision document initially. If independen
 - revision_id
 - status
 - strategy
+- failure_policy
+- origin
+- rollback_of_revision_id
 - requested_by
+- request_id
+- cancel_requested
+- error_code
 - requested_at
 - started_at
 - completed_at
@@ -143,6 +155,7 @@ Node overrides may be embedded in the revision document initially. If independen
 - deployment_id
 - node_id
 - effective_hash
+- position
 - status
 - attempt_count
 - started_at
@@ -154,6 +167,7 @@ Node overrides may be embedded in the revision document initially. If independen
 ### drift_events
 
 - id
+- cluster_id
 - node_id
 - desired_revision_id
 - desired_hash
@@ -161,8 +175,11 @@ Node overrides may be embedded in the revision document initially. If independen
 - observed_hash
 - status
 - policy
+- fingerprint
+- reconciliation_status
 - diff_json
 - detected_at
+- last_seen_at
 - resolved_at
 - resolution
 - related_deployment_id

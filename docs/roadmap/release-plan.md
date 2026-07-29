@@ -53,5 +53,6 @@ Recommended:
 |---|---|---|
 | 0.1 | Complete | Foundation and production-build LXC functionality validated by the operator. |
 | 0.1.1 | Complete | Docker and systemd production-build installs validated; the non-fatal ripgrep build warning is fixed in 0.2. |
-| 0.2 | Implemented; production validation pending | Canonical inventory, capabilities, snapshots, diffs, confirmed draft import, UI, migration, fixtures, and docs are present. |
-| 0.3–1.0 | Planned | Historical scope and sequencing are unchanged. |
+| 0.2 / 0.2.1 / 0.2.2 | Complete | Inventory, empty-draft fix, and atomic systemd upgrade behavior were operator-validated by 30 July 2026. |
+| 0.3 | Implemented; release gate pending | Authoritative drafts/revisions, verified two-node deployment, rollback, drift policies, enforcement, maintenance, API/UI, migration, tests, and docs are present. PostgreSQL/reference-node execution remains required before tagging complete. |
+| 0.4–1.0 | Planned | Historical scope and sequencing are unchanged. |

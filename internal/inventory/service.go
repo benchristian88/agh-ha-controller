@@ -32,15 +32,16 @@ type Snapshot struct {
 }
 
 type Draft struct {
-	ID               string                 `json:"id"`
-	ClusterID        string                 `json:"clusterId"`
-	SourceSnapshotID string                 `json:"sourceSnapshotId"`
-	SchemaVersion    int                    `json:"schemaVersion"`
-	Document         configuration.Document `json:"document"`
-	CanonicalHash    string                 `json:"canonicalHash"`
-	Version          int                    `json:"version"`
-	UpdatedBy        string                 `json:"updatedBy"`
-	UpdatedAt        time.Time              `json:"updatedAt"`
+	ID               string                        `json:"id"`
+	ClusterID        string                        `json:"clusterId"`
+	SourceSnapshotID string                        `json:"sourceSnapshotId"`
+	BaseRevisionID   *string                       `json:"baseRevisionId,omitempty"`
+	SchemaVersion    int                           `json:"schemaVersion"`
+	Document         configuration.DesiredDocument `json:"document"`
+	CanonicalHash    string                        `json:"canonicalHash"`
+	Version          int                           `json:"version"`
+	UpdatedBy        string                        `json:"updatedBy"`
+	UpdatedAt        time.Time                     `json:"updatedAt"`
 }
 
 type Reader interface {
@@ -177,16 +178,27 @@ func (s *Service) Import(ctx context.Context, actor domain.Actor, clusterID, sna
 	if err != nil {
 		return Draft{}, err
 	}
+	desired := configuration.DesiredFromObservation(snapshot.NodeID, *snapshot.Document)
+	var baseRevisionID *string
 	if current, currentErr := s.repository.DraftByCluster(ctx, clusterID); currentErr == nil {
 		id = current.ID
 		if expectedVersion != current.Version {
 			return Draft{}, domain.NewError(domain.ErrorConflict, "the configuration draft was changed by another request")
 		}
+		for existingNodeID, override := range current.Document.NodeOverrides {
+			desired.NodeOverrides[existingNodeID] = override
+		}
+		desired.NodeOverrides[snapshot.NodeID] = snapshot.Document.NodeSpecific
+		baseRevisionID = current.BaseRevisionID
 	} else if expectedVersion != 0 {
 		return Draft{}, domain.NewError(domain.ErrorConflict, "the configuration draft does not exist")
 	}
 	now := s.now().UTC()
-	draft := Draft{ID: id, ClusterID: clusterID, SourceSnapshotID: snapshotID, SchemaVersion: configuration.SchemaVersion, Document: *snapshot.Document, CanonicalHash: snapshot.CanonicalHash, Version: expectedVersion + 1, UpdatedBy: actor.UserID, UpdatedAt: now}
+	_, desiredHash, err := configuration.MarshalDesired(desired)
+	if err != nil {
+		return Draft{}, err
+	}
+	draft := Draft{ID: id, ClusterID: clusterID, SourceSnapshotID: snapshotID, BaseRevisionID: baseRevisionID, SchemaVersion: configuration.SchemaVersion, Document: desired, CanonicalHash: desiredHash, Version: expectedVersion + 1, UpdatedBy: actor.UserID, UpdatedAt: now}
 	eventID, err := domain.NewID()
 	if err != nil {
 		return Draft{}, err

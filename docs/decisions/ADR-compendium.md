@@ -1205,3 +1205,15 @@ Review when signed artifacts are published, external PostgreSQL becomes a suppor
 **Related release:** 0.2
 
 Freeze canonical schema version 1 around read-only DNS and filtering inventory. Store immutable observation attempts separately from mutable capability profiles. Explicitly confirmed import creates or replaces one optimistic non-authoritative draft per cluster; it does not publish a revision, claim convergence, deploy, or mutate nodes. Preserve order where AdGuard Home semantics are ordered, normalise set-like fields, and discard known runtime/generated fields at the adapter boundary. Compatibility fixtures cover v0.107.52 and v0.107.61. Full context and consequences are recorded in the standalone ADR-0023.
+
+---
+
+# ADR-0024: Define the Release 0.3 authoritative deployment and reconciliation boundary
+
+**Status:** Accepted
+
+**Date:** 2026-07-30
+
+**Related release:** 0.3
+
+Separate authoritative `DesiredDocument` revisions from per-node observations. Deploy immutable revisions through durable sequential tasks, validate every target before mutation, stop on first failure, verify by semantic read-back, activate only after complete success, and represent rollback as another deployment. Reconciliation uses durable deduplicated drift events and cluster `manual`, `alert`, or `enforce` policy; maintenance always suppresses mutation. Schema-v1 writes only supported DNS/filtering HTTP API fields. Listener differences fail preflight, whitelist filters remain unmanaged, and the controller never edits AdGuard Home files. Full rationale and deferrals are recorded in standalone ADR-0024.

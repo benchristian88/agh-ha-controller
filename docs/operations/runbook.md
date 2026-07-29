@@ -12,7 +12,7 @@ Check:
 - Disk capacity.
 - Query ingestion lag.
 
-For Release 0.1, `/health` proves the process is serving and `/ready` additionally proves PostgreSQL connectivity. Query ingestion and deployment checks do not exist yet.
+`/health` proves the process is serving and `/ready` additionally proves PostgreSQL connectivity. Deployment state is visible in **Deployments & drift**; query ingestion checks do not exist yet.
 
 If readiness fails, the controller must not be treated as able to accept state changes. AdGuard Home DNS remains independent.
 
@@ -84,6 +84,8 @@ Correct the underlying issue and use “Test” in the Nodes page. Direct AdGuar
    - Pause and repair node.
 5. Preserve deployment and audit history.
 
+Release 0.3 stops after the first failed node and records `partially_succeeded` when an earlier node verified. It never silently rolls back. Repair the cause, then deliberately deploy the desired revision again or review and deploy a historical revision as rollback. A controller restart marks an in-flight attempt `interrupted`; re-observe all affected nodes before starting another deployment.
+
 ## Controller restore
 
 1. Restore database.
@@ -123,3 +125,13 @@ The 29 July 2026 production validation completed both Docker and systemd install
 4. Introduce or identify one safe real difference and confirm its section and ownership scope.
 5. Review and import one snapshot; confirm the inventory draft version increments and audit contains `configuration.draft_imported`.
 6. Confirm no node configuration changed. Release 0.2 has no writer or deployment route.
+
+## Release 0.3 authoritative configuration checks
+
+1. Refresh and import every enabled node so each has a `nodeOverrides` listener identity.
+2. Edit and save the shared draft, validate it, add a summary, and publish an immutable revision.
+3. Preview and deploy it. Confirm each node task reaches `succeeded`, has a verification snapshot, and the revision becomes active only after the final node verifies.
+4. Make a safe direct shared-field change on one AdGuard Home node. Confirm one open drift event appears with a structured difference.
+5. Under Manual or Alert, confirm no automatic mutation. Under Enforce, confirm a reconciliation deployment restores the value and a later observation resolves the event.
+6. Put a node in maintenance and confirm it is excluded from deployment/reconciliation targets. Remove maintenance and revalidate before deploying.
+7. Publish a second revision, then use Rollback on the first. Confirm rollback creates a new deployment record and does not modify either revision.

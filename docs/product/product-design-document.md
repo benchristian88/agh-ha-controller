@@ -27,6 +27,8 @@ Release 0.1.1 adds git-based Debian/systemd and Docker Compose installation whil
 
 Release 0.2 freezes canonical configuration schema v1 as a read-only DNS/filtering inventory. ADR-0023 resolves the historical import ambiguity: confirmed import creates an optimistic non-authoritative draft only; immutable publication and convergence remain Release 0.3.
 
+Release 0.3 implements that authoritative boundary with a distinct desired document, immutable numbered revisions, durable sequential per-node deployments, semantic read-back verification, deployment-based rollback, deduplicated drift, Manual/Alert/Enforce reconciliation, and maintenance mode. ADR-0024 records the supported-writer and failure semantics; actual implementation/validation status is maintained in the feature ledger and roadmap reconciliation rather than rewriting this historical product baseline.
+
 ### Decision labels used in this document
 
 - **Agreed:** The direction has been explicitly selected and should be treated as a project constraint unless changed through an ADR.
@@ -1936,6 +1938,10 @@ Controller becomes source of truth and keeps nodes converged.
 - manual node change is detected;
 - Enforce restores desired state;
 - previous revision can be redeployed safely.
+
+### Implemented boundary
+
+Schema v1 writes shared DNS resolver and filtering blocklist/rule fields through supported HTTP APIs. Bind hosts and DNS port remain explicit per-node desired overrides but a difference blocks deployment because no supported writer exists. Every target is revalidated before the first mutation, tasks execute sequentially, and the active revision changes only after complete read-back success. Partial success, safe-boundary cancellation, restart interruption, and drift lifecycle remain durable and auditable. See ADR-0024 and `docs/product/feature-ledger.md` for final names and validation status.
 
 ## 90. Release 0.4 — Broader AdGuard Home coverage
 

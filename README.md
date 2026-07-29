@@ -21,7 +21,7 @@ AGH HA Controller is intended to solve that gap by providing:
 
 ## Project status
 
-Release 0.2 implements read-only configuration inventory. Operators can collect version-aware DNS and filtering snapshots, see explicit capabilities and unsupported areas, compare nodes semantically, and import a reviewed snapshot into a non-authoritative draft. Releases 0.1 and 0.1.1 have been production-build validated through both Docker and systemd installs. Publishing, deployment, and drift correction remain Release 0.3; see the [feature ledger](docs/product/feature-ledger.md).
+Release 0.3 implements the authoritative configuration-control MVP. Operators can import observed node state, edit and validate one desired cluster document, publish immutable revisions, deploy sequentially with per-node read-back verification, roll back through a new deployment, detect direct changes, and choose Manual, Alert, or Enforce reconciliation. Maintenance mode prevents controller mutation of a node. Releases 0.2, 0.2.1, and 0.2.2 and the Docker/systemd installation paths were operator-validated before this implementation. The 0.3 release gate and remaining external validation are tracked in the [feature ledger](docs/product/feature-ledger.md).
 
 The first meaningful product milestone is the configuration-control MVP:
 
@@ -62,13 +62,15 @@ The complete architecture is documented in [docs/architecture/architecture.md](d
 
 ## Technology stack
 
-### Services implemented in 0.2
+### Services implemented in 0.3
 
-- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, health polling, read-only configuration observation, capability discovery, semantic comparison, confirmed draft import, session cleanup, audit access, and operational probes.
-- PostgreSQL 17: the system of record for foundation data plus capability profiles, immutable observation attempts, canonical hashes/documents, and one optimistic inventory draft per cluster.
-- AdGuard Home nodes: independent DNS services contacted through read-only `/control/status`, `/control/dns_info`, and `/control/filtering/status` requests. They continue serving DNS during controller outages.
+- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, health polling, configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, session cleanup, audit access, and operational probes.
+- PostgreSQL 17: the system of record for users/sessions, clusters/nodes, encrypted credential envelopes, capability profiles, immutable observations/revisions, optimistic drafts, deployments and ordered per-node tasks, drift events, and audit history.
+- AdGuard Home adapter: bounded direct HTTP(S) reads and schema-v1 writes for shared DNS resolvers, filtering state/interval, blocklist subscriptions, and custom rules. DNS bind hosts/port are explicit node overrides but deployment preflight blocks changes because no supported writer exists. Whitelist filters are not managed.
+- Deployment worker: claims durable jobs, validates and observes all targets before mutation, applies one node at a time, stops on first failure, honors cancellation only between nodes, verifies by a new immutable observation, and activates the revision only after total success.
+- Reconciliation worker: periodically compares the active revision's effective configuration with fresh node observations, deduplicates structured drift, and applies Manual, Alert, or Enforce policy while excluding maintenance nodes.
 
-The controller has no AdGuard Home configuration writer in 0.2. Published revisions, deployments, reconciliation, statistics ingestion, query-log ingestion, and the forwarder remain later milestones.
+AdGuard Home remains the live DNS service and never sends normal DNS traffic through the controller. Statistics ingestion, query-log ingestion, and the optional forwarder remain later milestones.
 
 ### Controller backend
 
@@ -139,11 +141,15 @@ sudo PUBLIC_BASE_URL=https://controller.example.test ./scripts/install-systemd.s
 
 The installer builds from source without requiring ripgrep, creates the `aghha` service account and PostgreSQL database, generates protected secrets, installs the binary/UI, enables the hardened service, and preserves `/etc/agh-ha-controller/agh-ha-controller.env` on reruns. Inspect it with `systemctl status agh-ha-controller` and `journalctl -u agh-ha-controller -f`.
 
-## Configuration inventory
+## Authoritative configuration workflow
 
-After adding nodes, open `/ha/configuration`. Refresh each node to create an immutable observation, compare two successful snapshots, and review differences grouped as shared-managed, node-specific, observed-only, or unsupported. Import requires confirmation and creates only a mutable draft; it never changes a node or makes the controller authoritative.
+After adding nodes, open `/ha/configuration`. Refresh and import every enabled node so the desired draft has an explicit listener override for each node. Edit shared DNS/filtering values, save with optimistic concurrency, validate capability/listener compatibility, add a summary, and publish an immutable revision. Preview then deploy it; deployment is asynchronous and visible under `/ha/deployments` with per-node phases and safe errors.
 
-Canonical schema v1 covers upstream/bootstrap/fallback/private reverse DNS, filtering enablement and interval, enabled filter subscriptions, custom rules, bind hosts, and DNS port. TLS, DHCP, clients, rewrites, and service controls are deliberately deferred.
+The initial strategy is intentionally sequential and stop-on-failure. Every target is revalidated before the first write. Each changed node is read back and compared semantically. A revision becomes active only after every target succeeds. Cancellation is safe-boundary only, and a controller restart records an interrupted outcome rather than assuming success.
+
+Direct changes against managed values become durable drift events after an active revision exists. Manual leaves the choice to the operator, Alert records a visible alert without mutation, and Enforce creates a targeted verified deployment. Restore desired state, adopt the observation into the draft, or place the node in maintenance from **Deployments & drift**. Adoption still requires a new published revision; rollback deploys a historical revision without editing it.
+
+Canonical schema v1 covers upstream/bootstrap/fallback/private reverse DNS, filtering enablement and interval, blocklist subscriptions, custom rules, bind hosts, and DNS port. Bind hosts and port are verification-only. Whitelists, TLS, DHCP, clients, rewrites, and service controls are deliberately deferred.
 
 After either installation, open `PUBLIC_BASE_URL`. When the database has no users, the application shows “Create your administrator.” That transaction creates the only initial administrator and signs it in; setup returns HTTP 409 after any user exists. Then create a cluster and add each AdGuard Home node.
 

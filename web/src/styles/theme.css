@@ -56,6 +56,7 @@ h3 { font-size: 1rem; }
 
 .card, .metric-card, .empty-state, .table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 9px; }
 .card { padding: 18px; }
+.card-list { display: grid; gap: 14px; }
 .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 24px; }
 .metric-card { padding: 16px; }
 .metric-card span { display: block; color: var(--text-muted); font-size: .82rem; }

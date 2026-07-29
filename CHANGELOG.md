@@ -6,6 +6,27 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ## Unreleased
 
+## 0.3.0 - 2026-07-30
+
+### Added
+
+- Separate authoritative schema-v1 desired documents with shared DNS/filtering policy and per-node listener overrides.
+- Optimistic draft editing/validation, immutable numbered revisions, semantic revision comparison, and deployment-based rollback.
+- Durable sequential deployments with all-target preflight, per-node tasks, safe cancellation, restart interruption, read-back verification, active/applied revision state, and complete audit history.
+- Supported AdGuard Home DNS/filtering writer with whitelist preservation and safe error mapping.
+- Deduplicated drift events, Manual/Alert/Enforce reconciliation, automatic verified restoration, maintenance mode, and convergence state.
+- Versioned revision/deployment/drift APIs plus React draft, history, deployment timeline, policy, and drift-action surfaces.
+- Migration `000003_release_0_3`, ADR-0024, unit/contract coverage, and the two-node Release 0.3 integration workflow.
+
+### Changed
+
+- Default controller, image, installer, and web version is 0.3.0.
+- Releases 0.2, 0.2.1, and 0.2.2 are recorded as operator-validated.
+
+### Deferred
+
+- Listener writes, whitelist authoring, wider AdGuard settings, field-level ignore rules, parallel/rolling strategies, scheduled maintenance windows, and richer partial-deployment recovery.
+
 ## 0.2.2 - 2026-07-29
 
 ### Fixed

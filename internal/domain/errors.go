@@ -16,6 +16,9 @@ const (
 	ErrorNodeAuth           ErrorKind = "NODE_AUTHENTICATION_FAILED"
 	ErrorNodeTLS            ErrorKind = "NODE_TLS_FAILED"
 	ErrorNodeResponse       ErrorKind = "NODE_INVALID_RESPONSE"
+	ErrorCapability         ErrorKind = "CAPABILITY_ERROR"
+	ErrorNodeApply          ErrorKind = "NODE_APPLY_FAILED"
+	ErrorVerification       ErrorKind = "VERIFICATION_FAILED"
 	ErrorInternal           ErrorKind = "INTERNAL_ERROR"
 )
 

@@ -124,12 +124,18 @@ func (s *Store) CapabilityProfiles(ctx context.Context, clusterID string) ([]inv
 func (s *Store) DraftByCluster(ctx context.Context, clusterID string) (inventory.Draft, error) {
 	var item inventory.Draft
 	var document []byte
-	err := s.pool.QueryRow(ctx, `SELECT id,cluster_id,source_snapshot_id,schema_version,document_json,canonical_hash,version,updated_by,updated_at FROM configuration_drafts WHERE cluster_id=$1`, clusterID).Scan(&item.ID, &item.ClusterID, &item.SourceSnapshotID, &item.SchemaVersion, &document, &item.CanonicalHash, &item.Version, &item.UpdatedBy, &item.UpdatedAt)
+	err := s.pool.QueryRow(ctx, `SELECT id,cluster_id,source_snapshot_id,base_revision_id,schema_version,document_json,canonical_hash,version,updated_by,updated_at FROM configuration_drafts WHERE cluster_id=$1`, clusterID).Scan(&item.ID, &item.ClusterID, &item.SourceSnapshotID, &item.BaseRevisionID, &item.SchemaVersion, &document, &item.CanonicalHash, &item.Version, &item.UpdatedBy, &item.UpdatedAt)
 	if err != nil {
 		return item, mapDatabaseError(err, "configuration draft")
 	}
 	if err := json.Unmarshal(document, &item.Document); err != nil {
 		return item, fmt.Errorf("decode configuration draft: %w", err)
+	}
+	if item.CanonicalHash == "" {
+		_, item.CanonicalHash, err = configuration.MarshalDesired(item.Document)
+		if err != nil {
+			return item, fmt.Errorf("hash migrated configuration draft: %w", err)
+		}
 	}
 	return item, nil
 }
@@ -146,10 +152,10 @@ func (s *Store) ImportDraft(ctx context.Context, draft inventory.Draft, expected
 	defer func() { _ = tx.Rollback(context.Background()) }()
 	var rowsAffected int64
 	if expectedVersion == 0 {
-		result, execErr := tx.Exec(ctx, `INSERT INTO configuration_drafts (id,cluster_id,source_snapshot_id,schema_version,document_json,canonical_hash,version,updated_by,updated_at) VALUES ($1,$2,$3,$4,$5,$6,1,$7,$8) ON CONFLICT DO NOTHING`, draft.ID, draft.ClusterID, draft.SourceSnapshotID, draft.SchemaVersion, document, draft.CanonicalHash, draft.UpdatedBy, draft.UpdatedAt)
+		result, execErr := tx.Exec(ctx, `INSERT INTO configuration_drafts (id,cluster_id,source_snapshot_id,base_revision_id,schema_version,document_json,canonical_hash,version,updated_by,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,1,$8,$9) ON CONFLICT DO NOTHING`, draft.ID, draft.ClusterID, draft.SourceSnapshotID, draft.BaseRevisionID, draft.SchemaVersion, document, draft.CanonicalHash, draft.UpdatedBy, draft.UpdatedAt)
 		err, rowsAffected = execErr, result.RowsAffected()
 	} else {
-		result, execErr := tx.Exec(ctx, `UPDATE configuration_drafts SET source_snapshot_id=$1,schema_version=$2,document_json=$3,canonical_hash=$4,version=version+1,updated_by=$5,updated_at=$6 WHERE cluster_id=$7 AND version=$8`, draft.SourceSnapshotID, draft.SchemaVersion, document, draft.CanonicalHash, draft.UpdatedBy, draft.UpdatedAt, draft.ClusterID, expectedVersion)
+		result, execErr := tx.Exec(ctx, `UPDATE configuration_drafts SET source_snapshot_id=$1,base_revision_id=$2,schema_version=$3,document_json=$4,canonical_hash=$5,version=version+1,updated_by=$6,updated_at=$7 WHERE cluster_id=$8 AND version=$9`, draft.SourceSnapshotID, draft.BaseRevisionID, draft.SchemaVersion, document, draft.CanonicalHash, draft.UpdatedBy, draft.UpdatedAt, draft.ClusterID, expectedVersion)
 		err, rowsAffected = execErr, result.RowsAffected()
 	}
 	if err != nil {

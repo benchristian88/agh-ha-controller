@@ -33,19 +33,39 @@ Operator validation on 29 July 2026 proved both Docker and systemd production-bu
 
 | Feature | Status | Implementation and evidence | Remaining release validation |
 |---|---|---|---|
-| Canonical schema v1 | Implemented | Deterministic DNS/filtering document, ownership catalogue, ordered/set semantics, SHA-256 hash | Real-node semantic comparison |
-| Capability discovery | Implemented | Per-node profiles, explicit feature flags/warnings, v0.107.52 and v0.107.61 fixtures | Confirm release-LXC node versions |
-| Immutable observations | Implemented | Durable success/failure attempts with node attribution and safe errors | Production upgrade and refresh smoke test |
-| Structured comparison | Implemented | Section, field, scope, values, semantic equality; volatile fixture regression | Intentional real-node difference exercise |
-| Confirmed import | Implemented | Cross-cluster protection, explicit confirmation, optimistic draft, transactional audit; no revision/deployment | Production UI import smoke test |
-| Configuration UI | Implemented | Loading/error/empty states, refresh, warnings, comparison, equality, import boundary | Packaged browser/accessibility check |
-| systemd ripgrep warning | Fixed | Make source discovery uses portable `find`; installer no longer indirectly needs `rg` | Clean systemd upgrade rerun |
-| Empty-draft configuration page | Fixed in 0.2.1 | API omits an absent draft; UI normalises both omitted and legacy `null` values before rendering | Production browser recheck after upgrade |
-| Atomic systemd runtime upgrade | Fixed in 0.2.2 | Installer explicitly restarts and verifies the unit after replacing the binary/UI, preventing mixed frontend/API versions | Production systemd upgrade rerun |
+| Canonical schema v1 | Implemented and validated | Deterministic DNS/filtering document, ownership catalogue, ordered/set semantics, SHA-256 hash | Completed 30 July 2026 |
+| Capability discovery | Implemented and validated | Per-node profiles, explicit feature flags/warnings, v0.107.52 and v0.107.61 fixtures | Completed 30 July 2026 |
+| Immutable observations | Implemented and validated | Durable success/failure attempts with node attribution and safe errors | Completed 30 July 2026 |
+| Structured comparison | Implemented and validated | Section, field, scope, values, semantic equality; volatile fixture regression | Completed 30 July 2026 |
+| Confirmed import | Implemented and validated | Cross-cluster protection, explicit confirmation, optimistic draft, transactional audit; no revision/deployment | Completed 30 July 2026 |
+| Configuration UI | Implemented and validated | Loading/error/empty states, refresh, warnings, comparison, equality, import boundary | Completed 30 July 2026 |
+| systemd ripgrep warning | Fixed and validated | Make source discovery uses portable `find`; installer no longer indirectly needs `rg` | Completed 30 July 2026 |
+| Empty-draft configuration page | Fixed and validated in 0.2.1 | API omits an absent draft; UI normalises both omitted and legacy `null` values before rendering | Completed 30 July 2026 |
+| Atomic systemd runtime upgrade | Fixed and validated in 0.2.2 | Installer explicitly restarts and verifies the unit after replacing the binary/UI, preventing mixed frontend/API versions | Completed 30 July 2026 |
+
+Operator validation completed on 30 July 2026 for Releases 0.2, 0.2.1, and 0.2.2, including configuration inventory/import and the corrected systemd upgrade behavior. These patch lines are complete; their historical rows are retained above.
+
+## Release 0.3 authoritative configuration
+
+| Feature | Status | Implementation and evidence | Remaining release validation |
+|---|---|---|---|
+| Authoritative desired draft | Implemented | Separate schema-v1 `DesiredDocument`, shared policy plus UUID-keyed node overrides, optimistic save/validation, migrated 0.2 imports | PostgreSQL upgrade test in an environment with `TEST_DATABASE_URL` |
+| Immutable revisions | Implemented | Numbered per-cluster revisions, canonical hashes, summaries, base revision, list/detail/semantic comparison API and UI | Real PostgreSQL integration workflow |
+| Safe sequential deployment | Implemented | Durable deployment/tasks, full-target preflight, stop-on-first-failure, safe cancellation, restart interruption, per-node safe result | Stateful two-node integration test added; reference-node run pending |
+| AdGuard configuration writer | Implemented; schema-v1 narrow | Supported DNS/filtering HTTP endpoints, Basic auth/TLS reuse, blocklist reconciliation, whitelist preservation, safe error mapping; loopback contract passes | Real supported-version write check |
+| Read-back convergence | Implemented | Fresh observation after each write, semantic verification snapshot, applied revision/hash, active revision only after full success | Reference two-node verification |
+| Rollback | Implemented | Explicit confirmed deployment of a historical immutable revision with linkage and audit | Integration test added; real PostgreSQL execution pending |
+| Drift lifecycle | Implemented | Periodic fresh observation, fingerprint deduplication, structured values, detection/resolution audit, node convergence state | Integration test added; long-running soak pending |
+| Reconciliation policies | Implemented | Manual default, Alert no-mutation state, Enforce targeted durable restore with later retry after fresh observation | Enforce integration path added; reference-node exercise pending |
+| Maintenance mode | Implemented | Optimistic audited node state, mutation exclusion, visible convergence/drift maintenance state, UI action | Browser and reference-node exercise |
+| Release 0.3 UI/API | Implemented | Draft editor, validation, revisions, deploy/rollback, deployment timeline/cancel, drift restore/adopt/maintenance, policy control | Packaged browser accessibility and visual smoke test |
+
+The full Go race suite (including the AdGuard HTTP writer contract), frontend type/lint/tests/build, Go vet/build, and production dependency audit pass locally. The Release 0.3 PostgreSQL integration test is present and compiles but is skipped without `TEST_DATABASE_URL`; PostgreSQL is unavailable in the current environment. The release gate therefore remains pending rather than being marked complete.
 
 ## Deliberately deferred
 
-- Drafts, immutable revisions, deployment, rollback, drift, reconciliation, and maintenance mode: Release 0.3.
+- Field-level drift ignore rules, selectable partial-deployment recovery, parallel/rolling strategies, scheduled maintenance windows, and intra-mutation automatic retries: later operational work.
+- Broader AdGuard Home clients, rewrites, service controls, TLS, DHCP, and whitelist authoring: Release 0.4 or later.
 - Statistics and query logs: Releases 0.5 and 0.6.
 - Additional local-user management, password change/recovery, durable or distributed login throttling, OIDC, and RBAC: follow-on security scope.
 - Automated backup/restore tooling and an audit export: later operational releases; the supported recovery path remains manual.

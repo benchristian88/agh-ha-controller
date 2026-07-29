@@ -148,7 +148,7 @@ Deliberately deferred:
 - TLS, DHCP, clients, rewrites, blocked services, and safety-service inventory remain broader Release 0.4 coverage.
 - Automatic scheduled observation remains follow-on work; 0.2 refresh is operator initiated and durable.
 
-Production validation required before marking 0.2 complete:
+Production validation checklist subsequently completed by the operator on 30 July 2026:
 
 - Upgrade a 0.1.1 production database through migration 000002.
 - Compare two real materially equivalent nodes and one intentional difference.
@@ -187,6 +187,31 @@ Production validation required before marking 0.2 complete:
 - A previous revision can be rolled back safely.
 
 This is the first release that demonstrates the complete core value proposition.
+
+### Implementation reconciliation — 30 July 2026
+
+Implemented:
+
+- Authoritative schema-v1 drafts remain distinct from observed documents and require one listener override per enabled node.
+- Publishing creates immutable numbered revisions; revision comparison is semantic and rollback deploys an existing historical revision.
+- PostgreSQL-backed deployments validate every target before the first mutation, run sequentially, stop after the first failure, preserve partial success, support safe-boundary cancellation, and record per-node verification snapshots.
+- Shared DNS resolver and filtering blocklist/rule settings use supported AdGuard Home HTTP endpoints. DNS listener values are preflight-only, whitelist filters are untouched, and node YAML is never edited.
+- A revision becomes active only after every target verifies by read-back.
+- Durable deduplicated drift events support Manual, Alert, and Enforce policies; Enforce queues the same verified targeted deployment. Maintenance suppresses mutation.
+- The React UI provides desired-state editing, validation, revision actions, deployment progress/history, reconciliation policy, and drift restore/adopt/maintenance actions.
+
+Partially completed or validation pending:
+
+- The full Go race suite (including the AdGuard HTTP writer contract), frontend type/lint/tests/build, Go vet/build, and production dependency audit pass. A real-PostgreSQL two-node integration test now covers deploy, convergence, direct drift, Enforce restoration, and rollback, but this environment has no PostgreSQL executable/service, so that test is not yet recorded as executed.
+- Reference AdGuard Home write/read-back and packaged Docker/systemd 0.3 smoke validation remain release gates.
+
+Deliberately deferred without changing roadmap history:
+
+- Field-level drift ignore is not exposed because schema v1 already excludes unmanaged/volatile fields; explicit ignore-rule persistence belongs to broader reconciliation controls.
+- Automatic retry inside a potentially partial filter mutation is withheld. Enforce can create a later fresh attempt after observation; richer retry/backoff and partial recovery remain follow-on work.
+- Parallel/rolling deployments, schedules, maintenance windows, and wider AdGuard Home settings remain in later releases.
+
+Do not mark Release 0.3 complete until the PostgreSQL integration workflow and reference-node/package smoke checks pass.
 
 ## Release 0.4 — Broader AdGuard Home coverage
 

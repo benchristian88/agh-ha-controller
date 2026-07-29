@@ -26,3 +26,35 @@ func TestDiffPreservesOrderedUpstreamsAndGroupsScope(t *testing.T) {
 		t.Fatalf("unexpected differences: %#v", diffs)
 	}
 }
+
+func TestDesiredDocumentBuildsNodeEffectiveState(t *testing.T) {
+	desired := DesiredDocument{
+		SchemaVersion: 1,
+		Shared:        Shared{DNS: DNS{UpstreamDNS: []string{"https://dns.example/dns-query"}}, Filtering: Filtering{UpdateInterval: 24}},
+		NodeOverrides: map[string]NodeSpecific{
+			"node-a": {BindHosts: []string{"192.0.2.10"}, DNSPort: 53},
+			"node-b": {BindHosts: []string{"192.0.2.11"}, DNSPort: 53},
+		},
+	}
+	a, err := Effective(desired, "node-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := Effective(desired, "node-b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.NodeSpecific.BindHosts[0] == b.NodeSpecific.BindHosts[0] || a.Shared.DNS.UpstreamDNS[0] != b.Shared.DNS.UpstreamDNS[0] {
+		t.Fatalf("effective state did not preserve shared policy and node identity: %#v %#v", a, b)
+	}
+}
+
+func TestValidateDesiredRequiresEveryNodeOverrideAndValidListener(t *testing.T) {
+	desired := DesiredDocument{SchemaVersion: 1, Shared: Shared{Filtering: Filtering{UpdateInterval: 24}}, NodeOverrides: map[string]NodeSpecific{
+		"node-a": {BindHosts: []string{"not-an-ip"}, DNSPort: 0},
+	}}
+	issues := ValidateDesired(desired, []string{"node-a", "node-b"})
+	if len(issues) != 3 {
+		t.Fatalf("issues = %#v, want listener address, port, and missing override", issues)
+	}
+}

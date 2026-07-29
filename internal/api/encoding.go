@@ -63,9 +63,9 @@ func (s *Server) writeError(response http.ResponseWriter, request *http.Request,
 		case domain.ErrorRateLimited:
 			status = http.StatusTooManyRequests
 			response.Header().Set("Retry-After", "900")
-		case domain.ErrorNodeAuth, domain.ErrorNodeTLS:
+		case domain.ErrorNodeAuth, domain.ErrorNodeTLS, domain.ErrorCapability:
 			status = http.StatusUnprocessableEntity
-		case domain.ErrorNodeUnreachable, domain.ErrorNodeResponse:
+		case domain.ErrorNodeUnreachable, domain.ErrorNodeResponse, domain.ErrorNodeApply, domain.ErrorVerification:
 			status = http.StatusBadGateway
 		}
 	}

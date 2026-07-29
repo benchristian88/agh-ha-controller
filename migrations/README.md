@@ -12,3 +12,9 @@ make migrate-down # development only; rolls back one migration
 Applied versions and SHA-256 checksums are stored in `schema_migrations`. A changed checksum causes startup to fail rather than silently accepting an edited released migration.
 
 Do not edit a migration after it has been included in a released version.
+
+Released schema milestones:
+
+- `000001_release_0_1`: authentication, clusters, nodes, encrypted credentials, and audit.
+- `000002_release_0_2`: capabilities, immutable observations, and optimistic inventory drafts.
+- `000003_release_0_3`: desired documents, immutable revisions, durable deployments, applied state, reconciliation, maintenance, and drift history.

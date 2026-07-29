@@ -85,6 +85,8 @@ func (s *Store) NodeRecordByID(ctx context.Context, id string) (domain.NodeRecor
 		&record.Node.CertificatePolicy, &record.Node.Enabled, &record.Node.HealthStatus,
 		&record.Node.CompatibilityStatus, &record.Node.Version, &record.Node.LastSeenAt,
 		&record.Node.LastPolledAt, &record.Node.LatencyMS, &record.Node.LastErrorCode,
+		&record.Node.MaintenanceMode, &record.Node.AppliedRevisionID, &record.Node.AppliedHash,
+		&record.Node.ConvergenceStatus, &record.Node.LastReconciledAt,
 		&record.Node.RecordVersion, &record.Node.CreatedAt, &record.Node.UpdatedAt,
 		&record.Secrets.Credentials.Ciphertext, &record.Secrets.Credentials.Nonce,
 		&record.Secrets.Credentials.KeyVersion, &record.Secrets.Credentials.Algorithm,
@@ -109,6 +111,8 @@ func (s *Store) PollableNodes(ctx context.Context) ([]domain.NodeRecord, error) 
 			&record.Node.CertificatePolicy, &record.Node.Enabled, &record.Node.HealthStatus,
 			&record.Node.CompatibilityStatus, &record.Node.Version, &record.Node.LastSeenAt,
 			&record.Node.LastPolledAt, &record.Node.LatencyMS, &record.Node.LastErrorCode,
+			&record.Node.MaintenanceMode, &record.Node.AppliedRevisionID, &record.Node.AppliedHash,
+			&record.Node.ConvergenceStatus, &record.Node.LastReconciledAt,
 			&record.Node.RecordVersion, &record.Node.CreatedAt, &record.Node.UpdatedAt,
 			&record.Secrets.Credentials.Ciphertext, &record.Secrets.Credentials.Nonce,
 			&record.Secrets.Credentials.KeyVersion, &record.Secrets.Credentials.Algorithm,
@@ -138,6 +142,7 @@ func (s *Store) UpdateNode(ctx context.Context, record domain.NodeRecord, expect
 			custom_ca_pem = $9, enabled = $10, health_status = $11,
 			compatibility_status = $12, version = $13, last_seen_at = $14,
 			last_polled_at = $15, latency_ms = $16, last_error_code = $17,
+			convergence_status = CASE WHEN maintenance_mode THEN 'maintenance' ELSE 'pending' END,
 			record_version = record_version + 1, updated_at = $18
 		WHERE id = $1 AND record_version = $19 AND deleted_at IS NULL`,
 		node.ID, node.Name, node.BaseURL, credentials.Ciphertext, credentials.Nonce,
@@ -183,6 +188,9 @@ func (s *Store) SoftDeleteNode(ctx context.Context, id string, expectedVersion i
 		if err := nodeWriteFailure(ctx, tx, id); err != nil {
 			return err
 		}
+	}
+	if _, err := tx.Exec(ctx, `UPDATE drift_events SET status='resolved',reconciliation_status='resolved',resolved_at=$2,resolution='node_removed' WHERE node_id=$1 AND status='open'`, id, at); err != nil {
+		return fmt.Errorf("resolve removed node drift: %w", err)
 	}
 	if err := audit(ctx, tx, event); err != nil {
 		return err
@@ -237,6 +245,33 @@ func (s *Store) RecordNodeTestResult(ctx context.Context, id string, health doma
 	return nil
 }
 
+func (s *Store) SetNodeMaintenance(ctx context.Context, id string, enabled bool, expectedVersion int, at time.Time, event domain.AuditEvent) error {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("begin maintenance update: %w", err)
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	tag, err := tx.Exec(ctx, `UPDATE nodes SET maintenance_mode=$2,
+		convergence_status=CASE WHEN $2 THEN 'maintenance' ELSE 'pending' END,
+		record_version=record_version+1, updated_at=$3
+		WHERE id=$1 AND record_version=$4 AND deleted_at IS NULL`, id, enabled, at, expectedVersion)
+	if err != nil {
+		return fmt.Errorf("set node maintenance: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		if err := nodeWriteFailure(ctx, tx, id); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(ctx, `UPDATE drift_events SET reconciliation_status=CASE WHEN $2 THEN 'maintenance' ELSE 'pending' END WHERE node_id=$1 AND status='open'`, id, enabled); err != nil {
+		return fmt.Errorf("update drift maintenance state: %w", err)
+	}
+	if err := audit(ctx, tx, event); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func nodeWriteFailure(ctx context.Context, tx pgx.Tx, id string) error {
 	var exists bool
 	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM nodes WHERE id = $1 AND deleted_at IS NULL)", id).Scan(&exists); err != nil {
@@ -251,13 +286,15 @@ func nodeWriteFailure(ctx context.Context, tx pgx.Tx, id string) error {
 const nodeSelect = `
 	SELECT id, cluster_id, name, base_url, certificate_policy, enabled, health_status,
 	       compatibility_status, version, last_seen_at, last_polled_at, latency_ms,
-	       last_error_code, record_version, created_at, updated_at
+	       last_error_code, maintenance_mode, applied_revision_id, applied_hash,
+	       convergence_status, last_reconciled_at, record_version, created_at, updated_at
 	FROM nodes`
 
 const nodeSecretSelect = `
 	SELECT id, cluster_id, name, base_url, certificate_policy, enabled, health_status,
 	       compatibility_status, version, last_seen_at, last_polled_at, latency_ms,
-	       last_error_code, record_version, created_at, updated_at,
+	       last_error_code, maintenance_mode, applied_revision_id, applied_hash,
+	       convergence_status, last_reconciled_at, record_version, created_at, updated_at,
 	       encrypted_credentials, credential_nonce, credential_key_version,
 	       credential_algorithm, custom_ca_pem
 	FROM nodes`
@@ -272,6 +309,7 @@ func scanNode(row rowScanner) (domain.Node, error) {
 		&node.ID, &node.ClusterID, &node.Name, &node.BaseURL, &node.CertificatePolicy,
 		&node.Enabled, &node.HealthStatus, &node.CompatibilityStatus, &node.Version,
 		&node.LastSeenAt, &node.LastPolledAt, &node.LatencyMS, &node.LastErrorCode,
-		&node.RecordVersion, &node.CreatedAt, &node.UpdatedAt)
+		&node.MaintenanceMode, &node.AppliedRevisionID, &node.AppliedHash, &node.ConvergenceStatus,
+		&node.LastReconciledAt, &node.RecordVersion, &node.CreatedAt, &node.UpdatedAt)
 	return node, err
 }

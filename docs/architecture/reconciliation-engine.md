@@ -45,7 +45,7 @@ Unknown
 
 ## Reconciliation algorithm
 
-1. Acquire a node-scoped reconciliation lock.
+1. Select an enabled node under the single in-process reconciliation pass.
 2. Confirm node is not in maintenance.
 3. Load active desired revision.
 4. Build effective configuration for the node.
@@ -63,7 +63,13 @@ Unknown
     - Re-read state.
     - Verify semantic equality.
     - Record success or failure.
-14. Release lock.
+14. Leave the durable event open until a later observation proves convergence.
+
+## Release 0.3 implementation
+
+The controller process runs a periodic evaluator and a separate durable deployment executor. Evaluation re-observes each enabled, non-maintenance node in a cluster with an active revision. Semantic differences create or refresh one open `drift_events` row keyed by node and fingerprint. Manual records the event, Alert records it as alerted, and Enforce queues a targeted reconciliation deployment. A successful later observation resolves all open drift for the node with an audit event.
+
+Deployment claims use PostgreSQL `FOR UPDATE SKIP LOCKED`, and a partial unique index permits only one queued/active deployment per cluster. Drift evaluation skips clusters with active work so it cannot queue the prior active revision during a rollout. Per-node execution is sequential. Cancellation is honored only between node tasks. Startup converts validating/running/cancelling deployments to `interrupted`; it does not replay an unknown mutation. A failed Enforce attempt becomes eligible for a fresh attempt after a later observation. Immediate blind retries inside a possibly partial filter mutation are deliberately deferred.
 
 ## Safe application order
 

@@ -15,6 +15,8 @@ export interface Cluster {
   name: string;
   description: string;
   version: number;
+  reconciliationPolicy: "enforce" | "alert" | "manual";
+  activeRevisionId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,9 +43,30 @@ export interface Node {
   lastPolledAt?: string;
   latencyMs?: number;
   lastErrorCode?: string;
+  maintenanceMode: boolean;
+  appliedRevisionId?: string;
+  appliedHash?: string;
+  convergenceStatus:
+    | "pending"
+    | "converged"
+    | "drifted"
+    | "applying"
+    | "verifying"
+    | "apply_failed"
+    | "observation_failed"
+    | "unsupported"
+    | "maintenance";
+  lastReconciledAt?: string;
   recordVersion: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DesiredConfigurationDocument {
+  schemaVersion: number;
+  shared: ConfigurationDocument["shared"];
+  nodeOverrides: Record<string, ConfigurationDocument["nodeSpecific"]>;
+  unsupported: ConfigurationDocument["unsupported"];
 }
 
 export interface AuditEvent {
@@ -106,10 +129,99 @@ export interface ConfigurationDraft {
   clusterId: string;
   sourceSnapshotId: string;
   schemaVersion: number;
-  document: ConfigurationDocument;
+  baseRevisionId?: string;
+  document: DesiredConfigurationDocument;
   canonicalHash: string;
   version: number;
   updatedAt: string;
+}
+
+export interface ValidationIssue {
+  field: string;
+  message: string;
+}
+
+export interface ConfigurationRevision {
+  id: string;
+  clusterId: string;
+  revisionNumber: number;
+  schemaVersion: number;
+  document: DesiredConfigurationDocument;
+  canonicalHash: string;
+  summary: string;
+  createdBy: string;
+  createdAt: string;
+  active: boolean;
+}
+
+export interface DeploymentNode {
+  id: string;
+  deploymentId: string;
+  nodeId: string;
+  position: number;
+  effectiveHash: string;
+  status: string;
+  attemptCount: number;
+  startedAt?: string;
+  completedAt?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  verificationSnapshotId?: string;
+}
+
+export interface Deployment {
+  id: string;
+  clusterId: string;
+  revisionId: string;
+  status: string;
+  strategy: "sequential";
+  failurePolicy: "stop";
+  origin: "manual" | "rollback" | "reconciliation";
+  rollbackOfRevisionId?: string;
+  requestId: string;
+  cancelRequested: boolean;
+  errorCode?: string;
+  requestedAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  nodes: DeploymentNode[];
+}
+
+export interface DeploymentPreview {
+  revisionId: string;
+  strategy: string;
+  failurePolicy: string;
+  differences: ConfigurationDifference[];
+  restartRequired: boolean;
+  valid: boolean;
+  issues: ValidationIssue[];
+  nodes: {
+    nodeId: string;
+    position: number;
+    effectiveHash: string;
+    valid: boolean;
+    warning?: string;
+  }[];
+}
+
+export interface DriftEvent {
+  id: string;
+  clusterId: string;
+  nodeId: string;
+  desiredRevisionId: string;
+  desiredHash: string;
+  observedSnapshotId: string;
+  observedHash: string;
+  fingerprint: string;
+  status: "open" | "resolved";
+  policy: "enforce" | "alert" | "manual";
+  reconciliationStatus: string;
+  differences: ConfigurationDifference[];
+  detectedAt: string;
+  lastSeenAt: string;
+  resolvedAt?: string;
+  resolution?: string;
+  relatedDeploymentId?: string;
 }
 
 export interface ConfigurationDifference {

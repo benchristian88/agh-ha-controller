@@ -82,6 +82,7 @@ export function NodesPage({ cluster }: { cluster: Cluster }) {
                 <th>Node</th>
                 <th>Status</th>
                 <th>Version</th>
+                <th>Convergence</th>
                 <th>Last seen</th>
                 <th>
                   <span className="visually-hidden">Actions</span>
@@ -104,9 +105,23 @@ export function NodesPage({ cluster }: { cluster: Cluster }) {
                       {node.compatibilityStatus}
                     </span>
                   </td>
+                  <td>
+                    {node.maintenanceMode
+                      ? "Maintenance"
+                      : node.convergenceStatus.replaceAll("_", " ")}
+                  </td>
                   <td>{formatTime(node.lastSeenAt)}</td>
                   <td>
                     <div className="row-actions">
+                      <button
+                        type="button"
+                        className="button button--quiet"
+                        onClick={() => void maintenance(node)}
+                      >
+                        {node.maintenanceMode
+                          ? "Leave maintenance"
+                          : "Maintenance"}
+                      </button>
                       <button
                         type="button"
                         className="button button--quiet"
@@ -159,6 +174,22 @@ export function NodesPage({ cluster }: { cluster: Cluster }) {
     if (confirmName === null) return;
     try {
       await api.deleteNode(node, confirmName);
+      await load();
+    } catch (caught) {
+      setError(caught);
+    }
+  }
+
+  async function maintenance(node: Node) {
+    if (
+      !node.maintenanceMode &&
+      !window.confirm(
+        `Put ${node.name} into maintenance? Automatic deployment and reconciliation will skip it until maintenance is removed.`,
+      )
+    )
+      return;
+    try {
+      await api.setNodeMaintenance(node, !node.maintenanceMode);
       await load();
     } catch (caught) {
       setError(caught);
