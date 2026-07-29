@@ -247,16 +247,24 @@ func ValidateDesired(document DesiredDocument, nodeIDs []string) []ValidationIss
 			issues = append(issues, ValidationIssue{Field: "nodeOverrides." + nodeID, Message: "is required for every enabled node"})
 			continue
 		}
-		if override.DNSPort < 1 || override.DNSPort > 65535 {
-			issues = append(issues, ValidationIssue{Field: "nodeOverrides." + nodeID + ".dnsPort", Message: "must be between 1 and 65535"})
-		}
-		if len(override.BindHosts) == 0 {
-			issues = append(issues, ValidationIssue{Field: "nodeOverrides." + nodeID + ".bindHosts", Message: "must include at least one address"})
-		}
-		for index, host := range override.BindHosts {
-			if _, err := netip.ParseAddr(host); err != nil {
-				issues = append(issues, ValidationIssue{Field: fmt.Sprintf("nodeOverrides.%s.bindHosts[%d]", nodeID, index), Message: "must be an IP address"})
-			}
+		issues = append(issues, ValidateNodeSpecific("nodeOverrides."+nodeID, override)...)
+	}
+	return issues
+}
+
+// ValidateNodeSpecific validates the listener identity retained for a node.
+// These values are observed and verified by the controller, not written.
+func ValidateNodeSpecific(fieldPrefix string, listener NodeSpecific) []ValidationIssue {
+	issues := make([]ValidationIssue, 0)
+	if listener.DNSPort < 1 || listener.DNSPort > 65535 {
+		issues = append(issues, ValidationIssue{Field: fieldPrefix + ".dnsPort", Message: "must be between 1 and 65535"})
+	}
+	if len(listener.BindHosts) == 0 {
+		issues = append(issues, ValidationIssue{Field: fieldPrefix + ".bindHosts", Message: "must include at least one address"})
+	}
+	for index, host := range listener.BindHosts {
+		if _, err := netip.ParseAddr(host); err != nil {
+			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("%s.bindHosts[%d]", fieldPrefix, index), Message: "must be an IP address"})
 		}
 	}
 	return issues

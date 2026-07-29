@@ -36,9 +36,9 @@ func (s *adGuardState) handler(response http.ResponseWriter, request *http.Reque
 	response.Header().Set("Content-Type", "application/json")
 	switch request.URL.Path {
 	case "/control/status":
-		_, _ = io.WriteString(response, `{"version":"v0.107.65","running":true}`)
+		_, _ = io.WriteString(response, `{"version":"v0.107.65","running":true,"dns_addresses":["0.0.0.0"],"dns_port":53}`)
 	case "/control/dns_info":
-		_ = json.NewEncoder(response).Encode(map[string]any{"upstream_dns": s.upstreamDNS, "bootstrap_dns": []string{}, "fallback_dns": []string{}, "local_ptr_upstreams": []string{}, "bind_hosts": []string{"0.0.0.0"}, "port": 53})
+		_ = json.NewEncoder(response).Encode(map[string]any{"upstream_dns": s.upstreamDNS, "bootstrap_dns": []string{}, "fallback_dns": []string{}, "local_ptr_upstreams": []string{}})
 	case "/control/filtering/status":
 		_ = json.NewEncoder(response).Encode(map[string]any{"enabled": true, "interval": 24, "filters": []any{}, "user_rules": s.userRules})
 	case "/control/dns_config":

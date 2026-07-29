@@ -44,7 +44,7 @@ Optional later node-side process for query-log ingestion.
 - `internal/inventory`: read-only observation, capability, comparison, and audited draft-import orchestration.
 - `internal/controlplane`: desired draft validation, immutable revisions, deployment preview/creation/execution, rollback, drift evaluation, and reconciliation policy orchestration.
 
-Release 0.2 extends `internal/adguard` with narrow configuration reads for `/control/dns_info` and `/control/filtering/status`. Raw payloads, counters, generated IDs, and timestamps remain inside the adapter.
+Release 0.2 extends `internal/adguard` with narrow configuration reads for `/control/status`, `/control/dns_info`, and `/control/filtering/status`. Listener addresses and port come from AdGuard Home's `ServerStatus` contract; shared DNS parameters come from `DNSConfig`. Raw payloads, counters, generated IDs, and timestamps remain inside the adapter. A missing or invalid listener identity makes the observation fail instead of creating an unusable import snapshot.
 
 Release 0.3 adds narrow writes for shared schema-v1 DNS and filtering fields. `internal/jobs` runs the durable deployment executor and periodic drift evaluator. Deployment and reconciliation checkpoints remain in PostgreSQL even though the worker is currently in the combined process.
 

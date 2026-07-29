@@ -17,14 +17,33 @@ import (
 func TestVersionFixturesSuppressVolatileFields(t *testing.T) {
 	documents := make([]configuration.Document, 0, 2)
 	for _, version := range []string{"v0.107.52", "v0.107.61"} {
+		var status statusResponse
+		readFixture(t, filepath.Join("testdata", version, "status.json"), &status)
 		var dns dnsInfoResponse
 		readFixture(t, filepath.Join("testdata", version, "dns_info.json"), &dns)
 		var filtering filterStatusResponse
 		readFixture(t, filepath.Join("testdata", version, "filtering_status.json"), &filtering)
-		documents = append(documents, configurationDocument(version, dns, filtering))
+		documents = append(documents, configurationDocument(version, status, dns, filtering))
 	}
 	if differences := configuration.Diff(documents[0], documents[1]); len(differences) != 0 {
 		t.Fatalf("equivalent fixtures differ: %#v", differences)
+	}
+}
+
+func TestValidateListenerStatusRejectsIncompleteIdentity(t *testing.T) {
+	for name, status := range map[string]statusResponse{
+		"missing":         {},
+		"invalid port":    {DNSAddresses: []string{"0.0.0.0"}, DNSPort: 0},
+		"invalid address": {DNSAddresses: []string{"not-an-address"}, DNSPort: 53},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := validateListenerStatus(status); err == nil {
+				t.Fatal("validateListenerStatus() error = nil")
+			}
+		})
+	}
+	if err := validateListenerStatus(statusResponse{DNSAddresses: []string{"0.0.0.0", "::"}, DNSPort: 53}); err != nil {
+		t.Fatalf("valid listener status rejected: %v", err)
 	}
 }
 

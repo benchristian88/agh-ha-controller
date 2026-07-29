@@ -15,7 +15,7 @@ Target:
 
 Release 0.1 unit and contract coverage includes UUID and URL invariants, password hashing, session/CSRF purpose separation, AES-GCM encryption and node binding, configuration validation, AdGuard status parsing, version compatibility, authentication/TLS failure separation, custom CA trust, health polling outcomes, and frontend health freshness/partial-failure semantics.
 
-Release 0.2 adds canonical hash/equality, ordered-field differences, and raw v0.107.52/v0.107.61 configuration fixtures whose volatile counters, generated IDs, labels, counts, and timestamps must not create differences.
+Release 0.2 adds canonical hash/equality, ordered-field differences, and raw v0.107.52/v0.107.61 status, DNS, and filtering fixtures whose volatile counters, generated IDs, labels, counts, and timestamps must not create differences. The fixtures preserve the upstream API boundary: listener identity is present only in `/control/status`, while shared DNS parameters are present in `/control/dns_info`. Missing listener identity is a failed observation and cannot be imported.
 
 Release 0.3 adds desired/effective document validation, all-target-before-mutation executor tests, sequential apply/read-back activation tests, and an AdGuard writer contract test that verifies supported endpoints and protects whitelist filters.
 

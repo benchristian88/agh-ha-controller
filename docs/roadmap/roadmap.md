@@ -196,6 +196,7 @@ Implemented:
 - Publishing creates immutable numbered revisions; revision comparison is semantic and rollback deploys an existing historical revision.
 - PostgreSQL-backed deployments validate every target before the first mutation, run sequentially, stop after the first failure, preserve partial success, support safe-boundary cancellation, and record per-node verification snapshots.
 - Shared DNS resolver and filtering blocklist/rule settings use supported AdGuard Home HTTP endpoints. DNS listener values are preflight-only, whitelist filters are untouched, and node YAML is never edited.
+- Listener addresses and DNS port are collected from AdGuard Home's `/control/status` contract. Incomplete observations and legacy snapshots are rejected before import so an invalid node override cannot be published.
 - A revision becomes active only after every target verifies by read-back.
 - Durable deduplicated drift events support Manual, Alert, and Enforce policies; Enforce queues the same verified targeted deployment. Maintenance suppresses mutation.
 - The React UI provides desired-state editing, validation, revision actions, deployment progress/history, reconciliation policy, and drift restore/adopt/maintenance actions.

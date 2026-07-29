@@ -175,7 +175,7 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
   async function importSnapshot(snapshot: ConfigurationSnapshot) {
     if (
       !window.confirm(
-        `Import the reviewed snapshot from ${nodeNames.get(snapshot.nodeId) ?? "this node"} into the cluster draft? This does not publish, deploy, or change any node.`,
+        `Import the reviewed snapshot from ${nodeNames.get(snapshot.nodeId) ?? "this node"} into the cluster draft? This replaces the draft's shared values with this snapshot and updates this node's listener override. It does not publish, deploy, or change any node.`,
       )
     )
       return;
@@ -188,6 +188,7 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
           draft?.version ?? 0,
         ),
       );
+      setIssues([]);
       setError(undefined);
     } catch (caught) {
       setError(caught);
@@ -378,7 +379,7 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
                 <ul>
                   {issues.map((issue) => (
                     <li key={`${issue.field}-${issue.message}`}>
-                      <code>{issue.field}</code>: {issue.message}
+                      {formatValidationIssue(issue, nodeNames)}
                     </li>
                   ))}
                 </ul>
@@ -700,6 +701,32 @@ export function normaliseDraft(
   draft: ConfigurationDraft | null | undefined,
 ): ConfigurationDraft | undefined {
   return draft ?? undefined;
+}
+
+export function formatValidationIssue(
+  issue: ValidationIssue,
+  nodeNames: ReadonlyMap<string, string>,
+): string {
+  const match = /^nodeOverrides\.([^.]+)(?:\.(.+))?$/.exec(issue.field);
+  if (!match) return `${issue.field}: ${issue.message}`;
+
+  const nodeID = match[1];
+  if (nodeID === undefined) return `${issue.field}: ${issue.message}`;
+  const nodeName = nodeNames.get(nodeID) ?? nodeID;
+  const field = match[2];
+  if (
+    field === undefined &&
+    issue.message === "is required for every enabled node"
+  ) {
+    return `${nodeName}: listener override is missing. Refresh and import this node's latest successful snapshot, then review the shared draft again.`;
+  }
+  if (field === "dnsPort" && issue.message === "must be between 1 and 65535") {
+    return `${nodeName}: DNS port is missing or invalid. Refresh and import this node's latest successful snapshot, then review the shared draft again.`;
+  }
+  if (field?.startsWith("bindHosts")) {
+    return `${nodeName}: DNS bind addresses are missing or invalid. Refresh and import this node's latest successful snapshot, then review the shared draft again.`;
+  }
+  return `${nodeName}: ${issue.message}`;
 }
 
 function formatValue(value: unknown): string {

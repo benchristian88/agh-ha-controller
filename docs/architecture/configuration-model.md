@@ -62,6 +62,8 @@ nodeOverrides:
 
 Release 0.2 froze the per-node observed `Document` shape. Release 0.3 adds a distinct authoritative `DesiredDocument`: shared DNS/filtering values, `nodeOverrides`, and explicit unsupported areas. Observed-only product version never enters desired state. Schema v1 manages DNS upstream, bootstrap, fallback, and private reverse resolvers plus filtering enablement, interval, blocklist subscription URLs, and custom rules. Bind hosts and DNS port are required node overrides but are verification-only because AdGuard Home exposes no supported writer for them. TLS, DHCP, clients, rewrites, services, and whitelist subscriptions remain outside managed schema v1.
 
+The AdGuard adapter reads bind addresses and DNS port from `/control/status` (`dns_addresses` and `dns_port`). `/control/dns_info` supplies the shared DNS parameters and does not own listener identity. An observation with an absent, out-of-range, or malformed listener identity fails, and imports defensively reject older incomplete snapshots.
+
 ## Revision lifecycle
 
 - Draft: mutable operator workspace.

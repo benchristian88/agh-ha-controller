@@ -174,6 +174,9 @@ func (s *Service) Import(ctx context.Context, actor domain.Actor, clusterID, sna
 	if snapshot.Document == nil {
 		return Draft{}, domain.Validation("snapshotId", "failed snapshots cannot be imported")
 	}
+	if issues := configuration.ValidateNodeSpecific("nodeSpecific", snapshot.Document.NodeSpecific); len(issues) > 0 {
+		return Draft{}, domain.Validation("snapshotId", "listener identity is incomplete; refresh the node and import its latest successful snapshot")
+	}
 	id, err := domain.NewID()
 	if err != nil {
 		return Draft{}, err

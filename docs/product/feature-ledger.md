@@ -50,6 +50,7 @@ Operator validation completed on 30 July 2026 for Releases 0.2, 0.2.1, and 0.2.2
 | Feature | Status | Implementation and evidence | Remaining release validation |
 |---|---|---|---|
 | Authoritative desired draft | Implemented | Separate schema-v1 `DesiredDocument`, shared policy plus UUID-keyed node overrides, optimistic save/validation, migrated 0.2 imports | PostgreSQL upgrade test in an environment with `TEST_DATABASE_URL` |
+| Listener identity inventory | Implemented; 0.3.0 regression fixed | `/control/status` `dns_addresses`/`dns_port` mapping, invalid-observation failure, incomplete legacy-import rejection, supported-version contract fixtures, named UI recovery guidance | Reference-node refresh/re-import smoke test |
 | Immutable revisions | Implemented | Numbered per-cluster revisions, canonical hashes, summaries, base revision, list/detail/semantic comparison API and UI | Real PostgreSQL integration workflow |
 | Safe sequential deployment | Implemented | Durable deployment/tasks, full-target preflight, stop-on-first-failure, safe cancellation, restart interruption, per-node safe result | Stateful two-node integration test added; reference-node run pending |
 | AdGuard configuration writer | Implemented; schema-v1 narrow | Supported DNS/filtering HTTP endpoints, Basic auth/TLS reuse, blocklist reconciliation, whitelist preservation, safe error mapping; loopback contract passes | Real supported-version write check |

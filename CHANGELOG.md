@@ -6,6 +6,11 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ## Unreleased
 
+### Fixed
+
+- Read node listener addresses and DNS port from AdGuard Home's `/control/status` contract during configuration inventory. The initial 0.3.0 adapter incorrectly expected those fields from `/control/dns_info`, causing imported drafts to contain empty listener overrides.
+- Reject incomplete legacy snapshots at import and show node names with refresh/re-import guidance instead of opaque `nodeOverrides.<uuid>` validation messages.
+
 ## 0.3.0 - 2026-07-30
 
 ### Added

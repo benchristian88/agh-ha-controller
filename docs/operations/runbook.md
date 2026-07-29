@@ -135,3 +135,5 @@ The 29 July 2026 production validation completed both Docker and systemd install
 5. Under Manual or Alert, confirm no automatic mutation. Under Enforce, confirm a reconciliation deployment restores the value and a later observation resolves the event.
 6. Put a node in maintenance and confirm it is excluded from deployment/reconciliation targets. Remove maintenance and revalidate before deploying.
 7. Publish a second revision, then use Rollback on the first. Confirm rollback creates a new deployment record and does not modify either revision.
+
+If validation reports a missing/invalid DNS port or bind address after upgrading from the initial 0.3.0 build, refresh that node and import its new successful snapshot. Repeat for every enabled node named by validation; pre-fix snapshots did not collect listener identity from the correct AdGuard Home endpoint. Because import replaces shared draft values with the selected snapshot, review and reapply the intended shared edits after the final recovery import.

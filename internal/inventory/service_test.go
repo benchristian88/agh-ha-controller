@@ -87,7 +87,7 @@ func TestImportRequiresConfirmationAndCreatesOnlyDraft(t *testing.T) {
 	clusterID := "11111111-1111-4111-8111-111111111111"
 	nodeID := "22222222-2222-4222-8222-222222222222"
 	snapshotID := "33333333-3333-4333-8333-333333333333"
-	document := configuration.Document{SchemaVersion: 1}
+	document := configuration.Document{SchemaVersion: 1, NodeSpecific: configuration.NodeSpecific{BindHosts: []string{"192.0.2.10"}, DNSPort: 53}}
 	repo := &fakeRepository{snapshot: Snapshot{ID: snapshotID, NodeID: nodeID, Document: &document, CanonicalHash: "hash", CollectionStatus: "succeeded"}, node: domain.Node{ID: nodeID, ClusterID: clusterID}}
 	service := NewService(repo, unusedCredentials{}, unusedReader{})
 	actor := domain.Actor{UserID: "44444444-4444-4444-8444-444444444444", RequestID: "55555555-5555-4555-8555-555555555555"}
@@ -98,7 +98,24 @@ func TestImportRequiresConfirmationAndCreatesOnlyDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !repo.imported || draft.Version != 1 || draft.SourceSnapshotID != snapshotID || draft.Document.NodeOverrides[nodeID].DNSPort != 0 {
+	if !repo.imported || draft.Version != 1 || draft.SourceSnapshotID != snapshotID || draft.Document.NodeOverrides[nodeID].DNSPort != 53 {
 		t.Fatalf("unexpected draft: %#v", draft)
+	}
+}
+
+func TestImportRejectsSnapshotWithoutListenerIdentity(t *testing.T) {
+	clusterID := "11111111-1111-4111-8111-111111111111"
+	nodeID := "22222222-2222-4222-8222-222222222222"
+	snapshotID := "33333333-3333-4333-8333-333333333333"
+	document := configuration.Document{SchemaVersion: 1}
+	repo := &fakeRepository{snapshot: Snapshot{ID: snapshotID, NodeID: nodeID, Document: &document, CanonicalHash: "hash", CollectionStatus: "succeeded"}, node: domain.Node{ID: nodeID, ClusterID: clusterID}}
+	service := NewService(repo, unusedCredentials{}, unusedReader{})
+	actor := domain.Actor{UserID: "44444444-4444-4444-8444-444444444444", RequestID: "55555555-5555-4555-8555-555555555555"}
+
+	if _, err := service.Import(context.Background(), actor, clusterID, snapshotID, 0, true); err == nil {
+		t.Fatal("snapshot without listener identity was imported")
+	}
+	if repo.imported {
+		t.Fatal("invalid snapshot changed the draft")
 	}
 }

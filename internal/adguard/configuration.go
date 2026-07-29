@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 
@@ -28,8 +29,6 @@ type dnsInfoResponse struct {
 	BootstrapDNS      []string `json:"bootstrap_dns"`
 	FallbackDNS       []string `json:"fallback_dns"`
 	PrivateReverseDNS []string `json:"local_ptr_upstreams"`
-	BindHosts         []string `json:"bind_hosts"`
-	Port              int      `json:"port"`
 }
 
 type filterStatusResponse struct {
@@ -51,6 +50,15 @@ func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request dom
 		profile.Warnings = append(profile.Warnings, "This AdGuard Home version is outside the tested configuration inventory range.")
 		return configuration.Document{}, profile, domain.NewError(domain.ErrorNodeResponse, "the node version is not supported for configuration inventory")
 	}
+	var status statusResponse
+	if err := r.get(ctx, request, "/control/status", &status); err != nil {
+		profile.Warnings = append(profile.Warnings, "DNS listener configuration could not be read.")
+		return configuration.Document{}, profile, err
+	}
+	if err := validateListenerStatus(status); err != nil {
+		profile.Warnings = append(profile.Warnings, "DNS listener configuration could not be read.")
+		return configuration.Document{}, profile, err
+	}
 	var dns dnsInfoResponse
 	if err := r.get(ctx, request, "/control/dns_info", &dns); err != nil {
 		profile.Warnings = append(profile.Warnings, "DNS configuration could not be read.")
@@ -63,11 +71,23 @@ func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request dom
 		return configuration.Document{}, profile, err
 	}
 	profile.Features["filtering"] = true
-	document := configurationDocument(version, dns, filtering)
+	document := configurationDocument(version, status, dns, filtering)
 	return configuration.Canonicalise(document), profile, nil
 }
 
-func configurationDocument(version string, dns dnsInfoResponse, filtering filterStatusResponse) configuration.Document {
+func validateListenerStatus(status statusResponse) error {
+	if status.DNSPort < 1 || status.DNSPort > 65535 || len(status.DNSAddresses) == 0 {
+		return domain.NewError(domain.ErrorNodeResponse, "the node returned an invalid DNS listener configuration")
+	}
+	for _, address := range status.DNSAddresses {
+		if _, err := netip.ParseAddr(strings.TrimSpace(address)); err != nil {
+			return domain.NewError(domain.ErrorNodeResponse, "the node returned an invalid DNS listener configuration")
+		}
+	}
+	return nil
+}
+
+func configurationDocument(version string, status statusResponse, dns dnsInfoResponse, filtering filterStatusResponse) configuration.Document {
 	filterURLs := make([]string, 0, len(filtering.Filters))
 	for _, filter := range filtering.Filters {
 		if filter.Enabled && !filter.Whitelist {
@@ -83,7 +103,7 @@ func configurationDocument(version string, dns dnsInfoResponse, filtering filter
 	return configuration.Document{
 		SchemaVersion: configuration.SchemaVersion,
 		Shared:        configuration.Shared{DNS: configuration.DNS{UpstreamDNS: dns.UpstreamDNS, BootstrapDNS: dns.BootstrapDNS, FallbackDNS: dns.FallbackDNS, PrivateReverseDNS: dns.PrivateReverseDNS}, Filtering: configuration.Filtering{Enabled: enabled, UpdateInterval: filtering.Interval, FilterURLs: filterURLs, UserRules: filtering.UserRules}},
-		NodeSpecific:  configuration.NodeSpecific{BindHosts: dns.BindHosts, DNSPort: dns.Port},
+		NodeSpecific:  configuration.NodeSpecific{BindHosts: status.DNSAddresses, DNSPort: status.DNSPort},
 		ObservedOnly:  configuration.ObservedOnly{ProductVersion: version},
 		Unsupported:   []configuration.Unsupported{{Section: "services", Reason: "blocked services and safety services are scheduled for release 0.4"}, {Section: "tls_dhcp", Reason: "TLS and DHCP inventory are scheduled for release 0.4"}},
 	}
