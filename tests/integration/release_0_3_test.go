@@ -122,6 +122,13 @@ func TestRelease03AuthoritativeConfigurationWorkflow(t *testing.T) {
 		}
 	}
 	service := controlplane.NewService(store)
+	// Exercise the operator's initial workflow exactly: import every node, edit
+	// shared desired state, and save before any revision is published or active.
+	draft.Document.Shared.DNS.UpstreamDNS = []string{"9.9.9.9", "149.112.112.112"}
+	draft, issues, err := service.UpdateDraft(ctx, domain.Actor{UserID: setup.User.ID, RequestID: mustID(t)}, cluster.ID, draft.Version, draft.Document)
+	if err != nil || len(issues) != 0 {
+		t.Fatalf("update imported draft issues=%v error=%v", issues, err)
+	}
 	revisionOne, err := service.Publish(ctx, domain.Actor{UserID: setup.User.ID, RequestID: mustID(t)}, cluster.ID, "Initial authoritative DNS policy", draft.Version)
 	if err != nil {
 		t.Fatal(err)
@@ -161,7 +168,7 @@ func TestRelease03AuthoritativeConfigurationWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 	draft.Document.Shared.DNS.UpstreamDNS = []string{"1.1.1.1"}
-	draft, issues, err := service.UpdateDraft(ctx, domain.Actor{UserID: setup.User.ID, RequestID: mustID(t)}, cluster.ID, draft.Version, draft.Document)
+	draft, issues, err = service.UpdateDraft(ctx, domain.Actor{UserID: setup.User.ID, RequestID: mustID(t)}, cluster.ID, draft.Version, draft.Document)
 	if err != nil || len(issues) != 0 {
 		t.Fatalf("update second draft issues=%v error=%v", issues, err)
 	}

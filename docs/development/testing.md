@@ -35,7 +35,7 @@ Use real or containerised AdGuard Home versions for:
 
 `tests/integration/release_0_1_test.go` uses an isolated schema in real PostgreSQL. It verifies migration up/down/up, one-time first-admin setup, repeat-setup rejection, secure cookies, authenticated cluster creation, two-node onboarding, absence of credentials in responses, encrypted database storage, required audit actions, and controller/node process independence. `make test-integration` requires `TEST_DATABASE_URL`; ordinary `go test` runs skip this package only when that variable is absent.
 
-`tests/integration/release_0_3_test.go` uses the same isolated-schema harness and two stateful AdGuard HTTP fixtures. It proves immutable publication, two-node sequential apply/read-back convergence, active-revision selection, direct-change detection, Enforce restoration and resolution, a second revision, and deployment-based rollback. It is compiled in every Go test run and executes when `TEST_DATABASE_URL` is present.
+`tests/integration/release_0_3_test.go` uses the same isolated-schema harness and two stateful AdGuard HTTP fixtures. It proves multi-node import followed by a shared desired-state save, immutable publication while no revision is active, two-node sequential apply/read-back convergence, active-revision selection, direct-change detection, Enforce restoration and resolution, a second revision, and deployment-based rollback. It is compiled in every Go test run and executes when `TEST_DATABASE_URL` is present.
 
 ## Contract tests
 

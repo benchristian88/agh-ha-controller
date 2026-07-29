@@ -70,7 +70,7 @@ func (s *Store) PublishRevision(ctx context.Context, draft inventory.Draft, revi
 }
 
 func (s *Store) ListRevisions(ctx context.Context, clusterID string) ([]controlplane.Revision, error) {
-	rows, err := s.pool.Query(ctx, `SELECT r.id,r.cluster_id,r.revision_number,r.schema_version,r.document_json,r.canonical_hash,r.summary,r.created_by,r.created_at,(c.active_revision_id=r.id) FROM configuration_revisions r JOIN clusters c ON c.id=r.cluster_id WHERE r.cluster_id=$1 ORDER BY r.revision_number DESC`, clusterID)
+	rows, err := s.pool.Query(ctx, revisionSelect+` WHERE r.cluster_id=$1 ORDER BY r.revision_number DESC`, clusterID)
 	if err != nil {
 		return nil, fmt.Errorf("list revisions: %w", err)
 	}
@@ -87,9 +87,14 @@ func (s *Store) ListRevisions(ctx context.Context, clusterID string) ([]controlp
 }
 
 func (s *Store) RevisionByID(ctx context.Context, id string) (controlplane.Revision, error) {
-	item, err := scanRevision(s.pool.QueryRow(ctx, `SELECT r.id,r.cluster_id,r.revision_number,r.schema_version,r.document_json,r.canonical_hash,r.summary,r.created_by,r.created_at,(c.active_revision_id=r.id) FROM configuration_revisions r JOIN clusters c ON c.id=r.cluster_id WHERE r.id=$1`, id))
+	item, err := scanRevision(s.pool.QueryRow(ctx, revisionSelect+` WHERE r.id=$1`, id))
 	return item, mapDatabaseError(err, "configuration revision")
 }
+
+const revisionSelect = `SELECT r.id,r.cluster_id,r.revision_number,r.schema_version,
+	r.document_json,r.canonical_hash,r.summary,r.created_by,r.created_at,
+	COALESCE(c.active_revision_id=r.id,false)
+	FROM configuration_revisions r JOIN clusters c ON c.id=r.cluster_id`
 
 func scanRevision(row rowScanner) (controlplane.Revision, error) {
 	var item controlplane.Revision

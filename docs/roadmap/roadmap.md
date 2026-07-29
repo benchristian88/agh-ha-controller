@@ -194,6 +194,7 @@ Implemented:
 
 - Authoritative schema-v1 drafts remain distinct from observed documents and require one listener override per enabled node.
 - Publishing creates immutable numbered revisions; revision comparison is semantic and rollback deploys an existing historical revision.
+- Published revisions remain explicitly inactive until a deployment succeeds; PostgreSQL revision reads handle the cluster's initially null `active_revision_id` without an API/internal error.
 - PostgreSQL-backed deployments validate every target before the first mutation, run sequentially, stop after the first failure, preserve partial success, support safe-boundary cancellation, and record per-node verification snapshots.
 - Shared DNS resolver and filtering blocklist/rule settings use supported AdGuard Home HTTP endpoints. DNS listener values are preflight-only, whitelist filters are untouched, and node YAML is never edited.
 - Listener addresses and DNS port are collected from AdGuard Home's `/control/status` contract. Incomplete observations and legacy snapshots are rejected before import so an invalid node override cannot be published.

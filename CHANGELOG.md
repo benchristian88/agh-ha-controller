@@ -10,6 +10,7 @@ The project intends to follow Semantic Versioning once the first public release 
 
 - Read node listener addresses and DNS port from AdGuard Home's `/control/status` contract during configuration inventory. The initial 0.3.0 adapter incorrectly expected those fields from `/control/dns_info`, causing imported drafts to contain empty listener overrides.
 - Reject incomplete legacy snapshots at import and show node names with refresh/re-import guidance instead of opaque `nodeOverrides.<uuid>` validation messages.
+- Treat an unset cluster `active_revision_id` as `false` when loading revisions. PostgreSQL comparison with `NULL` previously caused an internal error while a published revision had not yet been activated and failed the Release 0.3 integration workflow before its first deployment.
 
 ## 0.3.0 - 2026-07-30
 
