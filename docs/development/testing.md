@@ -23,7 +23,7 @@ Release 0.4 adds frozen schema-v1 marshal/projection tests, schema-v2 validation
 
 Local validation on 30 July 2026 passed the full Go suite with race detection (`go test -race -count=1 ./...`), `go vet ./...`, the controller build, frontend TypeScript check, seven Vitest tests, Biome lint, the Vite production build, shell syntax validation, the production npm dependency audit with zero reported vulnerabilities, and `git diff --check`. The PostgreSQL cases compiled but skipped because `TEST_DATABASE_URL` was not available. Docker Compose configuration validation could not run because the Docker CLI is not installed in the validation workspace.
 
-On 31 July 2026, the non-secure-origin settings regression check passed with the full eight-test Vitest suite, TypeScript validation, Biome lint, and the Vite production build. The test removes `crypto.randomUUID` from the runtime and verifies that editor row keys remain unique, covering rewrites, persistent clients, and DHCP static leases without weakening the recommendation to serve the controller over HTTPS.
+On 31 July 2026, the non-secure-origin settings regression check passed with the full eight-test Vitest suite, TypeScript validation, Biome lint, and the Vite production build. The test removes `crypto.randomUUID` from the runtime and verifies that editor row keys remain unique, covering rewrites, persistent clients, and DHCP static leases without weakening the recommendation to serve the controller over HTTPS. Removal of the duplicate in-page settings navigation and placement of DHCP node headings inside their cards passed the same frontend gates; browser visual/accessibility smoke validation remains pending.
 
 ## Integration tests
 

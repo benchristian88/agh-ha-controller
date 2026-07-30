@@ -160,106 +160,76 @@ export function ManagedSettingsPage({
           </p>
         </div>
       ) : (
-        <div className="settings-layout">
-          <SettingsSubnav current={area} />
-          <div>
-            {capabilities.some(
-              (profile) =>
-                profile.schemaVersion === 2 &&
-                [
-                  "cache_toggle",
-                  "upstream_timeout",
-                  "filter_interval_arbitrary",
-                  "rewrite_toggle",
-                  "ignored_lists_toggle",
-                ].some((feature) => !profile.features[feature]),
-            ) && (
-              <div className="notice notice--info">
-                Some patch-level controls are unavailable on older schema-v2
-                nodes. You may retain their imported defaults; publication
-                preflight blocks only settings that require a missing
-                capability.
-              </div>
-            )}
-            {area === "dns" && <DNSForm draft={draft} setDraft={setDraft} />}
-            {area === "filters" && (
-              <FiltersForm
-                draft={draft}
-                setDraft={setDraft}
-                nodes={nodes}
-                busy={busy}
-                setBusy={setBusy}
-                setError={setError}
-                setMessage={setMessage}
-              />
-            )}
-            {area === "clients" && (
-              <ClientsForm draft={draft} setDraft={setDraft} />
-            )}
-            {area === "rewrites" && (
-              <RewritesForm draft={draft} setDraft={setDraft} />
-            )}
-            {area === "services" && (
-              <ServicesForm draft={draft} setDraft={setDraft} />
-            )}
-            {area === "privacy" && (
-              <PrivacyForm draft={draft} setDraft={setDraft} />
-            )}
-            {area === "infrastructure" && (
-              <InfrastructureForm
-                draft={draft}
-                setDraft={setDraft}
-                nodes={nodes}
-                snapshots={snapshots}
-              />
-            )}
-            {issues.length > 0 && (
-              <div className="notice notice--warning">
-                <strong>Validation needs attention</strong>
-                <ul>
-                  {issues.map((issue) => (
-                    <li key={`${issue.field}-${issue.message}`}>
-                      {issue.field}: {issue.message}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {message && (
-              <div className="notice notice--success" role="status">
-                {message}
-              </div>
-            )}
-          </div>
+        <div>
+          {capabilities.some(
+            (profile) =>
+              profile.schemaVersion === 2 &&
+              [
+                "cache_toggle",
+                "upstream_timeout",
+                "filter_interval_arbitrary",
+                "rewrite_toggle",
+                "ignored_lists_toggle",
+              ].some((feature) => !profile.features[feature]),
+          ) && (
+            <div className="notice notice--info">
+              Some patch-level controls are unavailable on older schema-v2
+              nodes. You may retain their imported defaults; publication
+              preflight blocks only settings that require a missing capability.
+            </div>
+          )}
+          {area === "dns" && <DNSForm draft={draft} setDraft={setDraft} />}
+          {area === "filters" && (
+            <FiltersForm
+              draft={draft}
+              setDraft={setDraft}
+              nodes={nodes}
+              busy={busy}
+              setBusy={setBusy}
+              setError={setError}
+              setMessage={setMessage}
+            />
+          )}
+          {area === "clients" && (
+            <ClientsForm draft={draft} setDraft={setDraft} />
+          )}
+          {area === "rewrites" && (
+            <RewritesForm draft={draft} setDraft={setDraft} />
+          )}
+          {area === "services" && (
+            <ServicesForm draft={draft} setDraft={setDraft} />
+          )}
+          {area === "privacy" && (
+            <PrivacyForm draft={draft} setDraft={setDraft} />
+          )}
+          {area === "infrastructure" && (
+            <InfrastructureForm
+              draft={draft}
+              setDraft={setDraft}
+              nodes={nodes}
+              snapshots={snapshots}
+            />
+          )}
+          {issues.length > 0 && (
+            <div className="notice notice--warning">
+              <strong>Validation needs attention</strong>
+              <ul>
+                {issues.map((issue) => (
+                  <li key={`${issue.field}-${issue.message}`}>
+                    {issue.field}: {issue.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {message && (
+            <div className="notice notice--success" role="status">
+              {message}
+            </div>
+          )}
         </div>
       )}
     </>
-  );
-}
-
-function SettingsSubnav({ current }: { current: SettingsArea }) {
-  const links: [SettingsArea, string, string][] = [
-    ["dns", "DNS", "/settings/dns"],
-    ["filters", "Filters", "/settings/filters"],
-    ["clients", "Clients", "/settings/clients"],
-    ["rewrites", "Rewrites", "/settings/rewrites"],
-    ["services", "Services & safety", "/settings/services"],
-    ["privacy", "Logs & statistics", "/settings/privacy"],
-    ["infrastructure", "TLS & DHCP", "/settings/infrastructure"],
-  ];
-  return (
-    <nav className="settings-subnav" aria-label="AdGuard Home settings">
-      {links.map(([area, label, href]) => (
-        <a
-          key={area}
-          href={href}
-          aria-current={current === area ? "page" : undefined}
-          className={current === area ? "settings-subnav__current" : ""}
-        >
-          {label}
-        </a>
-      ))}
-    </nav>
   );
 }
 
@@ -1161,8 +1131,8 @@ function InfrastructureForm({
               const dhcp = current?.dhcp;
               if (!dhcp)
                 return (
-                  <article className="card" key={node.id}>
-                    <h3>{node.name}</h3>
+                  <article className="card dhcp-node-card" key={node.id}>
+                    <h3 className="dhcp-node-card__title">{node.name}</h3>
                     <p className="muted">
                       DHCP is unavailable or has not been observed. Refresh and
                       import this node before managing it.
@@ -1172,8 +1142,11 @@ function InfrastructureForm({
               const update = (patch: Partial<DhcpConfiguration>) =>
                 setDhcp(node.id, { ...dhcp, ...patch });
               return (
-                <fieldset className="card" key={node.id}>
-                  <legend>{node.name}</legend>
+                <fieldset className="card dhcp-node-card" key={node.id}>
+                  <legend className="visually-hidden">
+                    {node.name} DHCP settings
+                  </legend>
+                  <h3 className="dhcp-node-card__title">{node.name}</h3>
                   <div className="form-grid">
                     <Check
                       label="Designated active DHCP node"

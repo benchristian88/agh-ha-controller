@@ -20,6 +20,7 @@ The project intends to follow Semantic Versioning once the first public release 
 
 - Default controller, image, installer, and web version is 0.4.0.
 - Release 0.3, including Docker and systemd installation and functional validation, is recorded as complete.
+- Use the primary application sidebar as the sole settings navigation and place larger DHCP node headings inside their corresponding configuration cards.
 
 ### Fixed
 
