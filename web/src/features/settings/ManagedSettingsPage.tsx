@@ -631,7 +631,10 @@ function ClientsForm({ draft, setDraft }: DraftProps) {
             );
           return (
             <fieldset className="card" key={clientKeys[index]}>
-              <legend>Client {index + 1}</legend>
+              <legend className="visually-hidden">
+                Client {index + 1} settings
+              </legend>
+              <h3 className="form-card__title">Client {index + 1}</h3>
               <div className="form-grid">
                 <label>
                   Name
@@ -1132,7 +1135,7 @@ function InfrastructureForm({
               if (!dhcp)
                 return (
                   <article className="card dhcp-node-card" key={node.id}>
-                    <h3 className="dhcp-node-card__title">{node.name}</h3>
+                    <h3 className="form-card__title">{node.name}</h3>
                     <p className="muted">
                       DHCP is unavailable or has not been observed. Refresh and
                       import this node before managing it.
@@ -1146,7 +1149,7 @@ function InfrastructureForm({
                   <legend className="visually-hidden">
                     {node.name} DHCP settings
                   </legend>
-                  <h3 className="dhcp-node-card__title">{node.name}</h3>
+                  <h3 className="form-card__title">{node.name}</h3>
                   <div className="form-grid">
                     <Check
                       label="Designated active DHCP node"
@@ -1364,7 +1367,8 @@ function ScheduleEditor({
   };
   return (
     <fieldset className="schedule-editor">
-      <legend>{label}</legend>
+      <legend className="visually-hidden">{label}</legend>
+      <h3 className="schedule-editor__title">{label}</h3>
       <label>
         IANA time zone (or Local)
         <input
