@@ -1,6 +1,6 @@
 # Controller API
 
-## Release 0.3 contract
+## Release 0.4 contract
 
 The controller serves its browser UI and JSON API from the same origin. JSON routes are versioned under:
 
@@ -72,6 +72,7 @@ GET    /api/v1/nodes/{nodeId}
 PATCH  /api/v1/nodes/{nodeId}
 DELETE /api/v1/nodes/{nodeId}
 POST   /api/v1/nodes/{nodeId}/test-connection
+POST   /api/v1/nodes/{nodeId}/filter-refresh
 ```
 
 Create and update use:
@@ -112,11 +113,13 @@ PUT  /api/v1/clusters/{clusterId}/configuration-draft
 POST /api/v1/clusters/{clusterId}/configuration-draft/validate
 ```
 
-Observation performs bounded, authenticated GET requests only and stores either an immutable canonical schema-v1 snapshot or an immutable failed attempt with a safe error code. Inventory returns the latest attempt for each node, current capability profiles, and the optional cluster draft. The `draft` member is omitted when no draft exists; 0.2.1 also tolerates the `draft: null` value returned by the original 0.2.0 handler. Comparison returns `equal` plus differences grouped by section, field, and `shared_managed`, `node_specific_managed`, `observed_only`, or `unsupported` scope.
+Observation performs bounded, authenticated GET requests and stores either an immutable canonical schema-v1/v2 snapshot or an immutable failed attempt with a safe error code. v0.107.52 remains schema v1; v0.107.53–v0.107.78 use schema v2, while newer unverified contracts report unknown compatibility. Inventory returns the latest attempt for each node, current capability profiles, current schema version, and the optional cluster draft. The `draft` member is omitted when no draft exists. Comparison returns `equal` plus differences grouped by section, field, and `shared_managed`, `node_specific_managed`, `observed_only`, or `unsupported` scope.
 
 Import accepts `snapshotId`, `expectedVersion`, and `confirmed: true`. It rejects failed snapshots, cross-cluster snapshots, missing confirmation, and stale draft versions. The transaction updates the draft and writes `configuration.draft_imported`. It never publishes or deploys configuration.
 
-Draft update accepts `expectedVersion` and a complete schema-v1 desired `document`. It saves canonical mutable intent and returns validation issues. Schema-version mismatch is rejected. Validation returns the same fleet capability/listener preflight used by publication and deployment.
+Draft update accepts `expectedVersion` and a complete schema-v2 desired `document`. It saves canonical mutable intent and returns validation issues. Frozen schema-v1 drafts must be refreshed/imported before editing or publication; historical v1 revisions remain deployable and reconcilable. Validation returns the same fleet feature/listener/DHCP preflight used by publication and deployment.
+
+`POST /api/v1/nodes/{nodeId}/filter-refresh` accepts `{ "whitelist": false }` (or true), requires an enabled node outside maintenance, and returns the node/list type with `status: "succeeded"`. The controller records `filters.refresh_requested` before the node call and exactly one `filters.refresh_succeeded` or `filters.refresh_failed` terminal event. Fleet fan-out is performed by the UI so partial node outcomes remain explicit.
 
 ## Revision, deployment, and drift routes
 

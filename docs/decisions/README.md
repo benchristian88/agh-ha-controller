@@ -28,3 +28,4 @@ Architecture Decision Records capture durable decisions and their rationale.
 | [ADR-0022](ADR-0022-support-git-based-systemd-and-docker-compose-installation-in-0-1-1.md) | Accepted | Support git-based systemd and Docker Compose installation in 0.1.1 |
 | [ADR-0023](ADR-0023-freeze-release-0-2-read-only-configuration-inventory.md) | Accepted | Freeze Release 0.2 as a read-only configuration inventory |
 | [ADR-0024](ADR-0024-release-0-3-authoritative-deployment-and-reconciliation-boundary.md) | Accepted | Define the Release 0.3 authoritative deployment and reconciliation boundary |
+| [ADR-0025](ADR-0025-version-configuration-schema-and-guard-dhcp-handoffs.md) | Accepted | Version broader configuration and guard DHCP handoffs |

@@ -14,6 +14,10 @@ The dashboard does not render zero-value traffic charts before telemetry exists.
 
 Release 0.3 implements the configuration authoring form, immutable revision history/actions, reconciliation-policy selector, deployment timeline with per-node outcomes and safe cancellation, and structured drift restore/adopt/maintenance actions. The screens poll durable deployment state every three seconds and preserve explicit loading, empty, error, partial-success, and maintenance states.
 
+## Release 0.4 implementation
+
+Routine AdGuard settings use nested, bookmarkable `/settings/*` pages instead of overloading the HA Configuration page. Every page loads and saves the same typed schema-v2 draft and directs publication/deployment back to Configuration. Forms cover DNS, filter/allowlist authoring and partial-result refresh, persistent clients, rewrites, blocked-service schedules, safety/Safe Search, human-readable retention days, redacted TLS cards, and per-node DHCP/static leases. Patch-level capability notices explain when cache/timeout/filter/rewrite/ignore controls must retain an older node's imported defaults. Selecting an active DHCP node disables other draft overrides in the browser; server validation remains authoritative. Schema-v1 drafts show upgrade/import guidance rather than editable v2 controls.
+
 ## Release 0.2 implementation
 
 `/ha/configuration` provides a read-only inventory for the selected cluster. It models initial loading, empty clusters, collection failures, compatibility warnings, successful semantic equality, detailed section/scope differences, and optimistic import conflicts. Import confirmation explicitly states that no node is changed and that the resulting draft is neither published nor deployable.

@@ -7,6 +7,10 @@ import { ConfigurationPage } from "./features/configuration/ConfigurationPage";
 import { ControlPlanePage } from "./features/controlplane/ControlPlanePage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { NodesPage } from "./features/nodes/NodesPage";
+import {
+  ManagedSettingsPage,
+  type SettingsArea,
+} from "./features/settings/ManagedSettingsPage";
 import { ApiError, api } from "./lib/api";
 import type { Cluster, User } from "./lib/types";
 
@@ -151,7 +155,23 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
   else if (path === "/ha/deployments")
     content = <ControlPlanePage cluster={selected} />;
   else if (path === "/system/audit") content = <AuditPage />;
-  else content = <DashboardPage cluster={selected} />;
+  else if (path.startsWith("/settings/")) {
+    const areaByPath: Record<string, SettingsArea> = {
+      "/settings/dns": "dns",
+      "/settings/filters": "filters",
+      "/settings/clients": "clients",
+      "/settings/rewrites": "rewrites",
+      "/settings/services": "services",
+      "/settings/privacy": "privacy",
+      "/settings/infrastructure": "infrastructure",
+    };
+    content = (
+      <ManagedSettingsPage
+        cluster={selected}
+        area={areaByPath[path] ?? "dns"}
+      />
+    );
+  } else content = <DashboardPage cluster={selected} />;
 
   return (
     <div className="app-shell">
@@ -167,6 +187,46 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
           <p className="nav-label">Overview</p>
           <NavLink href="/" current={path === "/"}>
             Dashboard
+          </NavLink>
+          <p className="nav-label">AdGuard Home</p>
+          <NavLink href="/settings/dns" current={path === "/settings/dns"}>
+            DNS settings
+          </NavLink>
+          <NavLink
+            href="/settings/filters"
+            current={path === "/settings/filters"}
+          >
+            Filters
+          </NavLink>
+          <NavLink
+            href="/settings/clients"
+            current={path === "/settings/clients"}
+          >
+            Clients
+          </NavLink>
+          <NavLink
+            href="/settings/rewrites"
+            current={path === "/settings/rewrites"}
+          >
+            DNS rewrites
+          </NavLink>
+          <NavLink
+            href="/settings/services"
+            current={path === "/settings/services"}
+          >
+            Services &amp; safety
+          </NavLink>
+          <NavLink
+            href="/settings/privacy"
+            current={path === "/settings/privacy"}
+          >
+            Logs &amp; statistics
+          </NavLink>
+          <NavLink
+            href="/settings/infrastructure"
+            current={path === "/settings/infrastructure"}
+          >
+            TLS &amp; DHCP
           </NavLink>
           <p className="nav-label">HA management</p>
           <NavLink href="/ha/nodes" current={path === "/ha/nodes"}>

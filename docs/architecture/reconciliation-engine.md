@@ -71,6 +71,12 @@ The controller process runs a periodic evaluator and a separate durable deployme
 
 Deployment claims use PostgreSQL `FOR UPDATE SKIP LOCKED`, and a partial unique index permits only one queued/active deployment per cluster. Drift evaluation skips clusters with active work so it cannot queue the prior active revision during a rollout. Per-node execution is sequential. Cancellation is honored only between node tasks. Startup converts validating/running/cancelling deployments to `interrupted`; it does not replay an unknown mutation. A failed Enforce attempt becomes eligible for a fresh attempt after a later observation. Immediate blind retries inside a possibly partial filter mutation are deliberately deferred.
 
+## Release 0.4 schema and DHCP behavior
+
+Current observations are projected to the active revision's schema before comparison. Convergence and drift use only `shared_managed` and `node_specific_managed` differences; redacted TLS status, dynamic leases, product version, and unsupported-capability explanations cannot create drift. Schema-v1 revisions therefore continue to verify and reconcile after the adapter begins collecting schema v2.
+
+Schema-v2 preview requires every managed feature to have been successfully observed on every target. DHCP configuration is node-managed and may be enabled on at most one override. Full-cluster deployments sort disabled DHCP targets before the enabled target. Targeted Enforce deployments retain the desired node's effective DHCP state and all normal preflight/read-back rules.
+
 ## Safe application order
 
 Where API capabilities allow, prefer:

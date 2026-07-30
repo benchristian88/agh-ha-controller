@@ -89,17 +89,169 @@ export interface ConfigurationDocument {
       bootstrapDns: string[];
       fallbackDns: string[];
       privateReverseDns: string[];
+      protectionEnabled: boolean;
+      rateLimit: number;
+      rateLimitSubnetLengthIpv4: number;
+      rateLimitSubnetLengthIpv6: number;
+      rateLimitAllowlist: string[];
+      blockingMode:
+        | ""
+        | "default"
+        | "refused"
+        | "nxdomain"
+        | "null_ip"
+        | "custom_ip";
+      blockingIpv4: string;
+      blockingIpv6: string;
+      blockedResponseTtl: number;
+      ednsClientSubnet: boolean;
+      ednsUseCustom: boolean;
+      ednsCustomIp: string;
+      disableIpv6: boolean;
+      dnssecEnabled: boolean;
+      cacheSize: number;
+      cacheEnabled: boolean;
+      cacheTtlMin: number;
+      cacheTtlMax: number;
+      cacheOptimistic: boolean;
+      upstreamMode: "" | "load_balance" | "fastest_addr" | "parallel";
+      usePrivateReverseResolvers: boolean;
+      resolveClients: boolean;
+      upstreamTimeoutSeconds: number;
     };
     filtering: {
       enabled: boolean;
       updateIntervalHours: number;
       filterUrls: string[];
+      whitelistUrls: string[];
       userRules: string[];
     };
+    clients: PersistentClient[];
+    rewritesEnabled: boolean;
+    rewrites: Rewrite[];
+    services: ServicesConfiguration;
+    queryLog: QueryLogPolicy;
+    statistics: StatisticsPolicy;
   };
-  nodeSpecific: { bindHosts: string[]; dnsPort: number };
-  observedOnly: { productVersion: string };
+  nodeSpecific: NodeSpecificConfiguration;
+  observedOnly: {
+    productVersion: string;
+    tls: TlsStatus;
+    dhcpLeases: DhcpLease[];
+  };
   unsupported: { section: string; reason: string }[];
+}
+
+export interface SafeSearchConfiguration {
+  enabled: boolean;
+  bing: boolean;
+  duckDuckGo: boolean;
+  ecosia: boolean;
+  google: boolean;
+  pixabay: boolean;
+  yandex: boolean;
+  youTube: boolean;
+}
+
+export interface PersistentClient {
+  name: string;
+  ids: string[];
+  useGlobalSettings: boolean;
+  filteringEnabled: boolean;
+  parentalEnabled: boolean;
+  safeBrowsingEnabled: boolean;
+  safeSearch: SafeSearchConfiguration;
+  useGlobalBlockedServices: boolean;
+  blockedServices: string[];
+  blockedServicesSchedule: Schedule;
+  upstreams: string[];
+  upstreamsCacheEnabled: boolean;
+  upstreamsCacheSize: number;
+  tags: string[];
+  ignoreQueryLog: boolean;
+  ignoreStatistics: boolean;
+}
+
+export interface Rewrite {
+  domain: string;
+  answer: string;
+  enabled: boolean;
+}
+export interface DayRange {
+  start: number;
+  end: number;
+}
+export interface Schedule {
+  timeZone: string;
+  days: Record<string, DayRange>;
+}
+export interface ServicesConfiguration {
+  blockedServiceIds: string[];
+  blockedSchedule: Schedule;
+  safeBrowsing: boolean;
+  parentalControl: boolean;
+  safeSearch: SafeSearchConfiguration;
+}
+export interface QueryLogPolicy {
+  enabled: boolean;
+  intervalMillis: number;
+  anonymizeClientIp: boolean;
+  ignored: string[];
+  ignoredEnabled: boolean;
+}
+export interface StatisticsPolicy {
+  enabled: boolean;
+  intervalMillis: number;
+  ignored: string[];
+  ignoredEnabled: boolean;
+}
+export interface DhcpStaticLease {
+  mac: string;
+  ip: string;
+  hostname: string;
+}
+export interface DhcpConfiguration {
+  enabled: boolean;
+  interfaceName: string;
+  ipv4: {
+    gateway: string;
+    subnetMask: string;
+    rangeStart: string;
+    rangeEnd: string;
+    leaseDurationSeconds: number;
+  };
+  ipv6: { rangeStart: string; leaseDurationSeconds: number };
+  staticLeases: DhcpStaticLease[];
+}
+export interface NodeSpecificConfiguration {
+  bindHosts: string[];
+  dnsPort: number;
+  dhcp?: DhcpConfiguration;
+}
+export interface DhcpLease {
+  mac: string;
+  ip: string;
+  hostname: string;
+  expiresAt: string;
+}
+export interface TlsStatus {
+  enabled: boolean;
+  serverName: string;
+  forceHttps: boolean;
+  httpsPort: number;
+  dnsOverTlsPort: number;
+  dnsOverQuicPort: number;
+  servePlainDns: boolean;
+  validCertificate: boolean;
+  validChain: boolean;
+  validKey: boolean;
+  validPair: boolean;
+  subject?: string;
+  issuer?: string;
+  notBefore?: string;
+  notAfter?: string;
+  dnsNames?: string[];
+  warning?: string;
 }
 
 export interface ConfigurationSnapshot {

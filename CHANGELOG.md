@@ -4,7 +4,30 @@ All notable changes to AGH HA Controller will be documented in this file.
 
 The project intends to follow Semantic Versioning once the first public release is made.
 
-## Unreleased
+## 0.4.0 - Unreleased
+
+### Added
+
+- Canonical configuration schema v2 covering broader DNS behavior, blocklists and allowlists, persistent clients, DNS rewrites, blocked-service schedules, safety services, Safe Search, query-log policy, statistics policy, redacted TLS inventory, and node-specific DHCP configuration/static leases.
+- Version-aware schema projection so AdGuard Home v0.107.52 and immutable schema-v1 revisions remain observable and deployable while schema v2 supports the current v0.107.53–v0.107.78 contract.
+- Patch-level capability handling for upstream timeout, cache enablement, rewrite enablement, ignored-list activation, and v0.107.78 filter intervals; newer unreviewed contracts are reported as unknown.
+- Capability-gated, sequential deployment of schema-v2 settings with managed-field read-back verification and safe single-active-node DHCP handoff ordering.
+- Audited per-node blocklist and allowlist refresh API and partial-result UI workflow.
+- AdGuard Home-style nested settings navigation and responsive forms for DNS, filters, clients, rewrites, services and safety, log/statistics policy, TLS inventory, and DHCP.
+- Migration `000004_release_0_4` and ADR-0025.
+
+### Changed
+
+- Default controller, image, installer, and web version is 0.4.0.
+- Release 0.3, including Docker and systemd installation and functional validation, is recorded as complete.
+
+### Deferred
+
+- TLS certificate/key mutation remains excluded until controller-managed secret references exist.
+- Central statistics ingestion and combined query-log ingestion remain Releases 0.5 and 0.6.
+- Field-level drift ignore, parallel deployment, automatic partial recovery, and controller high availability retain their later roadmap positions.
+
+## 0.3.2 - 2026-07-30
 
 ### Fixed
 

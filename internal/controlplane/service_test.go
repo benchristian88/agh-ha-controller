@@ -69,3 +69,13 @@ func TestUpdateDraftAfterMultiNodeImport(t *testing.T) {
 		t.Fatalf("saved upstreams = %#v", got)
 	}
 }
+
+func TestManagedDifferencesIgnoreObservedCompatibilityMetadata(t *testing.T) {
+	desired := configuration.Document{SchemaVersion: configuration.SchemaVersion, Shared: configuration.Shared{DNS: configuration.DNS{UpstreamDNS: []string{"1.1.1.1"}}}, Unsupported: []configuration.Unsupported{{Section: "tls_mutation", Reason: "inventory only"}}}
+	observed := desired
+	observed.Unsupported = []configuration.Unsupported{{Section: "dhcp", Reason: "unavailable"}}
+	observed.ObservedOnly.TLS = configuration.TLSStatus{Enabled: true, ServerName: "dns.example"}
+	if differences := managedDifferences(desired, observed); len(differences) != 0 {
+		t.Fatalf("unmanaged metadata caused drift: %#v", differences)
+	}
+}

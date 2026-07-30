@@ -92,6 +92,26 @@ func TestVersionCompatibility(t *testing.T) {
 	}
 }
 
+func TestConfigurationCompatibilityBoundaries(t *testing.T) {
+	t.Parallel()
+	for version, want := range map[string]domain.Compatibility{
+		"v0.107.51": domain.CompatibilityUnsupported,
+		"v0.107.52": domain.CompatibilitySupported,
+		"v0.107.53": domain.CompatibilitySupported,
+		"v0.107.78": domain.CompatibilitySupported,
+		"v0.107.79": domain.CompatibilityUnknown,
+		"v0.108.0":  domain.CompatibilityUnknown,
+		"invalid":   domain.CompatibilityUnknown,
+	} {
+		if got := ConfigurationCompatibility(version); got != want {
+			t.Errorf("ConfigurationCompatibility(%q) = %q, want %q", version, got, want)
+		}
+	}
+	if supportsSchemaV2("v0.107.52") || !supportsSchemaV2("v0.107.53") {
+		t.Fatal("schema-v2 compatibility boundary must start at v0.107.53")
+	}
+}
+
 func TestProbeRejectsIncompleteStatusDocument(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {

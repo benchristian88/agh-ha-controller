@@ -49,6 +49,14 @@ Release 0.1.1 installation keeps these boundaries unchanged. The Docker controll
 - API errors store stable codes and safe messages. Detailed transport failures remain in structured controller logs without request bodies or credentials.
 - Maintenance suppresses automatic mutation, and Enforce is an explicit cluster policy rather than an implicit default.
 
+### Release 0.4 secret and infrastructure controls
+
+- The TLS adapter decodes only public status and certificate metadata. Certificate chains, private keys, `private_key_saved`, and certificate/key filesystem paths have no domain fields and cannot enter snapshots, revisions, API payloads, browser state, audits, or diagnostics.
+- TLS mutation is explicitly unsupported until a separate controller secret-reference design exists.
+- DHCP settings and static leases are node-specific desired state. Validation permits only one enabled node, and role handoff disables other managed nodes before enabling the selected node.
+- Filter refresh requires an authenticated CSRF-protected request and an enabled node outside maintenance. Requested and succeeded/failed audit events contain only node identity, list type, and a stable error code.
+- Query-log/statistics policy does not ingest DNS activity into PostgreSQL in 0.4; it only changes node-local retention, ignore, enablement, and anonymization settings.
+
 ## Node credentials
 
 - Encrypt at rest.

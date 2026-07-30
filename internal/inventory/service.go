@@ -58,6 +58,10 @@ type Repository interface {
 	ImportDraft(context.Context, Draft, int, domain.AuditEvent) error
 }
 
+type FilterRefresher interface {
+	RefreshFilters(context.Context, domain.NodeProbeRequest, bool) error
+}
+
 type CredentialProtector interface {
 	Decrypt(string, domain.EncryptedCredentials) (domain.NodeCredentials, error)
 }
@@ -95,7 +99,11 @@ func (s *Service) Observe(ctx context.Context, nodeID string) (Snapshot, error) 
 	now := s.now().UTC()
 	request := domain.NodeProbeRequest{BaseURL: record.Node.BaseURL, CertificatePolicy: record.Node.CertificatePolicy, CustomCAPEM: record.Secrets.CustomCAPEM, Credentials: credentials}
 	document, capability, readErr := s.reader.ReadConfiguration(ctx, request, record.Node.Version)
-	snapshot := Snapshot{ID: id, NodeID: nodeID, ObservedAt: now, SchemaVersion: configuration.SchemaVersion, NodeVersion: record.Node.Version}
+	schemaVersion := capability.SchemaVersion
+	if schemaVersion == 0 {
+		schemaVersion = configuration.SchemaVersion
+	}
+	snapshot := Snapshot{ID: id, NodeID: nodeID, ObservedAt: now, SchemaVersion: schemaVersion, NodeVersion: record.Node.Version}
 	capability.NodeID, capability.RefreshedAt = nodeID, now
 	if readErr != nil {
 		snapshot.CollectionStatus, snapshot.ErrorCode = "failed", errorCode(readErr)
@@ -113,6 +121,70 @@ func (s *Service) Observe(ctx context.Context, nodeID string) (Snapshot, error) 
 		return Snapshot{}, err
 	}
 	return snapshot, nil
+}
+
+func (s *Service) RefreshFilters(ctx context.Context, actor domain.Actor, nodeID string, whitelist bool) error {
+	if !domain.ValidID(nodeID) {
+		return domain.Validation("nodeId", "must be a valid UUID")
+	}
+	refresher, ok := s.reader.(FilterRefresher)
+	if !ok {
+		return domain.NewError(domain.ErrorCapability, "filter refresh is unavailable")
+	}
+	audits, ok := s.repository.(interface {
+		RecordAuditEvent(context.Context, domain.AuditEvent) error
+	})
+	if !ok {
+		return domain.NewError(domain.ErrorCapability, "audited filter refresh is unavailable")
+	}
+	record, err := s.repository.NodeRecordByID(ctx, nodeID)
+	if err != nil {
+		return err
+	}
+	if !record.Node.Enabled || record.Node.MaintenanceMode {
+		return domain.NewError(domain.ErrorConflict, "filter refresh requires an enabled node outside maintenance")
+	}
+	credentials, err := s.credentials.Decrypt(nodeID, record.Secrets.Credentials)
+	if err != nil {
+		return errors.New("stored node credentials could not be decrypted")
+	}
+	now := s.now().UTC()
+	requested, err := inventoryAudit(actor, "filters.refresh_requested", nodeID, map[string]any{"whitelist": whitelist}, now)
+	if err != nil {
+		return err
+	}
+	if err := audits.RecordAuditEvent(ctx, requested); err != nil {
+		return err
+	}
+	request := domain.NodeProbeRequest{BaseURL: record.Node.BaseURL, CertificatePolicy: record.Node.CertificatePolicy, CustomCAPEM: record.Secrets.CustomCAPEM, Credentials: credentials}
+	refreshErr := refresher.RefreshFilters(ctx, request, whitelist)
+	action := "filters.refresh_succeeded"
+	if refreshErr != nil {
+		action = "filters.refresh_failed"
+	}
+	code := ""
+	if refreshErr != nil {
+		code = errorCode(refreshErr)
+	}
+	completed, eventErr := inventoryAudit(actor, action, nodeID, map[string]any{"whitelist": whitelist, "errorCode": code}, s.now().UTC())
+	if eventErr != nil {
+		return eventErr
+	}
+	auditCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	if err := audits.RecordAuditEvent(auditCtx, completed); err != nil {
+		return err
+	}
+	return refreshErr
+}
+
+func inventoryAudit(actor domain.Actor, action, resourceID string, metadata map[string]any, at time.Time) (domain.AuditEvent, error) {
+	id, err := domain.NewID()
+	if err != nil {
+		return domain.AuditEvent{}, err
+	}
+	userID := actor.UserID
+	return domain.AuditEvent{ID: id, ActorType: "user", ActorUserID: &userID, Action: action, ResourceType: "node", ResourceID: &resourceID, RequestID: actor.RequestID, Metadata: metadata, CreatedAt: at}, nil
 }
 
 func (s *Service) Inventory(ctx context.Context, clusterID string) ([]Snapshot, []CapabilityProfile, *Draft, error) {
@@ -188,6 +260,9 @@ func (s *Service) Import(ctx context.Context, actor domain.Actor, clusterID, sna
 		if expectedVersion != current.Version {
 			return Draft{}, domain.NewError(domain.ErrorConflict, "the configuration draft was changed by another request")
 		}
+		if current.Document.SchemaVersion > desired.SchemaVersion {
+			return Draft{}, domain.Validation("snapshotId", "an older schema observation cannot replace a newer configuration draft")
+		}
 		for existingNodeID, override := range current.Document.NodeOverrides {
 			desired.NodeOverrides[existingNodeID] = override
 		}
@@ -201,7 +276,7 @@ func (s *Service) Import(ctx context.Context, actor domain.Actor, clusterID, sna
 	if err != nil {
 		return Draft{}, err
 	}
-	draft := Draft{ID: id, ClusterID: clusterID, SourceSnapshotID: snapshotID, BaseRevisionID: baseRevisionID, SchemaVersion: configuration.SchemaVersion, Document: desired, CanonicalHash: desiredHash, Version: expectedVersion + 1, UpdatedBy: actor.UserID, UpdatedAt: now}
+	draft := Draft{ID: id, ClusterID: clusterID, SourceSnapshotID: snapshotID, BaseRevisionID: baseRevisionID, SchemaVersion: desired.SchemaVersion, Document: desired, CanonicalHash: desiredHash, Version: expectedVersion + 1, UpdatedBy: actor.UserID, UpdatedAt: now}
 	eventID, err := domain.NewID()
 	if err != nil {
 		return Draft{}, err

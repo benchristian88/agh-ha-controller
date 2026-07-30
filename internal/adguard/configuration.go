@@ -25,10 +25,33 @@ func NewConfigurationReader(timeoutProbe *Probe) *ConfigurationReader {
 }
 
 type dnsInfoResponse struct {
-	UpstreamDNS       []string `json:"upstream_dns"`
-	BootstrapDNS      []string `json:"bootstrap_dns"`
-	FallbackDNS       []string `json:"fallback_dns"`
-	PrivateReverseDNS []string `json:"local_ptr_upstreams"`
+	UpstreamDNS        []string `json:"upstream_dns"`
+	BootstrapDNS       []string `json:"bootstrap_dns"`
+	FallbackDNS        []string `json:"fallback_dns"`
+	PrivateReverseDNS  []string `json:"local_ptr_upstreams"`
+	ProtectionEnabled  bool     `json:"protection_enabled"`
+	RateLimit          int      `json:"ratelimit"`
+	RateLimitIPv4      int      `json:"ratelimit_subnet_len_ipv4"`
+	RateLimitIPv6      int      `json:"ratelimit_subnet_len_ipv6"`
+	RateLimitAllowlist []string `json:"ratelimit_whitelist"`
+	BlockingMode       string   `json:"blocking_mode"`
+	BlockingIPv4       string   `json:"blocking_ipv4"`
+	BlockingIPv6       string   `json:"blocking_ipv6"`
+	BlockedResponseTTL int      `json:"blocked_response_ttl"`
+	EDNSClientSubnet   bool     `json:"edns_cs_enabled"`
+	EDNSUseCustom      bool     `json:"edns_cs_use_custom"`
+	EDNSCustomIP       string   `json:"edns_cs_custom_ip"`
+	DisableIPv6        bool     `json:"disable_ipv6"`
+	DNSSECEnabled      bool     `json:"dnssec_enabled"`
+	CacheSize          int      `json:"cache_size"`
+	CacheEnabled       *bool    `json:"cache_enabled"`
+	CacheTTLMin        int      `json:"cache_ttl_min"`
+	CacheTTLMax        int      `json:"cache_ttl_max"`
+	CacheOptimistic    bool     `json:"cache_optimistic"`
+	UpstreamMode       string   `json:"upstream_mode"`
+	UsePrivateReverse  bool     `json:"use_private_ptr_resolvers"`
+	ResolveClients     bool     `json:"resolve_clients"`
+	UpstreamTimeout    *int     `json:"upstream_timeout"`
 }
 
 type filterStatusResponse struct {
@@ -41,12 +64,131 @@ type filterStatusResponse struct {
 		Name      string `json:"name"`
 		Whitelist bool   `json:"whitelist"`
 	} `json:"filters"`
-	UserRules []string `json:"user_rules"`
+	UserRules        []string `json:"user_rules"`
+	WhitelistFilters []struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url"`
+		Name    string `json:"name"`
+	} `json:"whitelist_filters"`
+}
+
+type clientsResponse struct {
+	Clients []clientResponse `json:"clients"`
+}
+
+type clientResponse struct {
+	Name                     string             `json:"name"`
+	IDs                      []string           `json:"ids"`
+	UseGlobalSettings        bool               `json:"use_global_settings"`
+	FilteringEnabled         bool               `json:"filtering_enabled"`
+	ParentalEnabled          bool               `json:"parental_enabled"`
+	SafeBrowsingEnabled      bool               `json:"safebrowsing_enabled"`
+	SafeSearch               safeSearchResponse `json:"safe_search"`
+	UseGlobalBlockedServices bool               `json:"use_global_blocked_services"`
+	BlockedServices          []string           `json:"blocked_services"`
+	BlockedServicesSchedule  scheduleResponse   `json:"blocked_services_schedule"`
+	Upstreams                []string           `json:"upstreams"`
+	UpstreamsCacheEnabled    bool               `json:"upstreams_cache_enabled"`
+	UpstreamsCacheSize       int                `json:"upstreams_cache_size"`
+	Tags                     []string           `json:"tags"`
+	IgnoreQueryLog           bool               `json:"ignore_querylog"`
+	IgnoreStatistics         bool               `json:"ignore_statistics"`
+}
+
+type rewriteResponse struct {
+	Domain  string `json:"domain"`
+	Answer  string `json:"answer"`
+	Enabled *bool  `json:"enabled"`
+}
+type enabledResponse struct {
+	Enabled bool `json:"enabled"`
+}
+type rewriteSettingsResponse struct {
+	Enabled bool `json:"enabled"`
+}
+type safeSearchResponse struct {
+	Enabled    bool `json:"enabled"`
+	Bing       bool `json:"bing"`
+	DuckDuckGo bool `json:"duckduckgo"`
+	Ecosia     bool `json:"ecosia"`
+	Google     bool `json:"google"`
+	Pixabay    bool `json:"pixabay"`
+	Yandex     bool `json:"yandex"`
+	YouTube    bool `json:"youtube"`
+}
+type dayRangeResponse struct {
+	Start int64 `json:"start"`
+	End   int64 `json:"end"`
+}
+type scheduleResponse struct {
+	TimeZone string            `json:"time_zone"`
+	Sun      *dayRangeResponse `json:"sun"`
+	Mon      *dayRangeResponse `json:"mon"`
+	Tue      *dayRangeResponse `json:"tue"`
+	Wed      *dayRangeResponse `json:"wed"`
+	Thu      *dayRangeResponse `json:"thu"`
+	Fri      *dayRangeResponse `json:"fri"`
+	Sat      *dayRangeResponse `json:"sat"`
+}
+type blockedServicesResponse struct {
+	Schedule scheduleResponse `json:"schedule"`
+	IDs      []string         `json:"ids"`
+}
+type policyResponse struct {
+	Enabled           bool     `json:"enabled"`
+	IntervalMillis    int64    `json:"interval"`
+	AnonymizeClientIP bool     `json:"anonymize_client_ip"`
+	Ignored           []string `json:"ignored"`
+	IgnoredEnabled    *bool    `json:"ignored_enabled"`
+}
+type tlsStatusResponse struct {
+	Enabled         bool     `json:"enabled"`
+	ServerName      string   `json:"server_name"`
+	ForceHTTPS      bool     `json:"force_https"`
+	HTTPSPort       int      `json:"port_https"`
+	DNSOverTLSPort  int      `json:"port_dns_over_tls"`
+	DNSOverQUICPort int      `json:"port_dns_over_quic"`
+	ServePlainDNS   bool     `json:"serve_plain_dns"`
+	ValidCert       bool     `json:"valid_cert"`
+	ValidChain      bool     `json:"valid_chain"`
+	ValidKey        bool     `json:"valid_key"`
+	ValidPair       bool     `json:"valid_pair"`
+	Subject         string   `json:"subject"`
+	Issuer          string   `json:"issuer"`
+	NotBefore       string   `json:"not_before"`
+	NotAfter        string   `json:"not_after"`
+	DNSNames        []string `json:"dns_names"`
+	Warning         string   `json:"warning_validation"`
+}
+type dhcpV4Response struct {
+	Gateway       string `json:"gateway_ip"`
+	SubnetMask    string `json:"subnet_mask"`
+	RangeStart    string `json:"range_start"`
+	RangeEnd      string `json:"range_end"`
+	LeaseDuration int64  `json:"lease_duration"`
+}
+type dhcpV6Response struct {
+	RangeStart    string `json:"range_start"`
+	LeaseDuration int64  `json:"lease_duration"`
+}
+type dhcpLeaseResponse struct {
+	MAC      string `json:"mac"`
+	IP       string `json:"ip"`
+	Hostname string `json:"hostname"`
+	Expires  string `json:"expires"`
+}
+type dhcpStatusResponse struct {
+	Enabled       bool                `json:"enabled"`
+	InterfaceName string              `json:"interface_name"`
+	V4            dhcpV4Response      `json:"v4"`
+	V6            dhcpV6Response      `json:"v6"`
+	Leases        []dhcpLeaseResponse `json:"leases"`
+	StaticLeases  []dhcpLeaseResponse `json:"static_leases"`
 }
 
 func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request domain.NodeProbeRequest, version string) (configuration.Document, inventory.CapabilityProfile, error) {
-	profile := inventory.CapabilityProfile{ProductVersion: version, Compatibility: string(VersionCompatibility(version)), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"dns": false, "filtering": false}, Warnings: []string{}}
-	if VersionCompatibility(version) != domain.CompatibilitySupported {
+	profile := inventory.CapabilityProfile{ProductVersion: version, Compatibility: string(ConfigurationCompatibility(version)), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"dns": false, "cache_toggle": false, "upstream_timeout": false, "filtering": false, "filter_interval_arbitrary": false, "clients": false, "rewrites": false, "rewrite_toggle": false, "blocked_services": false, "safety": false, "safe_search_ecosia": supportsEcosia(version), "query_log": false, "statistics": false, "ignored_lists_toggle": false, "tls": false, "dhcp": false}, Warnings: []string{}}
+	if ConfigurationCompatibility(version) != domain.CompatibilitySupported {
 		profile.Warnings = append(profile.Warnings, "This AdGuard Home version is outside the tested configuration inventory range.")
 		return configuration.Document{}, profile, domain.NewError(domain.ErrorNodeResponse, "the node version is not supported for configuration inventory")
 	}
@@ -65,13 +207,85 @@ func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request dom
 		return configuration.Document{}, profile, err
 	}
 	profile.Features["dns"] = true
+	profile.Features["cache_toggle"] = dns.CacheEnabled != nil
+	profile.Features["upstream_timeout"] = dns.UpstreamTimeout != nil
 	var filtering filterStatusResponse
 	if err := r.get(ctx, request, "/control/filtering/status", &filtering); err != nil {
 		profile.Warnings = append(profile.Warnings, "Filtering configuration could not be read.")
 		return configuration.Document{}, profile, err
 	}
 	profile.Features["filtering"] = true
+	profile.Features["filter_interval_arbitrary"] = supportsConfigurationPatch(version, 78)
+	if !supportsSchemaV2(version) {
+		profile.SchemaVersion = configuration.LegacySchemaVersion
+		profile.Warnings = append(profile.Warnings, "AdGuard Home v0.107.53 through v0.107.78 is required for schema-v2 configuration management; legacy schema-v1 inventory remains available.")
+		document := configuration.ProjectDocument(configurationDocument(version, status, dns, filtering), configuration.LegacySchemaVersion)
+		document.Unsupported = []configuration.Unsupported{
+			{Section: "services", Reason: "blocked services and safety services require schema-v2 inventory"},
+			{Section: "tls_dhcp", Reason: "TLS and DHCP require schema-v2 inventory"},
+		}
+		return configuration.Canonicalise(document), profile, nil
+	}
+	var clients clientsResponse
+	if err := r.get(ctx, request, "/control/clients", &clients); err != nil {
+		return configuration.Document{}, profile, err
+	}
+	profile.Features["clients"] = true
+	var rewrites []rewriteResponse
+	if err := r.get(ctx, request, "/control/rewrite/list", &rewrites); err != nil {
+		return configuration.Document{}, profile, err
+	}
+	profile.Features["rewrites"] = true
+	rewriteSettings := rewriteSettingsResponse{Enabled: true}
+	if supportsConfigurationPatch(version, 68) {
+		if err := r.get(ctx, request, "/control/rewrite/settings", &rewriteSettings); err != nil {
+			return configuration.Document{}, profile, err
+		}
+		profile.Features["rewrite_toggle"] = true
+	}
+	var blocked blockedServicesResponse
+	if err := r.get(ctx, request, "/control/blocked_services/get", &blocked); err != nil {
+		return configuration.Document{}, profile, err
+	}
+	profile.Features["blocked_services"] = true
+	var safeBrowsing, parental enabledResponse
+	var safeSearch safeSearchResponse
+	if err := r.get(ctx, request, "/control/safebrowsing/status", &safeBrowsing); err != nil {
+		return configuration.Document{}, profile, err
+	}
+	if err := r.get(ctx, request, "/control/parental/status", &parental); err != nil {
+		return configuration.Document{}, profile, err
+	}
+	if err := r.get(ctx, request, "/control/safesearch/status", &safeSearch); err != nil {
+		return configuration.Document{}, profile, err
+	}
+	profile.Features["safety"] = true
+	var queryLog, statistics policyResponse
+	if err := r.get(ctx, request, "/control/querylog/config", &queryLog); err != nil {
+		return configuration.Document{}, profile, err
+	}
+	profile.Features["query_log"] = true
+	if err := r.get(ctx, request, "/control/stats/config", &statistics); err != nil {
+		return configuration.Document{}, profile, err
+	}
+	profile.Features["statistics"] = true
+	profile.Features["ignored_lists_toggle"] = queryLog.IgnoredEnabled != nil && statistics.IgnoredEnabled != nil
+	var tls tlsStatusResponse
+	if err := r.get(ctx, request, "/control/tls/status", &tls); err != nil {
+		return configuration.Document{}, profile, err
+	}
+	profile.Features["tls"] = true
+	var dhcp dhcpStatusResponse
+	dhcpSupported, err := r.getOptional(ctx, request, "/control/dhcp/status", &dhcp)
+	if err != nil {
+		return configuration.Document{}, profile, err
+	}
+	profile.Features["dhcp"] = dhcpSupported
+	if !dhcpSupported {
+		profile.Warnings = append(profile.Warnings, "DHCP is unavailable on this node and remains unmanaged.")
+	}
 	document := configurationDocument(version, status, dns, filtering)
+	populateBroaderDocument(&document, clients, rewriteSettings, rewrites, blocked, safeBrowsing, parental, safeSearch, queryLog, statistics, tls, dhcp, dhcpSupported)
 	return configuration.Canonicalise(document), profile, nil
 }
 
@@ -89,9 +303,19 @@ func validateListenerStatus(status statusResponse) error {
 
 func configurationDocument(version string, status statusResponse, dns dnsInfoResponse, filtering filterStatusResponse) configuration.Document {
 	filterURLs := make([]string, 0, len(filtering.Filters))
+	whitelistURLs := make([]string, 0, len(filtering.WhitelistFilters))
 	for _, filter := range filtering.Filters {
-		if filter.Enabled && !filter.Whitelist {
-			filterURLs = append(filterURLs, filter.URL)
+		if filter.Enabled {
+			if filter.Whitelist {
+				whitelistURLs = append(whitelistURLs, filter.URL)
+			} else {
+				filterURLs = append(filterURLs, filter.URL)
+			}
+		}
+	}
+	for _, filter := range filtering.WhitelistFilters {
+		if filter.Enabled {
+			whitelistURLs = append(whitelistURLs, filter.URL)
 		}
 	}
 	enabled := false
@@ -102,42 +326,175 @@ func configurationDocument(version string, status statusResponse, dns dnsInfoRes
 	}
 	return configuration.Document{
 		SchemaVersion: configuration.SchemaVersion,
-		Shared:        configuration.Shared{DNS: configuration.DNS{UpstreamDNS: dns.UpstreamDNS, BootstrapDNS: dns.BootstrapDNS, FallbackDNS: dns.FallbackDNS, PrivateReverseDNS: dns.PrivateReverseDNS}, Filtering: configuration.Filtering{Enabled: enabled, UpdateInterval: filtering.Interval, FilterURLs: filterURLs, UserRules: filtering.UserRules}},
-		NodeSpecific:  configuration.NodeSpecific{BindHosts: status.DNSAddresses, DNSPort: status.DNSPort},
-		ObservedOnly:  configuration.ObservedOnly{ProductVersion: version},
-		Unsupported:   []configuration.Unsupported{{Section: "services", Reason: "blocked services and safety services are scheduled for release 0.4"}, {Section: "tls_dhcp", Reason: "TLS and DHCP inventory are scheduled for release 0.4"}},
+		Shared: configuration.Shared{DNS: configuration.DNS{
+			UpstreamDNS: dns.UpstreamDNS, BootstrapDNS: dns.BootstrapDNS, FallbackDNS: dns.FallbackDNS, PrivateReverseDNS: dns.PrivateReverseDNS,
+			ProtectionEnabled: dns.ProtectionEnabled, RateLimit: dns.RateLimit, RateLimitIPv4: dns.RateLimitIPv4, RateLimitIPv6: dns.RateLimitIPv6,
+			RateLimitAllowlist: dns.RateLimitAllowlist, BlockingMode: dns.BlockingMode, BlockingIPv4: dns.BlockingIPv4, BlockingIPv6: dns.BlockingIPv6,
+			BlockedResponseTTL: dns.BlockedResponseTTL, EDNSClientSubnet: dns.EDNSClientSubnet, EDNSUseCustom: dns.EDNSUseCustom,
+			EDNSCustomIP: dns.EDNSCustomIP, DisableIPv6: dns.DisableIPv6, DNSSECEnabled: dns.DNSSECEnabled, CacheSize: dns.CacheSize, CacheEnabled: valueOrDefault(dns.CacheEnabled, dns.CacheSize > 0),
+			CacheTTLMin: dns.CacheTTLMin, CacheTTLMax: dns.CacheTTLMax, CacheOptimistic: dns.CacheOptimistic, UpstreamMode: dns.UpstreamMode,
+			UsePrivateReverse: dns.UsePrivateReverse, ResolveClients: dns.ResolveClients, UpstreamTimeout: valueOrDefault(dns.UpstreamTimeout, 0),
+		}, Filtering: configuration.Filtering{Enabled: enabled, UpdateInterval: filtering.Interval, FilterURLs: filterURLs, WhitelistURLs: whitelistURLs, UserRules: filtering.UserRules}},
+		NodeSpecific: configuration.NodeSpecific{BindHosts: status.DNSAddresses, DNSPort: status.DNSPort},
+		ObservedOnly: configuration.ObservedOnly{ProductVersion: version},
+		Unsupported:  []configuration.Unsupported{{Section: "tls_mutation", Reason: "TLS is inventory-only until controller secret references are implemented"}},
 	}
 }
 
-// ApplyConfiguration mutates only schema-v1 fields exposed by AdGuard Home's
-// supported HTTP API.  Listener addresses and ports have no supported writer;
-// callers must preflight them against observed state before invoking this.
+func valueOrDefault[T any](value *T, fallback T) T {
+	if value == nil {
+		return fallback
+	}
+	return *value
+}
+
+func populateBroaderDocument(document *configuration.Document, clients clientsResponse, rewriteSettings rewriteSettingsResponse, rewrites []rewriteResponse, blocked blockedServicesResponse, safeBrowsing, parental enabledResponse, safeSearch safeSearchResponse, queryLog, statistics policyResponse, tls tlsStatusResponse, dhcp dhcpStatusResponse, dhcpSupported bool) {
+	document.Shared.Clients = make([]configuration.PersistentClient, 0, len(clients.Clients))
+	for _, client := range clients.Clients {
+		document.Shared.Clients = append(document.Shared.Clients, configuration.PersistentClient{Name: client.Name, IDs: client.IDs, UseGlobalSettings: client.UseGlobalSettings, FilteringEnabled: client.FilteringEnabled, ParentalEnabled: client.ParentalEnabled, SafeBrowsingEnabled: client.SafeBrowsingEnabled, SafeSearch: safeSearchModel(client.SafeSearch), UseGlobalBlockedServices: client.UseGlobalBlockedServices, BlockedServices: client.BlockedServices, BlockedServicesSchedule: scheduleModel(client.BlockedServicesSchedule), Upstreams: client.Upstreams, UpstreamsCacheEnabled: client.UpstreamsCacheEnabled, UpstreamsCacheSize: client.UpstreamsCacheSize, Tags: client.Tags, IgnoreQueryLog: client.IgnoreQueryLog, IgnoreStatistics: client.IgnoreStatistics})
+	}
+	document.Shared.RewritesEnabled = rewriteSettings.Enabled
+	document.Shared.Rewrites = make([]configuration.Rewrite, 0, len(rewrites))
+	for _, rewrite := range rewrites {
+		document.Shared.Rewrites = append(document.Shared.Rewrites, configuration.Rewrite{Domain: rewrite.Domain, Answer: rewrite.Answer, Enabled: valueOrDefault(rewrite.Enabled, true)})
+	}
+	document.Shared.Services = configuration.Services{BlockedServiceIDs: blocked.IDs, BlockedSchedule: scheduleModel(blocked.Schedule), SafeBrowsing: safeBrowsing.Enabled, ParentalControl: parental.Enabled, SafeSearch: safeSearchModel(safeSearch)}
+	document.Shared.QueryLog = configuration.QueryLogPolicy{Enabled: queryLog.Enabled, IntervalMillis: queryLog.IntervalMillis, AnonymizeClientIP: queryLog.AnonymizeClientIP, Ignored: queryLog.Ignored, IgnoredEnabled: valueOrDefault(queryLog.IgnoredEnabled, true)}
+	document.Shared.Statistics = configuration.StatisticsPolicy{Enabled: statistics.Enabled, IntervalMillis: statistics.IntervalMillis, Ignored: statistics.Ignored, IgnoredEnabled: valueOrDefault(statistics.IgnoredEnabled, true)}
+	document.ObservedOnly.TLS = configuration.TLSStatus{Enabled: tls.Enabled, ServerName: tls.ServerName, ForceHTTPS: tls.ForceHTTPS, HTTPSPort: tls.HTTPSPort, DNSOverTLSPort: tls.DNSOverTLSPort, DNSOverQUICPort: tls.DNSOverQUICPort, ServePlainDNS: tls.ServePlainDNS, ValidCertificate: tls.ValidCert, ValidChain: tls.ValidChain, ValidKey: tls.ValidKey, ValidPair: tls.ValidPair, Subject: tls.Subject, Issuer: tls.Issuer, NotBefore: tls.NotBefore, NotAfter: tls.NotAfter, DNSNames: tls.DNSNames, Warning: tls.Warning}
+	if !dhcpSupported {
+		document.Unsupported = append(document.Unsupported, configuration.Unsupported{Section: "dhcp", Reason: "the node reports that DHCP is unavailable"})
+		return
+	}
+	staticLeases := make([]configuration.DHCPStaticLease, 0, len(dhcp.StaticLeases))
+	for _, lease := range dhcp.StaticLeases {
+		staticLeases = append(staticLeases, configuration.DHCPStaticLease{MAC: lease.MAC, IP: lease.IP, Hostname: lease.Hostname})
+	}
+	document.NodeSpecific.DHCP = &configuration.DHCPConfig{Enabled: dhcp.Enabled, InterfaceName: dhcp.InterfaceName, IPv4: configuration.DHCPIPv4{Gateway: dhcp.V4.Gateway, SubnetMask: dhcp.V4.SubnetMask, RangeStart: dhcp.V4.RangeStart, RangeEnd: dhcp.V4.RangeEnd, LeaseDuration: dhcp.V4.LeaseDuration}, IPv6: configuration.DHCPIPv6{RangeStart: dhcp.V6.RangeStart, LeaseDuration: dhcp.V6.LeaseDuration}, StaticLeases: staticLeases}
+	document.ObservedOnly.DHCPLeases = make([]configuration.DHCPLease, 0, len(dhcp.Leases))
+	for _, lease := range dhcp.Leases {
+		document.ObservedOnly.DHCPLeases = append(document.ObservedOnly.DHCPLeases, configuration.DHCPLease{MAC: lease.MAC, IP: lease.IP, Hostname: lease.Hostname, ExpiresAt: lease.Expires})
+	}
+}
+
+func safeSearchModel(value safeSearchResponse) configuration.SafeSearch {
+	return configuration.SafeSearch{Enabled: value.Enabled, Bing: value.Bing, DuckDuckGo: value.DuckDuckGo, Ecosia: value.Ecosia, Google: value.Google, Pixabay: value.Pixabay, Yandex: value.Yandex, YouTube: value.YouTube}
+}
+
+func scheduleModel(value scheduleResponse) configuration.Schedule {
+	days := map[string]configuration.DayRange{}
+	for day, period := range map[string]*dayRangeResponse{"sun": value.Sun, "mon": value.Mon, "tue": value.Tue, "wed": value.Wed, "thu": value.Thu, "fri": value.Fri, "sat": value.Sat} {
+		if period != nil {
+			days[day] = configuration.DayRange{Start: period.Start, End: period.End}
+		}
+	}
+	return configuration.Schedule{TimeZone: value.TimeZone, Days: days}
+}
+
+// ApplyConfiguration mutates the fields owned by the document's schema through
+// supported AdGuard Home HTTP APIs. Listener addresses and ports have no
+// supported writer; callers must preflight them before invoking this method.
 func (r *ConfigurationReader) ApplyConfiguration(ctx context.Context, request domain.NodeProbeRequest, desired configuration.Document) error {
 	desired = configuration.Canonicalise(desired)
 	var currentFilters filterStatusResponse
 	if err := r.get(ctx, request, "/control/filtering/status", &currentFilters); err != nil {
 		return err
 	}
-	if err := r.post(ctx, request, "/control/dns_config", map[string]any{
-		"upstream_dns": desired.Shared.DNS.UpstreamDNS, "bootstrap_dns": desired.Shared.DNS.BootstrapDNS,
-		"fallback_dns": desired.Shared.DNS.FallbackDNS, "local_ptr_upstreams": desired.Shared.DNS.PrivateReverseDNS,
-	}); err != nil {
-		return err
+	var currentDNS dnsInfoResponse
+	if desired.SchemaVersion >= configuration.SchemaVersion {
+		if err := r.get(ctx, request, "/control/dns_info", &currentDNS); err != nil {
+			return err
+		}
 	}
 	if err := r.post(ctx, request, "/control/filtering/config", map[string]any{
 		"enabled": desired.Shared.Filtering.Enabled, "interval": desired.Shared.Filtering.UpdateInterval,
 	}); err != nil {
 		return err
 	}
-	targets := make(map[string]struct{}, len(desired.Shared.Filtering.FilterURLs))
-	for _, target := range desired.Shared.Filtering.FilterURLs {
+	if err := r.reconcileFilterURLs(ctx, request, currentFilters, desired.Shared.Filtering.FilterURLs, false); err != nil {
+		return err
+	}
+	if desired.SchemaVersion >= configuration.SchemaVersion {
+		if err := r.reconcileFilterURLs(ctx, request, currentFilters, desired.Shared.Filtering.WhitelistURLs, true); err != nil {
+			return err
+		}
+	}
+	if err := r.post(ctx, request, "/control/filtering/set_rules", map[string]any{"rules": desired.Shared.Filtering.UserRules}); err != nil {
+		return err
+	}
+	if desired.SchemaVersion >= configuration.SchemaVersion {
+		if err := r.reconcileClients(ctx, request, desired.Shared.Clients); err != nil {
+			return err
+		}
+		if err := r.reconcileRewrites(ctx, request, desired.Shared.RewritesEnabled, desired.Shared.Rewrites); err != nil {
+			return err
+		}
+		if err := r.put(ctx, request, "/control/blocked_services/update", blockedServicesPayload(desired.Shared.Services)); err != nil {
+			return err
+		}
+		if err := r.setEnabled(ctx, request, "/control/safebrowsing", desired.Shared.Services.SafeBrowsing); err != nil {
+			return err
+		}
+		if err := r.setEnabled(ctx, request, "/control/parental", desired.Shared.Services.ParentalControl); err != nil {
+			return err
+		}
+		if err := r.put(ctx, request, "/control/safesearch/settings", safeSearchPayload(desired.Shared.Services.SafeSearch)); err != nil {
+			return err
+		}
+		if err := r.updatePolicy(ctx, request, "/control/querylog/config", "/control/querylog/config/update", desired.Shared.QueryLog.Enabled, desired.Shared.QueryLog.IntervalMillis, desired.Shared.QueryLog.Ignored, desired.Shared.QueryLog.IgnoredEnabled, map[string]any{"anonymize_client_ip": desired.Shared.QueryLog.AnonymizeClientIP}); err != nil {
+			return err
+		}
+		if err := r.updatePolicy(ctx, request, "/control/stats/config", "/control/stats/config/update", desired.Shared.Statistics.Enabled, desired.Shared.Statistics.IntervalMillis, desired.Shared.Statistics.Ignored, desired.Shared.Statistics.IgnoredEnabled, nil); err != nil {
+			return err
+		}
+	}
+	dnsPayload := map[string]any{"upstream_dns": desired.Shared.DNS.UpstreamDNS, "bootstrap_dns": desired.Shared.DNS.BootstrapDNS, "fallback_dns": desired.Shared.DNS.FallbackDNS, "local_ptr_upstreams": desired.Shared.DNS.PrivateReverseDNS}
+	if desired.SchemaVersion >= configuration.SchemaVersion {
+		dns := desired.Shared.DNS
+		for key, value := range map[string]any{"protection_enabled": dns.ProtectionEnabled, "ratelimit": dns.RateLimit, "ratelimit_subnet_len_ipv4": dns.RateLimitIPv4, "ratelimit_subnet_len_ipv6": dns.RateLimitIPv6, "ratelimit_whitelist": dns.RateLimitAllowlist, "blocking_mode": dns.BlockingMode, "blocking_ipv4": dns.BlockingIPv4, "blocking_ipv6": dns.BlockingIPv6, "blocked_response_ttl": dns.BlockedResponseTTL, "edns_cs_enabled": dns.EDNSClientSubnet, "edns_cs_use_custom": dns.EDNSUseCustom, "edns_cs_custom_ip": dns.EDNSCustomIP, "disable_ipv6": dns.DisableIPv6, "dnssec_enabled": dns.DNSSECEnabled, "cache_size": dns.CacheSize, "cache_ttl_min": dns.CacheTTLMin, "cache_ttl_max": dns.CacheTTLMax, "cache_optimistic": dns.CacheOptimistic, "upstream_mode": dns.UpstreamMode, "use_private_ptr_resolvers": dns.UsePrivateReverse, "resolve_clients": dns.ResolveClients} {
+			dnsPayload[key] = value
+		}
+		if currentDNS.CacheEnabled != nil {
+			dnsPayload["cache_enabled"] = dns.CacheEnabled
+		}
+		if currentDNS.UpstreamTimeout != nil {
+			dnsPayload["upstream_timeout"] = dns.UpstreamTimeout
+		}
+	}
+	if err := r.post(ctx, request, "/control/dns_config", dnsPayload); err != nil {
+		return err
+	}
+	if desired.SchemaVersion >= configuration.SchemaVersion && desired.NodeSpecific.DHCP != nil {
+		if err := r.reconcileDHCP(ctx, request, *desired.NodeSpecific.DHCP); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *ConfigurationReader) RefreshFilters(ctx context.Context, request domain.NodeProbeRequest, whitelist bool) error {
+	return r.post(ctx, request, "/control/filtering/refresh", map[string]any{"whitelist": whitelist})
+}
+
+func (r *ConfigurationReader) reconcileFilterURLs(ctx context.Context, request domain.NodeProbeRequest, current filterStatusResponse, desired []string, whitelist bool) error {
+	targets := make(map[string]struct{}, len(desired))
+	currentItems := current.Filters
+	for _, item := range current.WhitelistFilters {
+		currentItems = append(currentItems, struct {
+			Enabled   bool   `json:"enabled"`
+			URL       string `json:"url"`
+			Name      string `json:"name"`
+			Whitelist bool   `json:"whitelist"`
+		}{Enabled: item.Enabled, URL: item.URL, Name: item.Name, Whitelist: true})
+	}
+	for _, target := range desired {
 		targets[strings.ToLower(target)] = struct{}{}
 		found := false
-		for _, current := range currentFilters.Filters {
-			if !current.Whitelist && strings.EqualFold(current.URL, target) {
+		for _, item := range currentItems {
+			if item.Whitelist == whitelist && strings.EqualFold(item.URL, target) {
 				found = true
-				if !current.Enabled {
-					if err := r.post(ctx, request, "/control/filtering/set_url", map[string]any{"url": current.URL, "whitelist": false, "data": map[string]any{"name": current.Name, "url": current.URL, "enabled": true}}); err != nil {
+				if !item.Enabled {
+					if err := r.post(ctx, request, "/control/filtering/set_url", map[string]any{"url": item.URL, "whitelist": whitelist, "data": map[string]any{"name": item.Name, "url": item.URL, "enabled": true}}); err != nil {
 						return err
 					}
 				}
@@ -145,25 +502,197 @@ func (r *ConfigurationReader) ApplyConfiguration(ctx context.Context, request do
 			}
 		}
 		if !found {
-			if err := r.post(ctx, request, "/control/filtering/add_url", map[string]any{"name": "Managed by AGH HA Controller", "url": target, "whitelist": false}); err != nil {
+			if err := r.post(ctx, request, "/control/filtering/add_url", map[string]any{"name": "Managed by AGH HA Controller", "url": target, "whitelist": whitelist}); err != nil {
 				return err
 			}
 		}
 	}
-	for _, current := range currentFilters.Filters {
-		if _, wanted := targets[strings.ToLower(current.URL)]; !current.Whitelist && current.Enabled && !wanted {
-			if err := r.post(ctx, request, "/control/filtering/set_url", map[string]any{"url": current.URL, "whitelist": false, "data": map[string]any{"name": current.Name, "url": current.URL, "enabled": false}}); err != nil {
+	for _, item := range currentItems {
+		_, wanted := targets[strings.ToLower(item.URL)]
+		if item.Whitelist == whitelist && item.Enabled && !wanted {
+			if err := r.post(ctx, request, "/control/filtering/set_url", map[string]any{"url": item.URL, "whitelist": whitelist, "data": map[string]any{"name": item.Name, "url": item.URL, "enabled": false}}); err != nil {
 				return err
 			}
 		}
 	}
-	return r.post(ctx, request, "/control/filtering/set_rules", map[string]any{"rules": desired.Shared.Filtering.UserRules})
+	return nil
+}
+
+func clientPayload(client configuration.PersistentClient) map[string]any {
+	return map[string]any{"name": client.Name, "ids": client.IDs, "use_global_settings": client.UseGlobalSettings, "filtering_enabled": client.FilteringEnabled, "parental_enabled": client.ParentalEnabled, "safebrowsing_enabled": client.SafeBrowsingEnabled, "safe_search": safeSearchPayload(client.SafeSearch), "use_global_blocked_services": client.UseGlobalBlockedServices, "blocked_services": client.BlockedServices, "blocked_services_schedule": schedulePayload(client.BlockedServicesSchedule), "upstreams": client.Upstreams, "upstreams_cache_enabled": client.UpstreamsCacheEnabled, "upstreams_cache_size": client.UpstreamsCacheSize, "tags": client.Tags, "ignore_querylog": client.IgnoreQueryLog, "ignore_statistics": client.IgnoreStatistics}
+}
+
+func (r *ConfigurationReader) reconcileClients(ctx context.Context, request domain.NodeProbeRequest, desired []configuration.PersistentClient) error {
+	var current clientsResponse
+	if err := r.get(ctx, request, "/control/clients", &current); err != nil {
+		return err
+	}
+	existing := map[string]clientResponse{}
+	for _, item := range current.Clients {
+		existing[strings.ToLower(item.Name)] = item
+	}
+	targets := map[string]bool{}
+	for _, item := range desired {
+		key := strings.ToLower(item.Name)
+		targets[key] = true
+		if old, ok := existing[key]; ok {
+			if err := r.post(ctx, request, "/control/clients/update", map[string]any{"name": old.Name, "data": clientPayload(item)}); err != nil {
+				return err
+			}
+		} else if err := r.post(ctx, request, "/control/clients/add", clientPayload(item)); err != nil {
+			return err
+		}
+	}
+	for _, item := range current.Clients {
+		if !targets[strings.ToLower(item.Name)] {
+			if err := r.post(ctx, request, "/control/clients/delete", map[string]any{"name": item.Name}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (r *ConfigurationReader) reconcileRewrites(ctx context.Context, request domain.NodeProbeRequest, enabled bool, desired []configuration.Rewrite) error {
+	var current []rewriteResponse
+	if err := r.get(ctx, request, "/control/rewrite/list", &current); err != nil {
+		return err
+	}
+	settingsSupported, err := r.getOptionalEndpoint(ctx, request, "/control/rewrite/settings", &rewriteSettingsResponse{})
+	if err != nil {
+		return err
+	}
+	if settingsSupported {
+		if err := r.put(ctx, request, "/control/rewrite/settings/update", map[string]any{"enabled": enabled}); err != nil {
+			return err
+		}
+	}
+	key := func(domain, answer string) string { return strings.ToLower(domain) + "\x00" + strings.ToLower(answer) }
+	existing, targets := map[string]rewriteResponse{}, map[string]bool{}
+	for _, item := range current {
+		existing[key(item.Domain, item.Answer)] = item
+	}
+	for _, item := range desired {
+		k := key(item.Domain, item.Answer)
+		targets[k] = true
+		old, ok := existing[k]
+		payload := map[string]any{"domain": item.Domain, "answer": item.Answer}
+		if settingsSupported {
+			payload["enabled"] = item.Enabled
+		}
+		if !ok {
+			if err := r.post(ctx, request, "/control/rewrite/add", payload); err != nil {
+				return err
+			}
+		} else if settingsSupported && valueOrDefault(old.Enabled, true) != item.Enabled {
+			if err := r.put(ctx, request, "/control/rewrite/update", map[string]any{"target": map[string]any{"domain": old.Domain, "answer": old.Answer}, "update": payload}); err != nil {
+				return err
+			}
+		}
+	}
+	for _, item := range current {
+		if !targets[key(item.Domain, item.Answer)] {
+			if err := r.post(ctx, request, "/control/rewrite/delete", map[string]any{"domain": item.Domain, "answer": item.Answer}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (r *ConfigurationReader) updatePolicy(ctx context.Context, request domain.NodeProbeRequest, readPath, updatePath string, enabled bool, interval int64, ignored []string, ignoredEnabled bool, extra map[string]any) error {
+	var current policyResponse
+	if err := r.get(ctx, request, readPath, &current); err != nil {
+		return err
+	}
+	payload := map[string]any{"enabled": enabled, "interval": interval, "ignored": ignored}
+	for key, value := range extra {
+		payload[key] = value
+	}
+	if current.IgnoredEnabled != nil {
+		payload["ignored_enabled"] = ignoredEnabled
+	}
+	return r.put(ctx, request, updatePath, payload)
+}
+
+func safeSearchPayload(value configuration.SafeSearch) map[string]any {
+	return map[string]any{"enabled": value.Enabled, "bing": value.Bing, "duckduckgo": value.DuckDuckGo, "ecosia": value.Ecosia, "google": value.Google, "pixabay": value.Pixabay, "yandex": value.Yandex, "youtube": value.YouTube}
+}
+
+func blockedServicesPayload(value configuration.Services) map[string]any {
+	return map[string]any{"ids": value.BlockedServiceIDs, "schedule": schedulePayload(value.BlockedSchedule)}
+}
+
+func schedulePayload(value configuration.Schedule) map[string]any {
+	result := map[string]any{"time_zone": value.TimeZone}
+	for day, period := range value.Days {
+		result[day] = map[string]any{"start": period.Start, "end": period.End}
+	}
+	return result
+}
+
+func (r *ConfigurationReader) setEnabled(ctx context.Context, request domain.NodeProbeRequest, prefix string, enabled bool) error {
+	suffix := "/disable"
+	if enabled {
+		suffix = "/enable"
+	}
+	return r.send(ctx, request, http.MethodPost, prefix+suffix, nil)
+}
+
+func (r *ConfigurationReader) reconcileDHCP(ctx context.Context, request domain.NodeProbeRequest, desired configuration.DHCPConfig) error {
+	var current dhcpStatusResponse
+	if err := r.get(ctx, request, "/control/dhcp/status", &current); err != nil {
+		return err
+	}
+	payload := map[string]any{"enabled": desired.Enabled, "interface_name": desired.InterfaceName, "v4": map[string]any{"gateway_ip": desired.IPv4.Gateway, "subnet_mask": desired.IPv4.SubnetMask, "range_start": desired.IPv4.RangeStart, "range_end": desired.IPv4.RangeEnd, "lease_duration": desired.IPv4.LeaseDuration}, "v6": map[string]any{"range_start": desired.IPv6.RangeStart, "lease_duration": desired.IPv6.LeaseDuration}}
+	if err := r.post(ctx, request, "/control/dhcp/set_config", payload); err != nil {
+		return err
+	}
+	byMAC, targets := map[string]dhcpLeaseResponse{}, map[string]bool{}
+	for _, lease := range current.StaticLeases {
+		byMAC[strings.ToLower(lease.MAC)] = lease
+	}
+	for _, lease := range desired.StaticLeases {
+		key := strings.ToLower(lease.MAC)
+		targets[key] = true
+		if old, ok := byMAC[key]; ok && (old.IP != lease.IP || old.Hostname != lease.Hostname) {
+			if err := r.post(ctx, request, "/control/dhcp/remove_static_lease", map[string]any{"mac": old.MAC, "ip": old.IP, "hostname": old.Hostname}); err != nil {
+				return err
+			}
+			delete(byMAC, key)
+		}
+		if _, ok := byMAC[key]; !ok {
+			if err := r.post(ctx, request, "/control/dhcp/add_static_lease", map[string]any{"mac": lease.MAC, "ip": lease.IP, "hostname": lease.Hostname}); err != nil {
+				return err
+			}
+		}
+	}
+	for key, lease := range byMAC {
+		if !targets[key] {
+			if err := r.post(ctx, request, "/control/dhcp/remove_static_lease", map[string]any{"mac": lease.MAC, "ip": lease.IP, "hostname": lease.Hostname}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (r *ConfigurationReader) post(ctx context.Context, request domain.NodeProbeRequest, path string, payload any) error {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("encode AdGuard Home configuration request: %w", err)
+	return r.send(ctx, request, http.MethodPost, path, payload)
+}
+
+func (r *ConfigurationReader) put(ctx context.Context, request domain.NodeProbeRequest, path string, payload any) error {
+	return r.send(ctx, request, http.MethodPut, path, payload)
+}
+
+func (r *ConfigurationReader) send(ctx context.Context, request domain.NodeProbeRequest, method, path string, payload any) error {
+	var reader io.Reader
+	if payload != nil {
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("encode AdGuard Home configuration request: %w", err)
+		}
+		reader = bytes.NewReader(body)
 	}
 	transport, err := r.probe.transport(request.CertificatePolicy, request.CustomCAPEM)
 	if err != nil {
@@ -174,13 +703,15 @@ func (r *ConfigurationReader) post(ctx context.Context, request domain.NodeProbe
 	if err != nil {
 		return domain.NewError(domain.ErrorNodeResponse, "the node URL is invalid")
 	}
-	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	httpRequest, err := http.NewRequestWithContext(ctx, method, endpoint, reader)
 	if err != nil {
 		return fmt.Errorf("create AdGuard Home mutation request: %w", err)
 	}
 	httpRequest.SetBasicAuth(request.Credentials.Username, request.Credentials.Password)
 	httpRequest.Header.Set("Accept", "application/json")
-	httpRequest.Header.Set("Content-Type", "application/json")
+	if payload != nil {
+		httpRequest.Header.Set("Content-Type", "application/json")
+	}
 	client := &http.Client{Transport: transport, Timeout: r.probe.timeout, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
 	response, err := client.Do(httpRequest)
 	if err != nil {
@@ -198,44 +729,61 @@ func (r *ConfigurationReader) post(ctx context.Context, request domain.NodeProbe
 }
 
 func (r *ConfigurationReader) get(ctx context.Context, request domain.NodeProbeRequest, path string, target any) error {
+	_, err := r.getResource(ctx, request, path, target, nil)
+	return err
+}
+
+func (r *ConfigurationReader) getOptional(ctx context.Context, request domain.NodeProbeRequest, path string, target any) (bool, error) {
+	return r.getResource(ctx, request, path, target, map[int]bool{http.StatusNotFound: true, http.StatusInternalServerError: true, http.StatusNotImplemented: true})
+}
+
+func (r *ConfigurationReader) getOptionalEndpoint(ctx context.Context, request domain.NodeProbeRequest, path string, target any) (bool, error) {
+	return r.getResource(ctx, request, path, target, map[int]bool{http.StatusNotFound: true, http.StatusNotImplemented: true})
+}
+
+func (r *ConfigurationReader) getResource(ctx context.Context, request domain.NodeProbeRequest, path string, target any, unavailable map[int]bool) (bool, error) {
 	transport, err := r.probe.transport(request.CertificatePolicy, request.CustomCAPEM)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer transport.CloseIdleConnections()
 	endpoint, err := configurationEndpoint(request.BaseURL, path)
 	if err != nil {
-		return domain.NewError(domain.ErrorNodeResponse, "the node URL is invalid")
+		return false, domain.NewError(domain.ErrorNodeResponse, "the node URL is invalid")
 	}
 	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		return fmt.Errorf("create AdGuard Home configuration request: %w", err)
+		return false, fmt.Errorf("create AdGuard Home configuration request: %w", err)
 	}
 	httpRequest.SetBasicAuth(request.Credentials.Username, request.Credentials.Password)
 	httpRequest.Header.Set("Accept", "application/json")
 	client := &http.Client{Transport: transport, Timeout: r.probe.timeout, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
 	response, err := client.Do(httpRequest)
 	if err != nil {
-		return classifyNetworkError(err)
+		return false, classifyNetworkError(err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
-		return domain.NewError(domain.ErrorNodeAuth, "the node rejected its stored credentials")
+		return false, domain.NewError(domain.ErrorNodeAuth, "the node rejected its stored credentials")
+	}
+	if unavailable[response.StatusCode] {
+		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, maxConfigurationBody))
+		return false, nil
 	}
 	if response.StatusCode != http.StatusOK {
-		return domain.NewError(domain.ErrorNodeResponse, "the node configuration endpoint returned an unexpected status")
+		return false, domain.NewError(domain.ErrorNodeResponse, "the node configuration endpoint returned an unexpected status")
 	}
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxConfigurationBody+1))
 	if err != nil {
-		return domain.NewError(domain.ErrorNodeResponse, "the node configuration response could not be read")
+		return false, domain.NewError(domain.ErrorNodeResponse, "the node configuration response could not be read")
 	}
 	if len(body) > maxConfigurationBody {
-		return domain.NewError(domain.ErrorNodeResponse, "the node configuration response was too large")
+		return false, domain.NewError(domain.ErrorNodeResponse, "the node configuration response was too large")
 	}
 	if err := json.Unmarshal(body, target); err != nil {
-		return domain.NewError(domain.ErrorNodeResponse, "the node returned invalid configuration JSON")
+		return false, domain.NewError(domain.ErrorNodeResponse, "the node returned invalid configuration JSON")
 	}
-	return nil
+	return true, nil
 }
 
 func configurationEndpoint(baseURL, path string) (string, error) {

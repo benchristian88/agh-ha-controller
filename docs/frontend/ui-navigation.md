@@ -14,7 +14,8 @@
 /settings/clients
 /settings/rewrites
 /settings/services
-/settings/safety
+/settings/privacy
+/settings/infrastructure
 
 /ha/nodes
 /ha/configuration
@@ -29,7 +30,7 @@
 /system/about
 ```
 
-## Implemented routes through Release 0.3
+## Implemented routes through Release 0.4
 
 The implemented shell currently exposes:
 
@@ -41,10 +42,17 @@ The implemented shell currently exposes:
 /ha/nodes
 /ha/configuration
 /ha/deployments
+/settings/dns
+/settings/filters
+/settings/clients
+/settings/rewrites
+/settings/services
+/settings/privacy
+/settings/infrastructure
 /system/audit
 ```
 
-`/ha/configuration` combines desired draft authoring, observations/import, immutable revision history, comparison, preview, deploy, and rollback. `/ha/deployments` combines deployment timeline/detail, reconciliation policy, and drift actions. Cluster selection remains global application state. The more granular planned revision/deployment/drift detail URLs remain future navigation refinements and are not rendered as placeholders.
+`/ha/configuration` combines observations/import, desired draft authoring, immutable revision history, comparison, preview, deploy, and rollback. `/ha/deployments` combines deployment timeline/detail, reconciliation policy, and drift actions. The nested `/settings/*` routes edit the same optimistic draft and group routine settings like AdGuard Home: DNS; filters/refresh; clients; rewrites; services/safety; logs/statistics policy; and TLS/DHCP. Cluster selection remains global application state. The more granular planned revision/deployment/drift detail URLs remain future navigation refinements and are not rendered as placeholders.
 
 ## Route principles
 

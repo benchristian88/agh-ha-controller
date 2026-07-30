@@ -88,6 +88,7 @@ func (s *Server) routes() {
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/test-connection", s.authenticated(true, http.HandlerFunc(s.handleTestNode)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/maintenance", s.authenticated(true, http.HandlerFunc(s.handleNodeMaintenance)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/observations", s.authenticated(true, http.HandlerFunc(s.handleObserveNode)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/filter-refresh", s.authenticated(true, http.HandlerFunc(s.handleFilterRefresh)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/configuration-inventory", s.authenticated(false, http.HandlerFunc(s.handleConfigurationInventory)))
 	s.mux.Handle("GET /api/v1/configuration-comparisons", s.authenticated(false, http.HandlerFunc(s.handleConfigurationComparison)))
 	s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-draft/import", s.authenticated(true, http.HandlerFunc(s.handleImportConfiguration)))

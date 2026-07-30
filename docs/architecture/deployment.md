@@ -20,6 +20,8 @@ LXC 103: agh-ha-controller
 
 PostgreSQL may be separated later.
 
+Release 0.4 does not add another runtime service. The same combined controller/worker process applies schema-v2 settings and performs explicit filter refresh. During a DHCP role handoff, the sequential deployment order places every desired-disabled DHCP node before the desired-enabled node. Stop-on-failure can therefore leave DHCP disabled for safe recovery but does not intentionally overlap two controller-managed DHCP servers.
+
 ## Network requirements
 
 Controller to node:

@@ -64,7 +64,7 @@ func (s *Service) UpdateDraft(ctx context.Context, actor domain.Actor, clusterID
 	}
 	issues := configuration.ValidateDesired(document, enabledNodeIDs(nodes))
 	if document.SchemaVersion != configuration.SchemaVersion {
-		return inventory.Draft{}, issues, domain.Validation("document.schemaVersion", "must be 1")
+		return inventory.Draft{}, issues, domain.Validation("document.schemaVersion", "must be 2; refresh and import a current observation before editing")
 	}
 	document = configuration.CanonicaliseDesired(document)
 	body, hash, err := configuration.MarshalDesired(document)
@@ -108,6 +108,9 @@ func (s *Service) Publish(ctx context.Context, actor domain.Actor, clusterID, su
 	}
 	if expectedVersion != draft.Version {
 		return Revision{}, domain.NewError(domain.ErrorConflict, "the configuration draft was changed by another request")
+	}
+	if draft.SchemaVersion != configuration.SchemaVersion || draft.Document.SchemaVersion != configuration.SchemaVersion {
+		return Revision{}, domain.NewError(domain.ErrorConflict, "the draft uses legacy schema v1; refresh and import a current observation before publishing")
 	}
 	preview, err := s.previewDocument(ctx, clusterID, "", draft.Document, nil)
 	if err != nil {
@@ -397,6 +400,17 @@ func (s *Service) previewDocument(ctx context.Context, clusterID, revisionID str
 		}
 		targets = append(targets, node)
 	}
+	if document.SchemaVersion >= configuration.SchemaVersion {
+		// A DHCP role handoff must disable every non-active node before the one
+		// desired active node is enabled, avoiding overlapping DHCP servers.
+		sort.SliceStable(targets, func(i, j int) bool {
+			a, aOK := document.NodeOverrides[targets[i].ID]
+			b, bOK := document.NodeOverrides[targets[j].ID]
+			aEnabled := aOK && a.DHCP != nil && a.DHCP.Enabled
+			bEnabled := bOK && b.DHCP != nil && b.DHCP.Enabled
+			return !aEnabled && bEnabled
+		})
+	}
 	// A revision remains complete for the whole enabled fleet even when a
 	// deployment targets only a subset or temporarily skips maintenance nodes.
 	preview := Preview{RevisionID: revisionID, Strategy: "sequential", FailurePolicy: "stop", Differences: []configuration.Difference{}, Issues: configuration.ValidateDesired(document, enabledNodeIDs(nodes)), Nodes: []PreviewNode{}}
@@ -427,9 +441,46 @@ func (s *Service) previewDocument(ctx context.Context, clusterID, revisionID str
 		}
 		item := PreviewNode{NodeID: node.ID, Position: index + 1, EffectiveHash: hash, Valid: true}
 		profile, profileOK := profileByNode[node.ID]
-		if !profileOK || profile.Compatibility != string(domain.CompatibilitySupported) || !profile.Features["dns"] || !profile.Features["filtering"] {
+		requiredFeatures := []string{"dns", "filtering"}
+		if document.SchemaVersion >= configuration.SchemaVersion {
+			requiredFeatures = append(requiredFeatures, "clients", "rewrites", "blocked_services", "safety", "query_log", "statistics", "tls")
+			if effective.NodeSpecific.DHCP != nil {
+				requiredFeatures = append(requiredFeatures, "dhcp")
+			}
+		}
+		capabilitiesOK := profileOK && profile.Compatibility == string(domain.CompatibilitySupported)
+		for _, feature := range requiredFeatures {
+			capabilitiesOK = capabilitiesOK && profile.Features[feature]
+		}
+		if document.Shared.Services.SafeSearch.Ecosia && !profile.Features["safe_search_ecosia"] {
+			capabilitiesOK = false
+		}
+		if document.SchemaVersion >= configuration.SchemaVersion {
+			legacyFilterIntervals := map[int]bool{0: true, 1: true, 12: true, 24: true, 72: true, 168: true}
+			if !legacyFilterIntervals[document.Shared.Filtering.UpdateInterval] && !profile.Features["filter_interval_arbitrary"] {
+				capabilitiesOK = false
+			}
+			if document.Shared.DNS.CacheEnabled != (document.Shared.DNS.CacheSize > 0) && !profile.Features["cache_toggle"] {
+				capabilitiesOK = false
+			}
+			if document.Shared.DNS.UpstreamTimeout > 0 && !profile.Features["upstream_timeout"] {
+				capabilitiesOK = false
+			}
+			rewriteToggleRequired := !document.Shared.RewritesEnabled
+			for _, rewrite := range document.Shared.Rewrites {
+				rewriteToggleRequired = rewriteToggleRequired || !rewrite.Enabled
+			}
+			if rewriteToggleRequired && !profile.Features["rewrite_toggle"] {
+				capabilitiesOK = false
+			}
+			ignoredToggleRequired := (!document.Shared.QueryLog.IgnoredEnabled && len(document.Shared.QueryLog.Ignored) > 0) || (!document.Shared.Statistics.IgnoredEnabled && len(document.Shared.Statistics.Ignored) > 0)
+			if ignoredToggleRequired && !profile.Features["ignored_lists_toggle"] {
+				capabilitiesOK = false
+			}
+		}
+		if !capabilitiesOK {
 			item.Valid = false
-			item.Warning = "DNS and filtering capabilities must be observed before deployment."
+			item.Warning = "Every managed feature must be observed and supported before deployment."
 			preview.Issues = append(preview.Issues, configuration.ValidationIssue{Field: "nodes." + node.ID, Message: item.Warning})
 		}
 		snapshot, snapshotOK := snapshotByNode[node.ID]
@@ -437,7 +488,7 @@ func (s *Service) previewDocument(ctx context.Context, clusterID, revisionID str
 			item.Valid = false
 			item.Warning = "A successful current configuration observation is required."
 			preview.Issues = append(preview.Issues, configuration.ValidationIssue{Field: "nodes." + node.ID, Message: item.Warning})
-		} else if listenerDiff := nodeSpecificDifferences(effective, *snapshot.Document); len(listenerDiff) > 0 {
+		} else if listenerDiff := immutableNodeDifferences(effective, configuration.ProjectDocument(*snapshot.Document, document.SchemaVersion)); len(listenerDiff) > 0 {
 			item.Valid = false
 			item.Warning = "DNS bind hosts or port differ; AdGuard Home has no supported API writer for these values."
 			preview.Issues = append(preview.Issues, configuration.ValidationIssue{Field: "nodeOverrides." + node.ID, Message: item.Warning})
@@ -452,6 +503,26 @@ func nodeSpecificDifferences(desired, observed configuration.Document) []configu
 	result := []configuration.Difference{}
 	for _, difference := range configuration.Diff(desired, observed) {
 		if difference.Scope == configuration.NodeManaged {
+			result = append(result, difference)
+		}
+	}
+	return result
+}
+
+func managedDifferences(desired, observed configuration.Document) []configuration.Difference {
+	result := []configuration.Difference{}
+	for _, difference := range configuration.Diff(desired, observed) {
+		if difference.Scope == configuration.SharedManaged || difference.Scope == configuration.NodeManaged {
+			result = append(result, difference)
+		}
+	}
+	return result
+}
+
+func immutableNodeDifferences(desired, observed configuration.Document) []configuration.Difference {
+	result := []configuration.Difference{}
+	for _, difference := range nodeSpecificDifferences(desired, observed) {
+		if difference.Section == "DNS" {
 			result = append(result, difference)
 		}
 	}

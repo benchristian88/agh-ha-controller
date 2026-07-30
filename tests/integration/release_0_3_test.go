@@ -38,9 +38,26 @@ func (s *adGuardState) handler(response http.ResponseWriter, request *http.Reque
 	case "/control/status":
 		_, _ = io.WriteString(response, `{"version":"v0.107.65","running":true,"dns_addresses":["0.0.0.0"],"dns_port":53}`)
 	case "/control/dns_info":
-		_ = json.NewEncoder(response).Encode(map[string]any{"upstream_dns": s.upstreamDNS, "bootstrap_dns": []string{}, "fallback_dns": []string{}, "local_ptr_upstreams": []string{}})
+		_ = json.NewEncoder(response).Encode(map[string]any{"upstream_dns": s.upstreamDNS, "bootstrap_dns": []string{}, "fallback_dns": []string{}, "local_ptr_upstreams": []string{}, "cache_enabled": true, "cache_size": 4_194_304, "upstream_timeout": 10})
 	case "/control/filtering/status":
-		_ = json.NewEncoder(response).Encode(map[string]any{"enabled": true, "interval": 24, "filters": []any{}, "user_rules": s.userRules})
+		_ = json.NewEncoder(response).Encode(map[string]any{"enabled": true, "interval": 24, "filters": []any{}, "whitelist_filters": []any{}, "user_rules": s.userRules})
+	case "/control/clients":
+		_, _ = io.WriteString(response, `{"clients":[]}`)
+	case "/control/rewrite/list":
+		_, _ = io.WriteString(response, `[]`)
+	case "/control/blocked_services/get":
+		_, _ = io.WriteString(response, `{"ids":[],"schedule":{"time_zone":"Local"}}`)
+	case "/control/safebrowsing/status", "/control/parental/status":
+		_, _ = io.WriteString(response, `{"enabled":false}`)
+	case "/control/safesearch/status":
+		_, _ = io.WriteString(response, `{"enabled":false,"bing":true,"duckduckgo":true,"ecosia":true,"google":true,"pixabay":true,"yandex":true,"youtube":true}`)
+	case "/control/querylog/config", "/control/stats/config":
+		_, _ = io.WriteString(response, `{"enabled":false,"interval":0,"ignored":[]}`)
+	case "/control/tls/status":
+		_, _ = io.WriteString(response, `{"enabled":false,"serve_plain_dns":true}`)
+	case "/control/dhcp/status":
+		response.WriteHeader(http.StatusInternalServerError)
+		_, _ = io.WriteString(response, `{"message":"DHCP unavailable"}`)
 	case "/control/dns_config":
 		var body struct {
 			UpstreamDNS []string `json:"upstream_dns"`
@@ -54,7 +71,7 @@ func (s *adGuardState) handler(response http.ResponseWriter, request *http.Reque
 		_ = json.NewDecoder(request.Body).Decode(&body)
 		s.userRules = append([]string(nil), body.Rules...)
 	default:
-		if request.Method != http.MethodPost {
+		if request.Method != http.MethodPost && request.Method != http.MethodPut {
 			http.NotFound(response, request)
 		}
 	}

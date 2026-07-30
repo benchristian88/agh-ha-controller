@@ -137,3 +137,17 @@ The 29 July 2026 production validation completed both Docker and systemd install
 7. Publish a second revision, then use Rollback on the first. Confirm rollback creates a new deployment record and does not modify either revision.
 
 If validation reports a missing/invalid DNS port or bind address after upgrading from the initial 0.3.0 build, refresh that node and import its new successful snapshot. Repeat for every enabled node named by validation; pre-fix snapshots did not collect listener identity from the correct AdGuard Home endpoint. Because import replaces shared draft values with the selected snapshot, review and reapply the intended shared edits after the final recovery import.
+
+Release 0.3, including Docker and systemd installation and functional validation, was completed by the operator on 30 July 2026.
+
+## Release 0.4 broader configuration checks
+
+1. Upgrade PostgreSQL through migration `000004_release_0_4` and confirm existing schema-v1 revisions still compare, preview, roll back, and reconcile.
+2. Refresh every node. v0.107.52 must report schema v1 with an upgrade warning; v0.107.53–v0.107.78 must report schema v2 and explicit patch-level feature flags. A newer unverified contract must report unknown and block deployment.
+3. Import every enabled v2 node, then exercise `/settings/dns`, `/settings/filters`, `/settings/clients`, `/settings/rewrites`, `/settings/services`, `/settings/privacy`, and `/settings/infrastructure`. Save, publish, deploy to two nodes, and confirm managed-field read-back convergence.
+4. Refresh blocklists and allowlists. Confirm a requested and terminal audit event per node and an explicit partial result if one node fails.
+5. Confirm TLS inventory shows status/subject/issuer/validity only. Search API output, snapshots, audit metadata, and logs for certificate/key test markers and confirm none exist.
+6. Configure DHCP on two node overrides but enable only one. Confirm validation rejects two enabled nodes. For a handoff revision, confirm the deployment order disables the old node before enabling the new node and records both per-node results.
+7. Change a schema-v2 managed setting directly and confirm drift; change only TLS status or a dynamic lease and confirm no drift.
+
+If a v2 deployment is blocked, inspect the node capability profile and successful current observation. Do not bypass the gate: upgrade the node, restore endpoint access, refresh, and re-import. TLS changes must be made in the native node UI while the node is in maintenance, followed by refresh and deliberate adoption.

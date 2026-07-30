@@ -21,7 +21,7 @@ AGH HA Controller is intended to solve that gap by providing:
 
 ## Project status
 
-Release 0.3 implements the authoritative configuration-control MVP. Operators can import observed node state, edit and validate one desired cluster document, publish immutable revisions, deploy sequentially with per-node read-back verification, roll back through a new deployment, detect direct changes, and choose Manual, Alert, or Enforce reconciliation. Maintenance mode prevents controller mutation of a node. Releases 0.2, 0.2.1, and 0.2.2 and the Docker/systemd installation paths were operator-validated before this implementation. The 0.3 release gate and remaining external validation are tracked in the [feature ledger](docs/product/feature-ledger.md).
+Release 0.4 implements broader AdGuard Home administration on top of the validated 0.3 authoritative control plane. Operators can manage shared DNS behavior, blocklists and allowlists, custom rules, persistent clients, rewrites, blocked services and schedules, safety services, Safe Search, and node query-log/statistics policy. TLS is exposed as redacted inventory, and DHCP is a guarded node override with one active node maximum. Release 0.3, including Docker and systemd installation and functional workflows, was operator-validated on 30 July 2026. Current implementation and validation status is tracked in the [feature ledger](docs/product/feature-ledger.md).
 
 The first meaningful product milestone is the configuration-control MVP:
 
@@ -62,15 +62,15 @@ The complete architecture is documented in [docs/architecture/architecture.md](d
 
 ## Technology stack
 
-### Services implemented in 0.3
+### Services implemented through 0.4
 
-- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, health polling, configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, session cleanup, audit access, and operational probes.
+- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, health polling, schema-versioned configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, audited filter refresh, session cleanup, audit access, and operational probes.
 - PostgreSQL 17: the system of record for users/sessions, clusters/nodes, encrypted credential envelopes, capability profiles, immutable observations/revisions, optimistic drafts, deployments and ordered per-node tasks, drift events, and audit history.
-- AdGuard Home adapter: bounded direct HTTP(S) reads and schema-v1 writes for shared DNS resolvers, filtering state/interval, blocklist subscriptions, and custom rules. DNS bind hosts/port are explicit node overrides but deployment preflight blocks changes because no supported writer exists. Whitelist filters are not managed.
+- AdGuard Home adapter: bounded direct HTTP(S) reads and version-aware writes. Schema v2 manages broader DNS behavior, blocklists/allowlists, custom rules, persistent clients, rewrites, blocked-service schedules, safety services, Safe Search, query-log/statistics policy, and guarded DHCP configuration/static leases. DNS bind hosts/port remain verification-only. TLS responses are reduced to public status and certificate metadata before entering domain state.
 - Deployment worker: claims durable jobs, validates and observes all targets before mutation, applies one node at a time, stops on first failure, honors cancellation only between nodes, verifies by a new immutable observation, and activates the revision only after total success.
 - Reconciliation worker: periodically compares the active revision's effective configuration with fresh node observations, deduplicates structured drift, and applies Manual, Alert, or Enforce policy while excluding maintenance nodes.
 
-AdGuard Home remains the live DNS service and never sends normal DNS traffic through the controller. Statistics ingestion, query-log ingestion, and the optional forwarder remain later milestones.
+AdGuard Home remains the live DNS service and never sends normal DNS traffic through the controller. Release 0.4 manages node-local statistics and query-log settings but does not ingest their events; aggregation, central query-log ingestion, and the optional forwarder remain later milestones.
 
 ### Controller backend
 
@@ -143,7 +143,7 @@ The installer builds from source without requiring ripgrep, creates the `aghha` 
 
 ## Authoritative configuration workflow
 
-After adding nodes, open `/ha/configuration`. Refresh and import every enabled node so the desired draft has an explicit listener override for each node. Edit shared DNS/filtering values, save with optimistic concurrency, validate capability/listener compatibility, add a summary, and publish an immutable revision. Preview then deploy it; deployment is asynchronous and visible under `/ha/deployments` with per-node phases and safe errors.
+After adding nodes, open `/ha/configuration`. Refresh and import every enabled node so the desired draft has an explicit listener override and any available DHCP override for each node. Use the nested `/settings/*` pages for routine AdGuard Home settings, save the shared draft with optimistic concurrency, then return to Configuration to validate, summarize, and publish an immutable revision. Preview and deploy it; deployment is asynchronous and visible under `/ha/deployments` with per-node phases and safe errors.
 
 Listener addresses and DNS port are read from AdGuard Home's `/control/status` response and retained as verification-only node overrides. If a draft created by the initial 0.3.0 build reports an empty/invalid listener override, refresh and re-import the named node; repeat for each enabled node that is missing an override. Import replaces the draft's shared values with the selected snapshot, so review and reapply intended shared edits after the final recovery import.
 
@@ -151,7 +151,9 @@ The initial strategy is intentionally sequential and stop-on-failure. Every targ
 
 Direct changes against managed values become durable drift events after an active revision exists. Manual leaves the choice to the operator, Alert records a visible alert without mutation, and Enforce creates a targeted verified deployment. Restore desired state, adopt the observation into the draft, or place the node in maintenance from **Deployments & drift**. Adoption still requires a new published revision; rollback deploys a historical revision without editing it.
 
-Canonical schema v1 covers upstream/bootstrap/fallback/private reverse DNS, filtering enablement and interval, blocklist subscriptions, custom rules, bind hosts, and DNS port. Bind hosts and port are verification-only. Whitelists, TLS, DHCP, clients, rewrites, and service controls are deliberately deferred.
+Canonical schema v2 covers the Release 0.4 managed surface. AdGuard Home v0.107.53 through the current stable v0.107.78 contract can import and publish schema v2. v0.107.52 remains supported on frozen schema v1 so historical observations, revisions, rollback, and reconciliation continue to work; newer unverified contracts are reported as unknown rather than assumed safe. Existing schema-v1 records are never rewritten. Capability preflight blocks deployment when any required feature was not successfully observed.
+
+TLS is inventory-only: certificate chains, private keys, and filesystem paths are discarded at the adapter boundary. DHCP configuration and static leases are node-specific; validation permits at most one enabled DHCP node, and role handoff deploys desired-disabled nodes before the desired-active node. Filter refresh is an explicit audited per-node operation, with fleet partial results shown by the UI.
 
 After either installation, open `PUBLIC_BASE_URL`. When the database has no users, the application shows “Create your administrator.” That transaction creates the only initial administrator and signs it in; setup returns HTTP 409 after any user exists. Then create a cluster and add each AdGuard Home node.
 

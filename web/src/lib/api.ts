@@ -162,6 +162,11 @@ export const api = {
       method: "POST",
       body: "{}",
     }),
+  refreshFilters: (nodeId: string, whitelist: boolean) =>
+    request<{ nodeId: string; whitelist: boolean; status: "succeeded" }>(
+      `/api/v1/nodes/${nodeId}/filter-refresh`,
+      { method: "POST", body: JSON.stringify({ whitelist }) },
+    ),
   setNodeMaintenance: (node: Node, enabled: boolean) =>
     request<Node>(`/api/v1/nodes/${node.id}/maintenance`, {
       method: "POST",
