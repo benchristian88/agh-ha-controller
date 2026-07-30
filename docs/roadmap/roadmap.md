@@ -262,6 +262,10 @@ Partially completed or validation pending:
 - The full Go race suite, vet, controller build, frontend type/test/lint/production build, shell syntax, production dependency audit, and diff check pass locally. The PostgreSQL migration/authoritative integration workflow compiled but requires `TEST_DATABASE_URL` and remains to be executed for this release in the reference environment; Compose validation was unavailable because this workspace has no Docker CLI.
 - Browser accessibility/visual workflows, real supported-version node write/read-back, DHCP handoff, Docker upgrade, and systemd upgrade remain 0.4 release gates.
 
+Post-implementation correction on 31 July 2026:
+
+- Settings-editor row keys no longer depend on the secure-context-only browser UUID API. Rewrites, persistent clients, and DHCP static leases now render on explicit HTTP origins; the frontend regression suite, type check, lint, and production build pass. The broader browser accessibility/visual release gate remains pending.
+
 Deliberately deferred without changing roadmap history:
 
 - TLS certificate/key mutation is excluded until controller-managed secret references are designed; TLS is redacted inventory only.

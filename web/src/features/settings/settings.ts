@@ -1,3 +1,10 @@
+let nextEditorRowKey = 0;
+
+export function createEditorRowKey(kind: string) {
+  nextEditorRowKey += 1;
+  return `${kind}-${nextEditorRowKey}`;
+}
+
 export function formatTimeOfDay(milliseconds: number) {
   const totalMinutes = Math.round(milliseconds / 60_000);
   const hours = Math.floor(totalMinutes / 60);

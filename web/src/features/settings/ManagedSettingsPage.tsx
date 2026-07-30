@@ -15,7 +15,11 @@ import type {
   Schedule,
   ValidationIssue,
 } from "../../lib/types";
-import { formatTimeOfDay, parseTimeOfDay } from "./settings";
+import {
+  createEditorRowKey,
+  formatTimeOfDay,
+  parseTimeOfDay,
+} from "./settings";
 
 export type SettingsArea =
   | "dns"
@@ -611,7 +615,7 @@ function emptyClient(): PersistentClient {
 function ClientsForm({ draft, setDraft }: DraftProps) {
   const clients = draft.document.shared.clients ?? [];
   const [clientKeys, setClientKeys] = useState(() =>
-    clients.map(() => crypto.randomUUID()),
+    clients.map(() => createEditorRowKey("client")),
   );
   const setClients = (value: PersistentClient[]) =>
     setDraft({
@@ -622,7 +626,7 @@ function ClientsForm({ draft, setDraft }: DraftProps) {
       },
     });
   const addClient = () => {
-    setClientKeys([...clientKeys, crypto.randomUUID()]);
+    setClientKeys([...clientKeys, createEditorRowKey("client")]);
     setClients([...clients, emptyClient()]);
   };
   const removeClient = (index: number) => {
@@ -796,7 +800,7 @@ function ClientsForm({ draft, setDraft }: DraftProps) {
 function RewritesForm({ draft, setDraft }: DraftProps) {
   const rewrites = draft.document.shared.rewrites ?? [];
   const [rewriteKeys, setRewriteKeys] = useState(() =>
-    rewrites.map(() => crypto.randomUUID()),
+    rewrites.map(() => createEditorRowKey("rewrite")),
   );
   const setRewrites = (value: Rewrite[]) =>
     setDraft({
@@ -807,7 +811,7 @@ function RewritesForm({ draft, setDraft }: DraftProps) {
       },
     });
   const addRewrite = () => {
-    setRewriteKeys([...rewriteKeys, crypto.randomUUID()]);
+    setRewriteKeys([...rewriteKeys, createEditorRowKey("rewrite")]);
     setRewrites([...rewrites, { domain: "", answer: "", enabled: true }]);
   };
   const removeRewrite = (index: number) => {
@@ -1292,7 +1296,7 @@ function StaticLeasesEditor({
   onChange: (value: DhcpStaticLease[]) => void;
 }) {
   const [leaseKeys, setLeaseKeys] = useState(() =>
-    value.map(() => crypto.randomUUID()),
+    value.map(() => createEditorRowKey("lease")),
   );
   const update = (index: number, patch: Partial<DhcpStaticLease>) =>
     onChange(
@@ -1308,7 +1312,7 @@ function StaticLeasesEditor({
           type="button"
           className="button button--secondary"
           onClick={() => {
-            setLeaseKeys([...leaseKeys, crypto.randomUUID()]);
+            setLeaseKeys([...leaseKeys, createEditorRowKey("lease")]);
             onChange([...value, { mac: "", ip: "", hostname: "" }]);
           }}
         >

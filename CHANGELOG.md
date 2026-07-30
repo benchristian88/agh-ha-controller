@@ -21,6 +21,10 @@ The project intends to follow Semantic Versioning once the first public release 
 - Default controller, image, installer, and web version is 0.4.0.
 - Release 0.3, including Docker and systemd installation and functional validation, is recorded as complete.
 
+### Fixed
+
+- Prevent the rewrites, persistent-clients, and DHCP static-lease editors from crashing on non-secure HTTP origins by using stable local row keys instead of the secure-context-only browser UUID API.
+
 ### Deferred
 
 - TLS certificate/key mutation remains excluded until controller-managed secret references exist.
