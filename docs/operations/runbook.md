@@ -12,7 +12,7 @@ Check:
 - Disk capacity.
 - Query ingestion lag.
 
-For Release 0.1, `/health` proves the process is serving and `/ready` additionally proves PostgreSQL connectivity. Query ingestion and deployment checks do not exist yet.
+`/health` proves the process is serving and `/ready` additionally proves PostgreSQL connectivity. Deployment state is visible in **Deployments & drift**; query ingestion checks do not exist yet.
 
 If readiness fails, the controller must not be treated as able to accept state changes. AdGuard Home DNS remains independent.
 
@@ -36,6 +36,8 @@ On startup the controller validates configuration, connects to PostgreSQL, appli
 For Docker Compose, run `docker compose ps`, inspect `docker compose logs --tail=100 controller`, and request `/ready`. Both services must be healthy. PostgreSQL state is in the `postgres-data` named volume; runtime secrets are in the untracked `.env` and must be backed up separately.
 
 For systemd, run `systemctl status agh-ha-controller`, inspect `journalctl -u agh-ha-controller`, and request `/ready`. The runtime environment is `/etc/agh-ha-controller/agh-ha-controller.env` with mode `0600`; the installer preserves it during an upgrade rerun.
+
+Release 0.2.2 and later restart and verify the unit after installing new artifacts. On an earlier upgrade, a new frontend combined with `API route was not found` indicates the old controller process is still running; use `systemctl restart agh-ha-controller` and verify `/api/v1/system/version` before retrying.
 
 Before either upgrade path, back up PostgreSQL and runtime secrets. A failed migration prevents controller startup and leaves DNS nodes serving independently. On a database with no users, opening the UI starts the one-time administrator flow. After creation, setup status is false and repeated setup requests return conflict.
 
@@ -82,6 +84,8 @@ Correct the underlying issue and use “Test” in the Nodes page. Direct AdGuar
    - Pause and repair node.
 5. Preserve deployment and audit history.
 
+Release 0.3 stops after the first failed node and records `partially_succeeded` when an earlier node verified. It never silently rolls back. Repair the cause, then deliberately deploy the desired revision again or review and deploy a historical revision as rollback. A controller restart marks an in-flight attempt `interrupted`; re-observe all affected nodes before starting another deployment.
+
 ## Controller restore
 
 1. Restore database.
@@ -111,3 +115,25 @@ It must exclude:
 - Node credentials.
 - TLS private keys.
 - Raw query logs by default.
+The 29 July 2026 production validation completed both Docker and systemd installs successfully. A non-fatal `make: rg: no such file or directory` message on systemd came from Make source discovery; Release 0.2 uses portable `find` and does not require ripgrep for installation.
+
+## Release 0.2 configuration inventory checks
+
+1. Open **Configuration** for the selected cluster.
+2. Refresh each enabled node; confirm DNS and filtering capabilities and a successful immutable snapshot.
+3. Compare equivalent nodes and confirm semantic equality.
+4. Introduce or identify one safe real difference and confirm its section and ownership scope.
+5. Review and import one snapshot; confirm the inventory draft version increments and audit contains `configuration.draft_imported`.
+6. Confirm no node configuration changed. Release 0.2 has no writer or deployment route.
+
+## Release 0.3 authoritative configuration checks
+
+1. Refresh and import every enabled node so each has a `nodeOverrides` listener identity.
+2. Edit and save the shared draft, validate it, add a summary, and publish an immutable revision.
+3. Preview and deploy it. Confirm each node task reaches `succeeded`, has a verification snapshot, and the revision becomes active only after the final node verifies.
+4. Make a safe direct shared-field change on one AdGuard Home node. Confirm one open drift event appears with a structured difference.
+5. Under Manual or Alert, confirm no automatic mutation. Under Enforce, confirm a reconciliation deployment restores the value and a later observation resolves the event.
+6. Put a node in maintenance and confirm it is excluded from deployment/reconciliation targets. Remove maintenance and revalidate before deploying.
+7. Publish a second revision, then use Rollback on the first. Confirm rollback creates a new deployment record and does not modify either revision.
+
+If validation reports a missing/invalid DNS port or bind address after upgrading from the initial 0.3.0 build, refresh that node and import its new successful snapshot. Repeat for every enabled node named by validation; pre-fix snapshots did not collect listener identity from the correct AdGuard Home endpoint. Because import replaces shared draft values with the selected snapshot, review and reapply the intended shared edits after the final recovery import.

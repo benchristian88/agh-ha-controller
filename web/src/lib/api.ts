@@ -2,9 +2,19 @@ import type {
   ApiErrorBody,
   AuditEvent,
   AuthResponse,
+  CapabilityProfile,
   CertificatePolicy,
   Cluster,
+  ConfigurationDifference,
+  ConfigurationDraft,
+  ConfigurationRevision,
+  ConfigurationSnapshot,
+  Deployment,
+  DeploymentPreview,
+  DesiredConfigurationDocument,
+  DriftEvent,
   Node,
+  ValidationIssue,
 } from "./types";
 
 export class ApiError extends Error {
@@ -112,6 +122,7 @@ export const api = {
       body: JSON.stringify({
         name: cluster.name,
         description: cluster.description,
+        reconciliationPolicy: cluster.reconciliationPolicy,
         version: cluster.version,
       }),
     }),
@@ -145,6 +156,121 @@ export const api = {
     }>(`/api/v1/nodes/${nodeId}/test-connection`, {
       method: "POST",
       body: "{}",
+    }),
+  observeNode: (nodeId: string) =>
+    request<ConfigurationSnapshot>(`/api/v1/nodes/${nodeId}/observations`, {
+      method: "POST",
+      body: "{}",
+    }),
+  setNodeMaintenance: (node: Node, enabled: boolean) =>
+    request<Node>(`/api/v1/nodes/${node.id}/maintenance`, {
+      method: "POST",
+      body: JSON.stringify({ enabled, recordVersion: node.recordVersion }),
+    }),
+  configurationInventory: (clusterId: string) =>
+    request<{
+      schemaVersion: number;
+      snapshots: ConfigurationSnapshot[];
+      capabilities: CapabilityProfile[];
+      // 0.2.0 returned null when a cluster had no draft. Keep accepting that
+      // response so the fixed UI can be deployed before the controller update.
+      draft?: ConfigurationDraft | null;
+    }>(`/api/v1/clusters/${clusterId}/configuration-inventory`),
+  compareConfigurations: (leftSnapshotId: string, rightSnapshotId: string) =>
+    request<{ equal: boolean; differences: ConfigurationDifference[] }>(
+      `/api/v1/configuration-comparisons?leftSnapshotId=${encodeURIComponent(leftSnapshotId)}&rightSnapshotId=${encodeURIComponent(rightSnapshotId)}`,
+    ),
+  importConfiguration: (
+    clusterId: string,
+    snapshotId: string,
+    expectedVersion: number,
+  ) =>
+    request<ConfigurationDraft>(
+      `/api/v1/clusters/${clusterId}/configuration-draft/import`,
+      {
+        method: "POST",
+        body: JSON.stringify({ snapshotId, expectedVersion, confirmed: true }),
+      },
+    ),
+  updateConfigurationDraft: (
+    clusterId: string,
+    expectedVersion: number,
+    document: DesiredConfigurationDocument,
+  ) =>
+    request<{ draft: ConfigurationDraft; issues: ValidationIssue[] }>(
+      `/api/v1/clusters/${clusterId}/configuration-draft`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ expectedVersion, document }),
+      },
+    ),
+  validateConfigurationDraft: (clusterId: string) =>
+    request<DeploymentPreview>(
+      `/api/v1/clusters/${clusterId}/configuration-draft/validate`,
+      { method: "POST", body: "{}" },
+    ),
+  publishConfigurationRevision: (
+    clusterId: string,
+    expectedVersion: number,
+    summary: string,
+  ) =>
+    request<ConfigurationRevision>(
+      `/api/v1/clusters/${clusterId}/configuration-revisions`,
+      {
+        method: "POST",
+        body: JSON.stringify({ expectedVersion, summary }),
+      },
+    ),
+  configurationRevisions: (clusterId: string) =>
+    request<{ items: ConfigurationRevision[] }>(
+      `/api/v1/clusters/${clusterId}/configuration-revisions`,
+    ),
+  compareConfigurationRevisions: (
+    leftRevisionId: string,
+    rightRevisionId: string,
+  ) =>
+    request<{ equal: boolean; differences: ConfigurationDifference[] }>(
+      `/api/v1/configuration-revision-comparisons?leftRevisionId=${encodeURIComponent(leftRevisionId)}&rightRevisionId=${encodeURIComponent(rightRevisionId)}`,
+    ),
+  deploymentPreview: (clusterId: string, revisionId: string) =>
+    request<DeploymentPreview>(
+      `/api/v1/clusters/${clusterId}/configuration-revisions/${revisionId}/deployment-preview`,
+      { method: "POST", body: "{}" },
+    ),
+  startDeployment: (clusterId: string, revisionId: string) =>
+    request<Deployment>(
+      `/api/v1/clusters/${clusterId}/configuration-revisions/${revisionId}/deployments`,
+      { method: "POST", body: JSON.stringify({ targetNodeIds: [] }) },
+    ),
+  rollback: (clusterId: string, revisionId: string) =>
+    request<Deployment>(
+      `/api/v1/clusters/${clusterId}/configuration-revisions/${revisionId}/rollback`,
+      { method: "POST", body: JSON.stringify({ confirmed: true }) },
+    ),
+  deployments: (clusterId: string) =>
+    request<{ items: Deployment[] }>(
+      `/api/v1/clusters/${clusterId}/deployments`,
+    ),
+  deployment: (deploymentId: string) =>
+    request<Deployment>(`/api/v1/deployments/${deploymentId}`),
+  cancelDeployment: (deploymentId: string) =>
+    request<void>(`/api/v1/deployments/${deploymentId}/cancel`, {
+      method: "POST",
+      body: "{}",
+    }),
+  driftEvents: (clusterId: string) =>
+    request<{ items: DriftEvent[] }>(
+      `/api/v1/clusters/${clusterId}/drift-events`,
+    ),
+  restoreDrift: (driftId: string) =>
+    request<Deployment>(`/api/v1/drift-events/${driftId}/restore`, {
+      method: "POST",
+      body: "{}",
+    }),
+  adoptDrift: (driftId: string, expectedDraftVersion: number) =>
+    request<ConfigurationDraft>(`/api/v1/drift-events/${driftId}/adopt`, {
+      method: "POST",
+      body: JSON.stringify({ expectedDraftVersion }),
     }),
   auditEvents: () =>
     request<{ items: AuditEvent[] }>("/api/v1/audit-events?limit=100"),

@@ -3,8 +3,8 @@
 GO ?= go
 NPM ?= npm
 COMPOSE ?= docker compose
-GO_FILES := $(shell rg --files -g '*.go')
-VERSION ?= 0.1.1
+GO_FILES := $(shell find . -type f -name '*.go' -not -path './web/node_modules/*')
+VERSION ?= 0.3.0
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || printf unknown)
 BUILT_AT ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -X github.com/benchristian88/agh-ha-controller/internal/version.Version=$(VERSION) -X github.com/benchristian88/agh-ha-controller/internal/version.Commit=$(COMMIT) -X github.com/benchristian88/agh-ha-controller/internal/version.BuiltAt=$(BUILT_AT)

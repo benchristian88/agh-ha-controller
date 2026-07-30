@@ -10,7 +10,13 @@ It should be calm, operational, information-dense, and suitable for daily use.
 
 The first implemented surface includes one-time setup, login, cluster creation and selection, a health dashboard, node list/onboarding/edit/test/removal, and an audit table. It uses the project-owned dark tokens, native forms, visible focus, textual status badges, responsive layouts, typed API access, and explicit loading, empty, stale, cached-with-refresh-error, and failure states.
 
-The dashboard does not render zero-value traffic charts before telemetry exists. Configuration, deployment, drift, statistics, and query-log navigation remains absent until those execution paths are implemented.
+The dashboard does not render zero-value traffic charts before telemetry exists. Release 0.3 exposes configuration plus deployment/drift navigation; statistics and query-log navigation remain absent until those execution paths are implemented.
+
+Release 0.3 implements the configuration authoring form, immutable revision history/actions, reconciliation-policy selector, deployment timeline with per-node outcomes and safe cancellation, and structured drift restore/adopt/maintenance actions. The screens poll durable deployment state every three seconds and preserve explicit loading, empty, error, partial-success, and maintenance states.
+
+## Release 0.2 implementation
+
+`/ha/configuration` provides a read-only inventory for the selected cluster. It models initial loading, empty clusters, collection failures, compatibility warnings, successful semantic equality, detailed section/scope differences, and optimistic import conflicts. Import confirmation explicitly states that no node is changed and that the resulting draft is neither published nor deployable.
 
 ## Visual direction
 

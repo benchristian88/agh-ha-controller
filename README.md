@@ -21,7 +21,7 @@ AGH HA Controller is intended to solve that gap by providing:
 
 ## Project status
 
-Release 0.1.1 adds complete git-based installation paths for Docker Compose and direct Debian/systemd builds. The foundation includes first-run administrator creation, secure sessions, cluster/node management, encrypted node credentials, status polling, the dark web UI, audit records, and health endpoints. Configuration control remains scheduled for later releases; see the [feature ledger](docs/product/feature-ledger.md).
+Release 0.3 implements the authoritative configuration-control MVP. Operators can import observed node state, edit and validate one desired cluster document, publish immutable revisions, deploy sequentially with per-node read-back verification, roll back through a new deployment, detect direct changes, and choose Manual, Alert, or Enforce reconciliation. Maintenance mode prevents controller mutation of a node. Releases 0.2, 0.2.1, and 0.2.2 and the Docker/systemd installation paths were operator-validated before this implementation. The 0.3 release gate and remaining external validation are tracked in the [feature ledger](docs/product/feature-ledger.md).
 
 The first meaningful product milestone is the configuration-control MVP:
 
@@ -62,13 +62,15 @@ The complete architecture is documented in [docs/architecture/architecture.md](d
 
 ## Technology stack
 
-### Services implemented in 0.1.1
+### Services implemented in 0.3
 
-- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, one-time administrator setup and login, cluster/node management, encrypted credential access, health polling, session cleanup, audit access, and `/health` plus `/ready` endpoints.
-- PostgreSQL 17: the external system of record for users, sessions, clusters, nodes, encrypted credential envelopes, health state, migrations, and audit events.
-- AdGuard Home nodes: independently installed DNS services contacted only through the read-only administration status API in this release. They are not containers or subprocesses of the controller and continue serving DNS during controller outages.
+- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, health polling, configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, session cleanup, audit access, and operational probes.
+- PostgreSQL 17: the system of record for users/sessions, clusters/nodes, encrypted credential envelopes, capability profiles, immutable observations/revisions, optimistic drafts, deployments and ordered per-node tasks, drift events, and audit history.
+- AdGuard Home adapter: bounded direct HTTP(S) reads and schema-v1 writes for shared DNS resolvers, filtering state/interval, blocklist subscriptions, and custom rules. DNS bind hosts/port are explicit node overrides but deployment preflight blocks changes because no supported writer exists. Whitelist filters are not managed.
+- Deployment worker: claims durable jobs, validates and observes all targets before mutation, applies one node at a time, stops on first failure, honors cancellation only between nodes, verifies by a new immutable observation, and activates the revision only after total success.
+- Reconciliation worker: periodically compares the active revision's effective configuration with fresh node observations, deduplicates structured drift, and applies Manual, Alert, or Enforce policy while excluding maintenance nodes.
 
-The forwarder, configuration reconciliation, deployments, statistics ingestion, and query-log ingestion shown elsewhere in the product roadmap are not implemented services in 0.1.1.
+AdGuard Home remains the live DNS service and never sends normal DNS traffic through the controller. Statistics ingestion, query-log ingestion, and the optional forwarder remain later milestones.
 
 ### Controller backend
 
@@ -137,11 +139,23 @@ cd agh-ha-controller
 sudo PUBLIC_BASE_URL=https://controller.example.test ./scripts/install-systemd.sh
 ```
 
-The installer builds from source, creates the `aghha` service account and PostgreSQL database, generates protected secrets, installs the binary/UI, enables the hardened service, and preserves `/etc/agh-ha-controller/agh-ha-controller.env` on reruns. Inspect it with `systemctl status agh-ha-controller` and `journalctl -u agh-ha-controller -f`.
+The installer builds from source without requiring ripgrep, creates the `aghha` service account and PostgreSQL database, generates protected secrets, installs the binary/UI, enables the hardened service, and preserves `/etc/agh-ha-controller/agh-ha-controller.env` on reruns. Inspect it with `systemctl status agh-ha-controller` and `journalctl -u agh-ha-controller -f`.
+
+## Authoritative configuration workflow
+
+After adding nodes, open `/ha/configuration`. Refresh and import every enabled node so the desired draft has an explicit listener override for each node. Edit shared DNS/filtering values, save with optimistic concurrency, validate capability/listener compatibility, add a summary, and publish an immutable revision. Preview then deploy it; deployment is asynchronous and visible under `/ha/deployments` with per-node phases and safe errors.
+
+Listener addresses and DNS port are read from AdGuard Home's `/control/status` response and retained as verification-only node overrides. If a draft created by the initial 0.3.0 build reports an empty/invalid listener override, refresh and re-import the named node; repeat for each enabled node that is missing an override. Import replaces the draft's shared values with the selected snapshot, so review and reapply intended shared edits after the final recovery import.
+
+The initial strategy is intentionally sequential and stop-on-failure. Every target is revalidated before the first write. Each changed node is read back and compared semantically. A revision becomes active only after every target succeeds. Cancellation is safe-boundary only, and a controller restart records an interrupted outcome rather than assuming success.
+
+Direct changes against managed values become durable drift events after an active revision exists. Manual leaves the choice to the operator, Alert records a visible alert without mutation, and Enforce creates a targeted verified deployment. Restore desired state, adopt the observation into the draft, or place the node in maintenance from **Deployments & drift**. Adoption still requires a new published revision; rollback deploys a historical revision without editing it.
+
+Canonical schema v1 covers upstream/bootstrap/fallback/private reverse DNS, filtering enablement and interval, blocklist subscriptions, custom rules, bind hosts, and DNS port. Bind hosts and port are verification-only. Whitelists, TLS, DHCP, clients, rewrites, and service controls are deliberately deferred.
 
 After either installation, open `PUBLIC_BASE_URL`. When the database has no users, the application shows “Create your administrator.” That transaction creates the only initial administrator and signs it in; setup returns HTTP 409 after any user exists. Then create a cluster and add each AdGuard Home node.
 
-Upgrade a git installation by backing up PostgreSQL and runtime secrets, pulling the desired tag, and rerunning `docker compose up --build --detach` or `scripts/install-systemd.sh`. Embedded append-only migrations run at startup.
+Upgrade a git installation by backing up PostgreSQL and runtime secrets, pulling the desired tag, and rerunning `docker compose up --build --detach` or `scripts/install-systemd.sh`. Embedded append-only migrations run at startup. Release 0.2.2 and later systemd upgrades explicitly restart and verify the service after installing the binary and UI, preventing mixed frontend/API versions.
 
 Development and test commands are documented in [local development](docs/development/local-development.md).
 

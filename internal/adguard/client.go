@@ -29,8 +29,10 @@ func NewProbe(timeout time.Duration) *Probe {
 }
 
 type statusResponse struct {
-	Version string `json:"version"`
-	Running *bool  `json:"running"`
+	Version      string   `json:"version"`
+	Running      *bool    `json:"running"`
+	DNSAddresses []string `json:"dns_addresses"`
+	DNSPort      int      `json:"dns_port"`
 }
 
 func (p *Probe) Status(ctx context.Context, request domain.NodeProbeRequest) (domain.NodeProbeResult, error) {

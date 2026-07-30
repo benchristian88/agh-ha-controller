@@ -8,7 +8,7 @@ The roadmap prioritises configuration control before central statistics because 
 
 ## Release 0.1 — Foundation
 
-**Current status (27 July 2026): Partially completed — implementation is present; external release validation is pending.**
+**Current status (29 July 2026): Complete — production LXC installation and functionality were successfully validated by the operator.**
 
 ### Outcomes
 
@@ -52,7 +52,7 @@ Completed in the repository:
 - Dark React dashboard, node management, and audit surfaces.
 - Liveness/readiness endpoints and CI definitions for format, vet, race tests, PostgreSQL integration, frontend validation, dependency audit, and builds.
 
-Partially completed or validation pending:
+Historical validation record (resolved by the operator's 29 July 2026 production-build validation):
 
 - PostgreSQL migration and API integration tests run when an explicit `TEST_DATABASE_URL` is supplied; a hosted execution result is still pending.
 - Two-node onboarding is contract-tested; two real AdGuard Home nodes have not yet been recorded as passing.
@@ -67,16 +67,16 @@ Deliberately deferred from 0.1:
 - Account management, password recovery/change, and durable distributed rate limiting are follow-on authentication work; 0.1 provides the initial administrator and secure local session flow.
 - Cluster deletion is withheld until historical revision/deployment relationships have a safe lifecycle design.
 
-New follow-on dependencies:
+Follow-on improvements that did not block the accepted 0.1 release:
 
 - Select and provision the real AdGuard Home versions used for the initial compatibility statement.
 - Add browser-driven setup/login/two-node tests to the reference environment.
 - Exercise HTTPS reverse-proxy cookie behavior and Debian file placement.
-- Complete backup/restore and uninterrupted-DNS evidence before changing this release to complete.
+- Preserve repeatable backup/restore and uninterrupted-DNS evidence in future automated release jobs.
 
 ## Release 0.1.1 — Git-based installation
 
-**Current status (28 July 2026): Partially completed — implementation is present; fresh-host validation is pending.**
+**Current status (29 July 2026): Complete — Docker and systemd production-build installs were successfully validated.**
 
 Completed in the repository:
 
@@ -86,7 +86,7 @@ Completed in the repository:
 - One-time first-administrator behavior verified by database locking and repeat-setup regression coverage.
 - Installation, upgrade, architecture, security, operations, README, feature-ledger, and release documentation.
 
-Partially completed or validation pending:
+Historical validation record (resolved by successful Docker and systemd production-build installs on 29 July 2026):
 
 - Fresh Docker-enabled LXC and Debian 13 LXC installation smoke tests.
 - Restart and git-based upgrade reruns for both installation modes.
@@ -98,12 +98,14 @@ Deliberately deferred:
 - Prebuilt images/binaries, checksums, SBOM, release signing, automatic rollback, and Proxmox community installation.
 - External PostgreSQL Compose profiles and controller high availability.
 
-New follow-on dependencies:
+Follow-on improvements that did not block the accepted 0.1.1 release:
 
 - Publish immutable git tags so operators can select and roll back source versions predictably.
 - Add packaged-install smoke jobs on a Docker host and clean Debian LXC.
 
 ## Release 0.2 — Configuration inventory
+
+**Current status (29 July 2026): Implemented; production release validation pending.**
 
 ### Outcomes
 
@@ -126,6 +128,31 @@ New follow-on dependencies:
 - Two materially equivalent nodes compare as equal.
 - Real differences are displayed by section.
 - Volatile API fields do not create false drift.
+
+### Implementation reconciliation
+
+Completed in the repository:
+
+- Canonical schema v1 with shared-managed, node-specific, observed-only, unsupported, and volatile classifications.
+- Read-only DNS and filtering collection with v0.107.52 and v0.107.61 contract fixtures.
+- Immutable successful/failed observations, current capability profiles, deterministic hashes, and section/scope structured differences.
+- Confirmed, audited, optimistic import into a non-authoritative cluster draft.
+- Configuration inventory UI with refresh, warnings, semantic equality, detailed comparison, and import boundary messaging.
+- Portable production Make source discovery fixing the non-fatal systemd ripgrep warning reported during successful 0.1.1 validation.
+- Release 0.2.1 fixes the blank Configuration page seen when 0.2.0 returned `draft: null` before the first import.
+- Release 0.2.2 fixes systemd upgrade reruns that installed the new frontend and binary without restarting an already-running older controller process.
+
+Deliberately deferred:
+
+- Revision publication, desired-state activation, convergence, deployment, rollback, drift, and reconciliation remain Release 0.3.
+- TLS, DHCP, clients, rewrites, blocked services, and safety-service inventory remain broader Release 0.4 coverage.
+- Automatic scheduled observation remains follow-on work; 0.2 refresh is operator initiated and durable.
+
+Production validation checklist subsequently completed by the operator on 30 July 2026:
+
+- Upgrade a 0.1.1 production database through migration 000002.
+- Compare two real materially equivalent nodes and one intentional difference.
+- Confirm read-only endpoint compatibility and draft import on the release LXC.
 
 ## Release 0.3 — Authoritative configuration MVP
 
@@ -160,6 +187,33 @@ New follow-on dependencies:
 - A previous revision can be rolled back safely.
 
 This is the first release that demonstrates the complete core value proposition.
+
+### Implementation reconciliation — 30 July 2026
+
+Implemented:
+
+- Authoritative schema-v1 drafts remain distinct from observed documents and require one listener override per enabled node.
+- Publishing creates immutable numbered revisions; revision comparison is semantic and rollback deploys an existing historical revision.
+- Published revisions remain explicitly inactive until a deployment succeeds; PostgreSQL revision reads handle the cluster's initially null `active_revision_id` without an API/internal error.
+- PostgreSQL-backed deployments validate every target before the first mutation, run sequentially, stop after the first failure, preserve partial success, support safe-boundary cancellation, and record per-node verification snapshots.
+- Shared DNS resolver and filtering blocklist/rule settings use supported AdGuard Home HTTP endpoints. DNS listener values are preflight-only, whitelist filters are untouched, and node YAML is never edited.
+- Listener addresses and DNS port are collected from AdGuard Home's `/control/status` contract. Incomplete observations and legacy snapshots are rejected before import so an invalid node override cannot be published.
+- A revision becomes active only after every target verifies by read-back.
+- Durable deduplicated drift events support Manual, Alert, and Enforce policies; Enforce queues the same verified targeted deployment. Maintenance suppresses mutation.
+- The React UI provides desired-state editing, validation, revision actions, deployment progress/history, reconciliation policy, and drift restore/adopt/maintenance actions.
+
+Partially completed or validation pending:
+
+- The full Go race suite (including the AdGuard HTTP writer contract), frontend type/lint/tests/build, Go vet/build, and production dependency audit pass. A real-PostgreSQL two-node integration test now covers deploy, convergence, direct drift, Enforce restoration, and rollback, but this environment has no PostgreSQL executable/service, so that test is not yet recorded as executed.
+- Reference AdGuard Home write/read-back and packaged Docker/systemd 0.3 smoke validation remain release gates.
+
+Deliberately deferred without changing roadmap history:
+
+- Field-level drift ignore is not exposed because schema v1 already excludes unmanaged/volatile fields; explicit ignore-rule persistence belongs to broader reconciliation controls.
+- Automatic retry inside a potentially partial filter mutation is withheld. Enforce can create a later fresh attempt after observation; richer retry/backoff and partial recovery remain follow-on work.
+- Parallel/rolling deployments, schedules, maintenance windows, and wider AdGuard Home settings remain in later releases.
+
+Do not mark Release 0.3 complete until the PostgreSQL integration workflow and reference-node/package smoke checks pass.
 
 ## Release 0.4 — Broader AdGuard Home coverage
 

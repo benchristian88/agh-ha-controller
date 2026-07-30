@@ -14,7 +14,9 @@ import (
 	"time"
 
 	"github.com/benchristian88/agh-ha-controller/internal/auth"
+	"github.com/benchristian88/agh-ha-controller/internal/controlplane"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 )
 
 const (
@@ -35,6 +37,8 @@ type HealthChecker interface {
 type Server struct {
 	auth           *auth.Service
 	management     *domain.ManagementService
+	inventory      *inventory.Service
+	controlplane   *controlplane.Service
 	audit          AuditReader
 	health         HealthChecker
 	logger         *slog.Logger
@@ -45,10 +49,15 @@ type Server struct {
 	mux            *http.ServeMux
 }
 
-func NewServer(authService *auth.Service, management *domain.ManagementService, audit AuditReader, health HealthChecker, logger *slog.Logger, secureCookies bool, publicBaseURL string, healthInterval time.Duration, webDist string) *Server {
+func NewServer(authService *auth.Service, management *domain.ManagementService, inventoryService *inventory.Service, audit AuditReader, health HealthChecker, logger *slog.Logger, secureCookies bool, publicBaseURL string, healthInterval time.Duration, webDist string, controlplanes ...*controlplane.Service) *Server {
+	var controlplaneService *controlplane.Service
+	if len(controlplanes) > 0 {
+		controlplaneService = controlplanes[0]
+	}
 	server := &Server{
-		auth: authService, management: management, audit: audit, health: health,
-		logger: logger, secureCookies: secureCookies, publicBaseURL: publicBaseURL, healthInterval: healthInterval,
+		auth: authService, management: management, inventory: inventoryService, audit: audit, health: health,
+		controlplane: controlplaneService,
+		logger:       logger, secureCookies: secureCookies, publicBaseURL: publicBaseURL, healthInterval: healthInterval,
 		webDist: webDist, mux: http.NewServeMux(),
 	}
 	server.routes()
@@ -77,6 +86,28 @@ func (s *Server) routes() {
 	s.mux.Handle("PATCH /api/v1/nodes/{nodeId}", s.authenticated(true, http.HandlerFunc(s.handleUpdateNode)))
 	s.mux.Handle("DELETE /api/v1/nodes/{nodeId}", s.authenticated(true, http.HandlerFunc(s.handleDeleteNode)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/test-connection", s.authenticated(true, http.HandlerFunc(s.handleTestNode)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/maintenance", s.authenticated(true, http.HandlerFunc(s.handleNodeMaintenance)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/observations", s.authenticated(true, http.HandlerFunc(s.handleObserveNode)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/configuration-inventory", s.authenticated(false, http.HandlerFunc(s.handleConfigurationInventory)))
+	s.mux.Handle("GET /api/v1/configuration-comparisons", s.authenticated(false, http.HandlerFunc(s.handleConfigurationComparison)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-draft/import", s.authenticated(true, http.HandlerFunc(s.handleImportConfiguration)))
+	if s.controlplane != nil {
+		s.mux.Handle("PUT /api/v1/clusters/{clusterId}/configuration-draft", s.authenticated(true, http.HandlerFunc(s.handleUpdateConfigurationDraft)))
+		s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-draft/validate", s.authenticated(true, http.HandlerFunc(s.handleValidateConfigurationDraft)))
+		s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-revisions", s.authenticated(true, http.HandlerFunc(s.handlePublishConfigurationRevision)))
+		s.mux.Handle("GET /api/v1/clusters/{clusterId}/configuration-revisions", s.authenticated(false, http.HandlerFunc(s.handleListConfigurationRevisions)))
+		s.mux.Handle("GET /api/v1/configuration-revisions/{revisionId}", s.authenticated(false, http.HandlerFunc(s.handleGetConfigurationRevision)))
+		s.mux.Handle("GET /api/v1/configuration-revision-comparisons", s.authenticated(false, http.HandlerFunc(s.handleConfigurationRevisionComparison)))
+		s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-revisions/{revisionId}/deployment-preview", s.authenticated(true, http.HandlerFunc(s.handleDeploymentPreview)))
+		s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-revisions/{revisionId}/deployments", s.authenticated(true, http.HandlerFunc(s.handleStartDeployment)))
+		s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-revisions/{revisionId}/rollback", s.authenticated(true, http.HandlerFunc(s.handleRollback)))
+		s.mux.Handle("GET /api/v1/clusters/{clusterId}/deployments", s.authenticated(false, http.HandlerFunc(s.handleListDeployments)))
+		s.mux.Handle("GET /api/v1/deployments/{deploymentId}", s.authenticated(false, http.HandlerFunc(s.handleGetDeployment)))
+		s.mux.Handle("POST /api/v1/deployments/{deploymentId}/cancel", s.authenticated(true, http.HandlerFunc(s.handleCancelDeployment)))
+		s.mux.Handle("GET /api/v1/clusters/{clusterId}/drift-events", s.authenticated(false, http.HandlerFunc(s.handleListDriftEvents)))
+		s.mux.Handle("POST /api/v1/drift-events/{driftId}/restore", s.authenticated(true, http.HandlerFunc(s.handleRestoreDrift)))
+		s.mux.Handle("POST /api/v1/drift-events/{driftId}/adopt", s.authenticated(true, http.HandlerFunc(s.handleAdoptDrift)))
+	}
 	s.mux.Handle("GET /api/v1/audit-events", s.authenticated(false, http.HandlerFunc(s.handleAuditEvents)))
 	s.mux.Handle("GET /api/v1/system/version", s.authenticated(false, http.HandlerFunc(s.handleVersion)))
 	s.mux.HandleFunc("/", s.handleFrontend)

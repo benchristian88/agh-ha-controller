@@ -6,6 +6,62 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ## Unreleased
 
+### Fixed
+
+- Read node listener addresses and DNS port from AdGuard Home's `/control/status` contract during configuration inventory. The initial 0.3.0 adapter incorrectly expected those fields from `/control/dns_info`, causing imported drafts to contain empty listener overrides.
+- Reject incomplete legacy snapshots at import and show node names with refresh/re-import guidance instead of opaque `nodeOverrides.<uuid>` validation messages.
+- Treat an unset cluster `active_revision_id` as `false` when loading revisions. PostgreSQL comparison with `NULL` previously caused an internal error while a published revision had not yet been activated and failed the Release 0.3 integration workflow before its first deployment.
+
+## 0.3.0 - 2026-07-30
+
+### Added
+
+- Separate authoritative schema-v1 desired documents with shared DNS/filtering policy and per-node listener overrides.
+- Optimistic draft editing/validation, immutable numbered revisions, semantic revision comparison, and deployment-based rollback.
+- Durable sequential deployments with all-target preflight, per-node tasks, safe cancellation, restart interruption, read-back verification, active/applied revision state, and complete audit history.
+- Supported AdGuard Home DNS/filtering writer with whitelist preservation and safe error mapping.
+- Deduplicated drift events, Manual/Alert/Enforce reconciliation, automatic verified restoration, maintenance mode, and convergence state.
+- Versioned revision/deployment/drift APIs plus React draft, history, deployment timeline, policy, and drift-action surfaces.
+- Migration `000003_release_0_3`, ADR-0024, unit/contract coverage, and the two-node Release 0.3 integration workflow.
+
+### Changed
+
+- Default controller, image, installer, and web version is 0.3.0.
+- Releases 0.2, 0.2.1, and 0.2.2 are recorded as operator-validated.
+
+### Deferred
+
+- Listener writes, whitelist authoring, wider AdGuard settings, field-level ignore rules, parallel/rolling strategies, scheduled maintenance windows, and richer partial-deployment recovery.
+
+## 0.2.2 - 2026-07-29
+
+### Fixed
+
+- Restart and verify the systemd service after replacing release artifacts. Previous upgrade reruns used `systemctl enable --now`, which left an already-running older API process serving a newly installed frontend.
+
+## 0.2.1 - 2026-07-29
+
+### Fixed
+
+- Prevent the Configuration page from crashing when a cluster has no imported draft. The API now omits an absent draft, while the UI remains compatible with the `draft: null` response emitted by 0.2.0.
+
+## 0.2.0 - 2026-07-29
+
+### Added
+
+- Canonical configuration schema v1 for read-only DNS and filtering inventory.
+- Version-aware capability profiles and immutable successful/failed node snapshots.
+- Ownership-aware semantic diff API and configuration comparison UI.
+- Explicit, audited import into an optimistic non-authoritative cluster draft.
+- AdGuard Home v0.107.52 and v0.107.61 compatibility fixtures.
+- Migration `000002_release_0_2` and ADR-0023.
+
+### Changed
+
+- Default controller and web version is 0.2.0.
+- Production Make builds no longer require ripgrep, fixing the systemd installer warning.
+- Roadmap records operator validation of Releases 0.1 and 0.1.1.
+
 ## 0.1.1 - 2026-07-28
 
 ### Added

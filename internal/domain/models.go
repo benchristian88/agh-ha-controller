@@ -32,12 +32,26 @@ type Session struct {
 }
 
 type Cluster struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Version     int       `json:"version"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID                   string               `json:"id"`
+	Name                 string               `json:"name"`
+	Description          string               `json:"description"`
+	ReconciliationPolicy ReconciliationPolicy `json:"reconciliationPolicy"`
+	ActiveRevisionID     *string              `json:"activeRevisionId,omitempty"`
+	Version              int                  `json:"version"`
+	CreatedAt            time.Time            `json:"createdAt"`
+	UpdatedAt            time.Time            `json:"updatedAt"`
+}
+
+type ReconciliationPolicy string
+
+const (
+	ReconciliationEnforce ReconciliationPolicy = "enforce"
+	ReconciliationAlert   ReconciliationPolicy = "alert"
+	ReconciliationManual  ReconciliationPolicy = "manual"
+)
+
+func ValidReconciliationPolicy(policy ReconciliationPolicy) bool {
+	return policy == ReconciliationEnforce || policy == ReconciliationAlert || policy == ReconciliationManual
 }
 
 type NodeHealth string
@@ -73,6 +87,7 @@ type Node struct {
 	BaseURL             string            `json:"baseUrl"`
 	CertificatePolicy   CertificatePolicy `json:"certificatePolicy"`
 	Enabled             bool              `json:"enabled"`
+	MaintenanceMode     bool              `json:"maintenanceMode"`
 	HealthStatus        NodeHealth        `json:"healthStatus"`
 	CompatibilityStatus Compatibility     `json:"compatibilityStatus"`
 	Version             string            `json:"version,omitempty"`
@@ -80,6 +95,10 @@ type Node struct {
 	LastPolledAt        *time.Time        `json:"lastPolledAt,omitempty"`
 	LatencyMS           *int              `json:"latencyMs,omitempty"`
 	LastErrorCode       string            `json:"lastErrorCode,omitempty"`
+	AppliedRevisionID   *string           `json:"appliedRevisionId,omitempty"`
+	AppliedHash         string            `json:"appliedHash,omitempty"`
+	ConvergenceStatus   string            `json:"convergenceStatus"`
+	LastReconciledAt    *time.Time        `json:"lastReconciledAt,omitempty"`
 	RecordVersion       int               `json:"recordVersion"`
 	CreatedAt           time.Time         `json:"createdAt"`
 	UpdatedAt           time.Time         `json:"updatedAt"`

@@ -45,13 +45,13 @@ Examples:
 schemaVersion: 1
 shared:
   dns:
-    upstreams:
+    upstreamDns:
       - https://dns.quad9.net/dns-query
   filtering:
     enabled: true
   queryLog:
     enabled: true
-nodes:
+nodeOverrides:
   node-a-id:
     bindHosts:
       - 192.168.3.10
@@ -60,7 +60,9 @@ nodes:
       - 192.168.3.11
 ```
 
-This example is illustrative, not a final public schema.
+Release 0.2 froze the per-node observed `Document` shape. Release 0.3 adds a distinct authoritative `DesiredDocument`: shared DNS/filtering values, `nodeOverrides`, and explicit unsupported areas. Observed-only product version never enters desired state. Schema v1 manages DNS upstream, bootstrap, fallback, and private reverse resolvers plus filtering enablement, interval, blocklist subscription URLs, and custom rules. Bind hosts and DNS port are required node overrides but are verification-only because AdGuard Home exposes no supported writer for them. TLS, DHCP, clients, rewrites, services, and whitelist subscriptions remain outside managed schema v1.
+
+The AdGuard adapter reads bind addresses and DNS port from `/control/status` (`dns_addresses` and `dns_port`). `/control/dns_info` supplies the shared DNS parameters and does not own listener identity. An observation with an absent, out-of-range, or malformed listener identity fails, and imports defensively reject older incomplete snapshots.
 
 ## Revision lifecycle
 
@@ -86,6 +88,8 @@ Canonicalisation must:
 - Preserve comments and operator labels separately from deployable state.
 - Produce deterministic serialisation.
 
+Schema v1 preserves order for upstream resolvers, fallback resolvers, and custom filtering rules. It treats bootstrap resolvers, private reverse resolvers, bind hosts, and enabled filter URLs as unordered sets. Runtime cache counters, filter IDs, filter display names, rule counts, and last-update timestamps are discarded at the adapter boundary.
+
 ## Configuration ownership
 
 Each field should eventually be classified as:
@@ -104,11 +108,15 @@ On first node onboarding:
 1. Read supported configuration.
 2. Normalise it.
 3. Present import summary.
-4. Create an initial draft.
-5. Require explicit operator acceptance.
-6. Create Revision 1.
-7. Mark the imported node as converged.
-8. Compare additional nodes against Revision 1.
+4. Require explicit operator acceptance.
+5. Create or update the cluster's optimistic configuration draft.
+6. Compare additional nodes against that draft or source snapshot.
+
+Release 0.3 validates and publishes the draft as an immutable numbered revision. Publication does not activate it. A revision becomes the cluster's `activeRevisionId` only after its durable deployment verifies every target. Draft updates and publication both use optimistic draft versions.
+
+## Release 0.3 deployment boundary
+
+The configuration adapter writes only the supported `/control/dns_config`, `/control/filtering/config`, `/control/filtering/add_url`, `/control/filtering/set_url`, and `/control/filtering/set_rules` contracts. It reads the result back through the observation adapter and compares canonical semantic values. All targets are freshly observed and capability-validated before the first write. A listener override difference blocks the whole deployment rather than editing node files.
 
 The controller must not overwrite a newly added node before showing the differences.
 

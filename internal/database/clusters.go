@@ -16,9 +16,9 @@ func (s *Store) CreateCluster(ctx context.Context, cluster domain.Cluster, event
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
 	_, err = tx.Exec(ctx, `
-		INSERT INTO clusters (id, name, description, version, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $5)`,
-		cluster.ID, cluster.Name, cluster.Description, cluster.Version, cluster.CreatedAt)
+		INSERT INTO clusters (id, name, description, reconciliation_policy, version, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $6)`,
+		cluster.ID, cluster.Name, cluster.Description, cluster.ReconciliationPolicy, cluster.Version, cluster.CreatedAt)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return domain.NewError(domain.ErrorConflict, "a cluster with this name already exists")
@@ -36,7 +36,7 @@ func (s *Store) CreateCluster(ctx context.Context, cluster domain.Cluster, event
 
 func (s *Store) ListClusters(ctx context.Context) ([]domain.Cluster, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, name, description, version, created_at, updated_at
+		SELECT id, name, description, reconciliation_policy, active_revision_id, version, created_at, updated_at
 		FROM clusters ORDER BY lower(name), id`)
 	if err != nil {
 		return nil, fmt.Errorf("list clusters: %w", err)
@@ -45,7 +45,7 @@ func (s *Store) ListClusters(ctx context.Context) ([]domain.Cluster, error) {
 	clusters := make([]domain.Cluster, 0)
 	for rows.Next() {
 		var cluster domain.Cluster
-		if err := rows.Scan(&cluster.ID, &cluster.Name, &cluster.Description, &cluster.Version, &cluster.CreatedAt, &cluster.UpdatedAt); err != nil {
+		if err := rows.Scan(&cluster.ID, &cluster.Name, &cluster.Description, &cluster.ReconciliationPolicy, &cluster.ActiveRevisionID, &cluster.Version, &cluster.CreatedAt, &cluster.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan cluster: %w", err)
 		}
 		clusters = append(clusters, cluster)
@@ -59,9 +59,9 @@ func (s *Store) ListClusters(ctx context.Context) ([]domain.Cluster, error) {
 func (s *Store) ClusterByID(ctx context.Context, id string) (domain.Cluster, error) {
 	var cluster domain.Cluster
 	err := s.pool.QueryRow(ctx, `
-		SELECT id, name, description, version, created_at, updated_at
+		SELECT id, name, description, reconciliation_policy, active_revision_id, version, created_at, updated_at
 		FROM clusters WHERE id = $1`, id).Scan(
-		&cluster.ID, &cluster.Name, &cluster.Description, &cluster.Version, &cluster.CreatedAt, &cluster.UpdatedAt)
+		&cluster.ID, &cluster.Name, &cluster.Description, &cluster.ReconciliationPolicy, &cluster.ActiveRevisionID, &cluster.Version, &cluster.CreatedAt, &cluster.UpdatedAt)
 	if err != nil {
 		return domain.Cluster{}, mapDatabaseError(err, "cluster")
 	}
@@ -76,9 +76,9 @@ func (s *Store) UpdateCluster(ctx context.Context, cluster domain.Cluster, expec
 	defer func() { _ = tx.Rollback(context.Background()) }()
 	tag, err := tx.Exec(ctx, `
 		UPDATE clusters
-		SET name = $2, description = $3, version = version + 1, updated_at = $4
-		WHERE id = $1 AND version = $5`,
-		cluster.ID, cluster.Name, cluster.Description, cluster.UpdatedAt, expectedVersion)
+		SET name = $2, description = $3, reconciliation_policy = $4, version = version + 1, updated_at = $5
+		WHERE id = $1 AND version = $6`,
+		cluster.ID, cluster.Name, cluster.Description, cluster.ReconciliationPolicy, cluster.UpdatedAt, expectedVersion)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return domain.NewError(domain.ErrorConflict, "a cluster with this name already exists")

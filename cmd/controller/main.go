@@ -14,8 +14,10 @@ import (
 	controllerapi "github.com/benchristian88/agh-ha-controller/internal/api"
 	"github.com/benchristian88/agh-ha-controller/internal/auth"
 	"github.com/benchristian88/agh-ha-controller/internal/config"
+	"github.com/benchristian88/agh-ha-controller/internal/controlplane"
 	"github.com/benchristian88/agh-ha-controller/internal/database"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 	"github.com/benchristian88/agh-ha-controller/internal/jobs"
 	"github.com/benchristian88/agh-ha-controller/internal/version"
 )
@@ -61,14 +63,25 @@ func run() error {
 	}
 	probe := adguard.NewProbe(configuration.NodeRequestTimeout)
 	management := domain.NewManagementService(store, credentialCipher, probe)
+	configurationAdapter := adguard.NewConfigurationReader(probe)
+	inventoryService := inventory.NewService(store, credentialCipher, configurationAdapter)
+	controlplaneService := controlplane.NewService(store)
+	deploymentExecutor := controlplane.NewExecutor(store, credentialCipher, configurationAdapter, inventoryService)
+	if err := deploymentExecutor.RecoverInterrupted(rootContext); err != nil {
+		return err
+	}
+	reconciler := controlplane.NewReconciler(store, controlplaneService, inventoryService, logger)
 	healthPoller := jobs.NewHealthPoller(store, credentialCipher, probe, configuration.NodeHealthInterval, logger)
 	go healthPoller.Run(rootContext)
+	go jobs.RunDeploymentExecutor(rootContext, deploymentExecutor, logger)
+	go jobs.RunReconciler(rootContext, reconciler, configuration.NodeHealthInterval, logger)
 	go jobs.RunSessionCleanup(rootContext, store, logger)
 
 	apiServer := controllerapi.NewServer(
-		authService, management, store, store, logger,
+		authService, management, inventoryService, store, store, logger,
 		configuration.SecureCookies(), configuration.PublicBaseURL.String(),
 		configuration.NodeHealthInterval, configuration.WebDistDirectory,
+		controlplaneService,
 	)
 	httpServer := &http.Server{
 		Addr:              configuration.HTTPAddress,

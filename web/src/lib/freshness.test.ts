@@ -11,6 +11,8 @@ const baseNode: Node = {
   enabled: true,
   healthStatus: "healthy",
   compatibilityStatus: "supported",
+  maintenanceMode: false,
+  convergenceStatus: "converged",
   recordVersion: 1,
   createdAt: "2026-07-27T00:00:00Z",
   updatedAt: "2026-07-27T00:00:00Z",

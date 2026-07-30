@@ -22,10 +22,10 @@ services:
     build:
       context: .
       args:
-        VERSION: 0.1.1
+        VERSION: 0.3.0
         COMMIT: ${CONTROLLER_COMMIT:-git-checkout}
         BUILT_AT: ${CONTROLLER_BUILT_AT:-local}
-    image: agh-ha-controller:0.1.1
+    image: agh-ha-controller:0.3.0
     restart: unless-stopped
     depends_on:
       postgres:

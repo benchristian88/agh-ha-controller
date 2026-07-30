@@ -1,6 +1,7 @@
 # Tests
 
 - `integration/release_0_1_test.go`: PostgreSQL migration and Release 0.1/0.1.1 API workflow.
+- `integration/release_0_3_test.go`: authoritative two-node deployment, read-back verification, enforce-mode drift restoration, and rollback workflow.
 
 Run unit and frontend tests with `make test`. Run the database workflow against an explicitly supplied empty PostgreSQL database:
 

@@ -40,6 +40,13 @@ Optional later node-side process for query-log ingestion.
 - `internal/api`: standard-library route registration, DTO decoding, authentication/CSRF middleware, security headers, error mapping, request IDs, and frontend serving.
 - `internal/config`: environment-only runtime configuration and secret validation.
 - `internal/version`: build-injected controller version metadata.
+- `internal/configuration`: canonical schema v1, deterministic normalisation, hashing, ownership-aware structured differences.
+- `internal/inventory`: read-only observation, capability, comparison, and audited draft-import orchestration.
+- `internal/controlplane`: desired draft validation, immutable revisions, deployment preview/creation/execution, rollback, drift evaluation, and reconciliation policy orchestration.
+
+Release 0.2 extends `internal/adguard` with narrow configuration reads for `/control/status`, `/control/dns_info`, and `/control/filtering/status`. Listener addresses and port come from AdGuard Home's `ServerStatus` contract; shared DNS parameters come from `DNSConfig`. Raw payloads, counters, generated IDs, and timestamps remain inside the adapter. A missing or invalid listener identity makes the observation fail instead of creating an unusable import snapshot.
+
+Release 0.3 adds narrow writes for shared schema-v1 DNS and filtering fields. Revision reads derive the API `active` flag with an explicit false value while the cluster has no active revision; nullable SQL state does not cross into the non-nullable API model. `internal/jobs` runs the durable deployment executor and periodic drift evaluator. Deployment and reconciliation checkpoints remain in PostgreSQL even though the worker is currently in the combined process.
 
 `cmd/controller` wires these boundaries and owns graceful process lifecycle. `cmd/migrate` is a thin explicit migration entry point.
 
@@ -89,6 +96,8 @@ Use transactions for:
 - Creating an audit event with a protected state change.
 
 Release 0.1 uses a transaction for initial administrator creation, successful login/session creation, logout revocation, cluster creation/update, node creation/update/removal, and manual node connection-test results. A protected change fails if its audit event cannot be written.
+
+Release 0.3 transactions pair draft edits, revision publication, deployment creation/cancellation/completion, drift detection/resolution, policy changes, and maintenance changes with their audit records. Revision activation occurs in the successful deployment completion transaction.
 
 ## Release 0.1 failure behaviour
 
