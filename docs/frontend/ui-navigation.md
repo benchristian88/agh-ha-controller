@@ -48,14 +48,18 @@ uses existing controller reads for cluster, selected-node scope, active
 revision, node health, and active deployment. A context-read failure is shown
 as unavailable and does not block the feature page.
 
-Phase 2 establishes canonical URLs without redesigning Release 0.4 feature
-controls. Until the later presentation phases split those controls:
+Phase 2 established canonical URLs without redesigning Release 0.4 feature
+controls. Phase 4 now supersedes the Blocked Services item below; the remaining
+items retain their Phase 2 presentation until their assigned migration phase:
 
-- General renders the existing query-log and statistics policy form;
+- General renders safety services, Safe Search, and the existing query-log and
+  statistics policy form;
 - Encryption and DHCP each render the existing combined infrastructure form;
 - DNS Blocklists, DNS Allowlists, and Custom Filter Rules each render the
   existing combined filtering form;
-- Blocked Services renders the existing combined services and safety form;
+- Blocked Services renders the dedicated controller-mediated searchable
+  catalogue and shared inactivity schedule, with Save Draft as its only write
+  action;
 - Drift renders the existing combined deployments and drift page;
 - Change History renders Configuration Control, where immutable history and
   comparison remain available.

@@ -134,6 +134,16 @@ type blockedServicesResponse struct {
 	Schedule scheduleResponse `json:"schedule"`
 	IDs      []string         `json:"ids"`
 }
+type blockedServicesCatalogueResponse struct {
+	BlockedServices []struct {
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		GroupID string `json:"group_id"`
+	} `json:"blocked_services"`
+	Groups []struct {
+		ID string `json:"id"`
+	} `json:"groups"`
+}
 type policyResponse struct {
 	Enabled           bool     `json:"enabled"`
 	IntervalMillis    int64    `json:"interval"`
@@ -287,6 +297,39 @@ func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request dom
 	document := configurationDocument(version, status, dns, filtering)
 	populateBroaderDocument(&document, clients, rewriteSettings, rewrites, blocked, safeBrowsing, parental, safeSearch, queryLog, statistics, tls, dhcp, dhcpSupported)
 	return configuration.Canonicalise(document), profile, nil
+}
+
+func (r *ConfigurationReader) ReadBlockedServicesCatalogue(ctx context.Context, request domain.NodeProbeRequest, version string) (inventory.NodeBlockedServicesCatalogue, error) {
+	if ConfigurationCompatibility(version) != domain.CompatibilitySupported {
+		return inventory.NodeBlockedServicesCatalogue{}, domain.NewError(domain.ErrorCapability, "the node version is not supported for blocked-services catalogue inventory")
+	}
+	var response blockedServicesCatalogueResponse
+	if err := r.get(ctx, request, "/control/blocked_services/all", &response); err != nil {
+		return inventory.NodeBlockedServicesCatalogue{}, err
+	}
+	result := inventory.NodeBlockedServicesCatalogue{
+		Services: make([]inventory.BlockedServiceMetadata, 0, len(response.BlockedServices)),
+		Groups:   make([]inventory.BlockedServiceGroup, 0, len(response.Groups)),
+	}
+	seen := map[string]bool{}
+	for _, service := range response.BlockedServices {
+		service.ID, service.Name, service.GroupID = strings.TrimSpace(service.ID), strings.TrimSpace(service.Name), strings.TrimSpace(service.GroupID)
+		if service.ID == "" || service.Name == "" || len(service.ID) > 200 || len(service.Name) > 500 || len(service.GroupID) > 200 || seen[service.ID] {
+			return inventory.NodeBlockedServicesCatalogue{}, domain.NewError(domain.ErrorNodeResponse, "the node returned invalid blocked-services catalogue metadata")
+		}
+		seen[service.ID] = true
+		result.Services = append(result.Services, inventory.BlockedServiceMetadata{ID: service.ID, Name: service.Name, GroupID: service.GroupID})
+	}
+	seenGroups := map[string]bool{}
+	for _, group := range response.Groups {
+		id := strings.TrimSpace(group.ID)
+		if id == "" || len(id) > 200 || seenGroups[id] {
+			return inventory.NodeBlockedServicesCatalogue{}, domain.NewError(domain.ErrorNodeResponse, "the node returned invalid blocked-services group metadata")
+		}
+		seenGroups[id] = true
+		result.Groups = append(result.Groups, inventory.BlockedServiceGroup{ID: id})
+	}
+	return result, nil
 }
 
 func validateListenerStatus(status statusResponse) error {

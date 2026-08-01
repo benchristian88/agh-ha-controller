@@ -2,6 +2,7 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { EmptyState, ErrorState, Loading } from "./components/Feedback";
 import { AuditPage } from "./features/audit/AuditPage";
 import { LoginPage, SetupPage } from "./features/auth/AuthPages";
+import { BlockedServicesPage } from "./features/blockedservices/BlockedServicesPage";
 import { ClusterCreate } from "./features/clusters/ClusterCreate";
 import { ConfigurationPage } from "./features/configuration/ConfigurationPage";
 import { ControlPlanePage } from "./features/controlplane/ControlPlanePage";
@@ -170,6 +171,9 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
         break;
       case "control-plane":
         content = <ControlPlanePage cluster={selected} />;
+        break;
+      case "blocked-services":
+        content = <BlockedServicesPage cluster={selected} />;
         break;
       case "settings":
         content = (

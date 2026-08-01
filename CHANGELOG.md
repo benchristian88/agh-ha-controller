@@ -8,6 +8,8 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Added
 
+- Release 0.4.1 Phase 4 Blocked Services page with a controller-mediated, version-aware per-node catalogue; searchable grouped service selection; compatibility warnings; selected counts and group actions; shared schedule editing; and publication/deployment preflight for unsupported IDs.
+- Authenticated `GET /api/v1/clusters/{clusterId}/blocked-services/catalogue` observed-metadata endpoint with bounded per-version caching, stale/partial node results, and safe metadata redaction.
 - Canonical configuration schema v2 covering broader DNS behavior, blocklists and allowlists, persistent clients, DNS rewrites, blocked-service schedules, safety services, Safe Search, query-log policy, statistics policy, redacted TLS inventory, and node-specific DHCP configuration/static leases.
 - Version-aware schema projection so AdGuard Home v0.107.52 and immutable schema-v1 revisions remain observable and deployable while schema v2 supports the current v0.107.53–v0.107.78 contract.
 - Patch-level capability handling for upstream timeout, cache enablement, rewrite enablement, ignored-list activation, and v0.107.78 filter intervals; newer unreviewed contracts are reported as unknown.
@@ -18,6 +20,7 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Changed
 
+- Move Safe Browsing, parental control, and Safe Search presentation to Settings > General; `/filters/blocked-services` now contains only the blocked-service catalogue and inactivity schedule while preserving the existing desired-state fields.
 - Default controller, image, installer, and web version is 0.4.0.
 - Release 0.3, including Docker and systemd installation and functional validation, is recorded as complete.
 - Use the primary application sidebar as the sole settings navigation and place larger DHCP node, client, and blocked-services schedule headings inside their corresponding configuration cards.

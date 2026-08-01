@@ -6,6 +6,7 @@ export type RouteResolution =
   | { kind: "configuration" }
   | { kind: "control-plane"; focus: "deployments" | "drift" }
   | { kind: "history" }
+  | { kind: "blocked-services" }
   | {
       kind: "settings";
       area: SettingsArea;
@@ -59,7 +60,7 @@ const settingsRoutes: Readonly<
     area: "privacy",
     heading: [
       "General settings",
-      "Query-log and statistics collection policy managed across the cluster.",
+      "Safety services, Safe Search, query-log, and statistics policy managed across the cluster.",
     ],
   },
   "/settings/dns": {
@@ -111,13 +112,6 @@ const settingsRoutes: Readonly<
       "Cluster-wide domain answers managed as an unordered set.",
     ],
   },
-  "/filters/blocked-services": {
-    area: "services",
-    heading: [
-      "Blocked services",
-      "Blocked-service schedules and shared safety policies.",
-    ],
-  },
   "/filters/custom-rules": {
     area: "filters",
     heading: [
@@ -166,6 +160,8 @@ export function resolveRoute(pathname: string): RouteResolution {
       return { kind: "control-plane", focus: "drift" };
     case "/ha/history":
       return { kind: "history" };
+    case "/filters/blocked-services":
+      return { kind: "blocked-services" };
     case "/system/audit":
       return { kind: "audit" };
     default:

@@ -3,6 +3,7 @@ package inventory
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/benchristian88/agh-ha-controller/internal/configuration"
@@ -62,19 +63,29 @@ type FilterRefresher interface {
 	RefreshFilters(context.Context, domain.NodeProbeRequest, bool) error
 }
 
+type BlockedServicesCatalogueReader interface {
+	ReadBlockedServicesCatalogue(context.Context, domain.NodeProbeRequest, string) (NodeBlockedServicesCatalogue, error)
+}
+
 type CredentialProtector interface {
 	Decrypt(string, domain.EncryptedCredentials) (domain.NodeCredentials, error)
 }
 
 type Service struct {
-	repository  Repository
-	credentials CredentialProtector
-	reader      Reader
-	now         func() time.Time
+	repository   Repository
+	credentials  CredentialProtector
+	reader       Reader
+	now          func() time.Time
+	catalogueTTL time.Duration
+	catalogueMu  sync.Mutex
+	catalogues   map[string]catalogueCacheEntry
 }
 
 func NewService(repository Repository, credentials CredentialProtector, reader Reader) *Service {
-	return &Service{repository: repository, credentials: credentials, reader: reader, now: time.Now}
+	return &Service{
+		repository: repository, credentials: credentials, reader: reader, now: time.Now,
+		catalogueTTL: 15 * time.Minute, catalogues: map[string]catalogueCacheEntry{},
+	}
 }
 
 func (s *Service) Observe(ctx context.Context, nodeID string) (Snapshot, error) {

@@ -107,6 +107,7 @@ Node removal requires `recordVersion` and `confirmName`. It soft-removes the rec
 ```text
 POST /api/v1/nodes/{nodeId}/observations
 GET  /api/v1/clusters/{clusterId}/configuration-inventory
+GET  /api/v1/clusters/{clusterId}/blocked-services/catalogue
 GET  /api/v1/configuration-comparisons?leftSnapshotId={uuid}&rightSnapshotId={uuid}
 POST /api/v1/clusters/{clusterId}/configuration-draft/import
 PUT  /api/v1/clusters/{clusterId}/configuration-draft
@@ -118,6 +119,10 @@ Observation performs bounded, authenticated GET requests and stores either an im
 Import accepts `snapshotId`, `expectedVersion`, and `confirmed: true`. It rejects failed snapshots, cross-cluster snapshots, missing confirmation, and stale draft versions. The transaction updates the draft and writes `configuration.draft_imported`. It never publishes or deploys configuration.
 
 Draft update accepts `expectedVersion` and a complete schema-v2 desired `document`. It saves canonical mutable intent and returns validation issues. Frozen schema-v1 drafts must be refreshed/imported before editing or publication; historical v1 revisions remain deployable and reconcilable. Validation returns the same fleet feature/listener/DHCP preflight used by publication and deployment.
+
+The blocked-services catalogue route reads observed metadata through the controller and never mutates desired state. It returns the union of stable service IDs and names, optional group IDs, per-service supported/unsupported node IDs, per-node `available`, `stale`, `error`, or `unsupported` state, and response freshness. Upstream filtering rules and SVG icons are removed at the adapter boundary. Node URLs, credentials, and raw node errors are never returned. Metadata is cached per node version/capability signature for 15 minutes; version/capability changes force refresh, and an expired matching cache entry is exposed as stale only when a refresh fails.
+
+Selected IDs remain the canonical `shared.services.blockedServiceIds` set. Save Draft preserves unknown legacy IDs. Validation, publication, and deployment preflight require every selected ID to be present in every enabled node's current catalogue and return node-attributed issues otherwise. Catalogue names, groups, counts, and freshness never participate in revision or drift hashes.
 
 `POST /api/v1/nodes/{nodeId}/filter-refresh` accepts `{ "whitelist": false }` (or true), requires an enabled node outside maintenance, and returns the node/list type with `status: "succeeded"`. The controller records `filters.refresh_requested` before the node call and exactly one `filters.refresh_succeeded` or `filters.refresh_failed` terminal event. Fleet fan-out is performed by the UI so partial node outcomes remain explicit.
 

@@ -7,6 +7,12 @@ recorded in `release-0.4.1-phase-3-implementation.md`. Feature-specific tables,
 catalogues, selectors, schedules, and deployment/drift dialogs remain assigned
 to their later migration phases; they should compose these generic primitives.
 
+Phase 4 adds the reusable `ScheduleEditor` under `web/src/components/` and the
+blocked-service `ServiceCatalogue`, `ServiceGroup`, and `ServiceToggle`
+composition under `web/src/features/blockedservices/`. The selector consumes
+controller presentation metadata and is structured for later Clients reuse;
+Clients are not migrated in Phase 4.
+
 ## Shell
 
 - `AppHeader`

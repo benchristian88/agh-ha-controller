@@ -52,6 +52,8 @@ The committed compatibility boundary is contract-tested at v0.107.52/v0.107.53, 
 
 The writer uses the documented `/control/dns_config`, `/control/filtering/*`, `/control/clients/*`, `/control/rewrite/*`, `/control/blocked_services/update`, safety enable/disable, `/control/safesearch/settings`, `/control/querylog/config/update`, `/control/stats/config/update`, and `/control/dhcp/*` endpoints. Query-log/statistics updates use `PUT`; existing collections are reconciled rather than blindly duplicated. `/control/filtering/refresh` is exposed as a separate audited operation.
 
+Release 0.4.1 additionally reads `GET /control/blocked_services/all` as observed catalogue metadata. v0.107.52–v0.107.67 return `blocked_services` entries with `id`, `name`, `rules`, and Base64 `icon_svg`. From v0.107.68, entries may add `group_id` and the response adds `groups: [{"id": "..."}]`. The adapter accepts both contracts, validates stable IDs/names/groups, and returns only ID, name, and optional group ID. It does not retain rules or icon data, and it never uses deprecated `/blocked_services/services`, `/list`, or `/set` endpoints.
+
 TLS parsing deliberately has no fields for `certificate_chain`, `private_key`, `certificate_path`, or `private_key_path`. Only public status, subject/issuer, validity, DNS names, ports, and safe warning text cross the adapter boundary. DHCP dynamic leases are observed-only; configuration/static leases are node-specific managed state.
 
 ## Error mapping

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
+import { ScheduleEditor } from "../../components/ScheduleEditor";
 import { api } from "../../lib/api";
 import type {
   CapabilityProfile,
@@ -12,21 +13,15 @@ import type {
   PersistentClient,
   Rewrite,
   SafeSearchConfiguration,
-  Schedule,
   ValidationIssue,
 } from "../../lib/types";
-import {
-  createEditorRowKey,
-  formatTimeOfDay,
-  parseTimeOfDay,
-} from "./settings";
+import { createEditorRowKey } from "./settings";
 
 export type SettingsArea =
   | "dns"
   | "filters"
   | "clients"
   | "rewrites"
-  | "services"
   | "privacy"
   | "infrastructure";
 
@@ -47,13 +42,9 @@ const titles: Record<SettingsArea, [string, string]> = {
     "DNS rewrites",
     "Cluster-wide domain answers managed as an unordered set.",
   ],
-  services: [
-    "Services and safety",
-    "Blocked services, Safe Browsing, parental controls, and Safe Search.",
-  ],
   privacy: [
-    "Logs and statistics",
-    "Node-local query-log and statistics collection policy. No data is ingested by the controller in 0.4.",
+    "General settings",
+    "Safety services, Safe Search, query-log, and statistics policy managed across the cluster.",
   ],
   infrastructure: [
     "TLS and DHCP",
@@ -197,11 +188,11 @@ export function ManagedSettingsPage({
           {area === "rewrites" && (
             <RewritesForm draft={draft} setDraft={setDraft} />
           )}
-          {area === "services" && (
-            <ServicesForm draft={draft} setDraft={setDraft} />
-          )}
           {area === "privacy" && (
-            <PrivacyForm draft={draft} setDraft={setDraft} />
+            <>
+              <SafetyForm draft={draft} setDraft={setDraft} />
+              <PrivacyForm draft={draft} setDraft={setDraft} />
+            </>
           )}
           {area === "infrastructure" && (
             <InfrastructureForm
@@ -879,7 +870,7 @@ function RewritesForm({ draft, setDraft }: DraftProps) {
   );
 }
 
-function ServicesForm({ draft, setDraft }: DraftProps) {
+function SafetyForm({ draft, setDraft }: DraftProps) {
   const services = draft.document.shared.services;
   const update = (patch: Partial<typeof services>) =>
     setDraft({
@@ -895,18 +886,12 @@ function ServicesForm({ draft, setDraft }: DraftProps) {
   const safe = services.safeSearch ?? emptySafeSearch();
   return (
     <div className="card form-stack">
-      <h2>Global protection services</h2>
-      <TextLines
-        label="Blocked service identifiers"
-        value={services.blockedServiceIds}
-        onChange={(value) => update({ blockedServiceIds: value })}
-        rows={8}
-      />
-      <ScheduleEditor
-        value={services.blockedSchedule}
-        onChange={(value) => update({ blockedSchedule: value })}
-        label="Global blocked-services schedule"
-      />
+      <h2>Safety services</h2>
+      <p className="muted">
+        Safe Browsing, parental controls, and search-provider enforcement are
+        cluster-wide desired settings. Blocked Services are managed separately
+        under Filters.
+      </p>
       <div className="toggle-grid">
         <Check
           label="Safe Browsing"
@@ -1337,108 +1322,6 @@ function StaticLeasesEditor({
         </div>
       ))}
     </div>
-  );
-}
-
-const scheduleDays = [
-  ["sun", "Sunday"],
-  ["mon", "Monday"],
-  ["tue", "Tuesday"],
-  ["wed", "Wednesday"],
-  ["thu", "Thursday"],
-  ["fri", "Friday"],
-  ["sat", "Saturday"],
-] as const;
-
-function ScheduleEditor({
-  value,
-  onChange,
-  label,
-}: {
-  value: Schedule;
-  onChange: (value: Schedule) => void;
-  label: string;
-}) {
-  const schedule = value ?? { timeZone: "Local", days: {} };
-  const updateDay = (day: string, enabled: boolean) => {
-    const days = { ...schedule.days };
-    if (enabled) days[day] = days[day] ?? { start: 0, end: 86_400_000 };
-    else delete days[day];
-    onChange({ ...schedule, days });
-  };
-  return (
-    <fieldset className="schedule-editor">
-      <legend className="visually-hidden">{label}</legend>
-      <h3 className="schedule-editor__title">{label}</h3>
-      <label>
-        IANA time zone (or Local)
-        <input
-          value={schedule.timeZone || "Local"}
-          onChange={(event) =>
-            onChange({ ...schedule, timeZone: event.target.value })
-          }
-        />
-      </label>
-      <div className="schedule-grid">
-        {scheduleDays.map(([day, dayLabel]) => {
-          const range = schedule.days[day];
-          return (
-            <div className="schedule-row" key={day}>
-              <Check
-                label={dayLabel}
-                checked={Boolean(range)}
-                onChange={(enabled) => updateDay(day, enabled)}
-              />
-              <input
-                aria-label={`${dayLabel} start`}
-                type="time"
-                step={60}
-                disabled={!range}
-                value={range ? formatTimeOfDay(range.start) : "00:00"}
-                onChange={(event) =>
-                  onChange({
-                    ...schedule,
-                    days: {
-                      ...schedule.days,
-                      [day]: {
-                        ...(range ?? { end: 86_400_000 }),
-                        start: parseTimeOfDay(event.target.value),
-                      },
-                    },
-                  })
-                }
-              />
-              <input
-                aria-label={`${dayLabel} end`}
-                type="time"
-                step={60}
-                disabled={!range}
-                value={
-                  range?.end === 86_400_000
-                    ? "23:59"
-                    : formatTimeOfDay(range?.end ?? 86_400_000)
-                }
-                onChange={(event) =>
-                  onChange({
-                    ...schedule,
-                    days: {
-                      ...schedule.days,
-                      [day]: {
-                        ...(range ?? { start: 0 }),
-                        end: parseTimeOfDay(event.target.value),
-                      },
-                    },
-                  })
-                }
-              />
-            </div>
-          );
-        })}
-      </div>
-      <p className="muted">
-        A selected day is the period when blocked-service filtering is inactive.
-      </p>
-    </fieldset>
   );
 }
 

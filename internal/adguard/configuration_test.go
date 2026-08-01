@@ -248,6 +248,67 @@ func TestOptionalDHCPReadRejectsMalformedSuccessfulResponse(t *testing.T) {
 	}
 }
 
+func TestReadBlockedServicesCatalogueSupportsUngroupedAndGroupedContracts(t *testing.T) {
+	tests := []struct {
+		name, version, body string
+		wantGroups          int
+		wantGroupID         string
+	}{
+		{
+			name: "frozen schema catalogue", version: "v0.107.52",
+			body: `{"blocked_services":[{"id":"youtube","name":"YouTube","rules":["||youtube.com^"],"icon_svg":"PHN2Zy8+"}]}`,
+		},
+		{
+			name: "pre-group catalogue", version: "v0.107.61",
+			body: `{"blocked_services":[{"id":"youtube","name":"YouTube","rules":["||youtube.com^"],"icon_svg":"PHN2Zy8+"}]}`,
+		},
+		{
+			name: "grouped catalogue", version: "v0.107.78",
+			body:       `{"blocked_services":[{"id":"youtube","name":"YouTube","rules":["||youtube.com^"],"icon_svg":"PHN2Zy8+","group_id":"streaming"}],"groups":[{"id":"streaming"}]}`,
+			wantGroups: 1, wantGroupID: "streaming",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var method, path string
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				method, path = request.Method, request.URL.Path
+				response.Header().Set("Content-Type", "application/json")
+				_, _ = response.Write([]byte(test.body))
+			}))
+			defer server.Close()
+
+			reader := NewConfigurationReader(NewProbe(time.Second))
+			catalogue, err := reader.ReadBlockedServicesCatalogue(context.Background(), probeRequest(server.URL), test.version)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if method != http.MethodGet || path != "/control/blocked_services/all" {
+				t.Fatalf("unexpected request %s %s", method, path)
+			}
+			if len(catalogue.Services) != 1 || catalogue.Services[0].ID != "youtube" || catalogue.Services[0].Name != "YouTube" || catalogue.Services[0].GroupID != test.wantGroupID || len(catalogue.Groups) != test.wantGroups {
+				t.Fatalf("unexpected catalogue: %#v", catalogue)
+			}
+		})
+	}
+}
+
+func TestReadBlockedServicesCatalogueRejectsInvalidMetadataAndUnsupportedVersion(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"blocked_services":[{"id":"","name":"Missing ID"}]}`))
+	}))
+	defer server.Close()
+	reader := NewConfigurationReader(NewProbe(time.Second))
+	request := probeRequest(server.URL)
+	if _, err := reader.ReadBlockedServicesCatalogue(context.Background(), request, "v0.107.78"); err == nil {
+		t.Fatal("invalid catalogue metadata was accepted")
+	}
+	if _, err := reader.ReadBlockedServicesCatalogue(context.Background(), request, "v0.108.0"); err == nil {
+		t.Fatal("unsupported version was accepted")
+	}
+}
+
 func probeRequest(baseURL string) domain.NodeProbeRequest {
 	return domain.NodeProbeRequest{BaseURL: baseURL, CertificatePolicy: domain.CertificateInsecureHTTP, Credentials: domain.NodeCredentials{Username: "admin", Password: "secret"}}
 }

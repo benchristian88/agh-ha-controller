@@ -78,6 +78,11 @@ No feature content redesign yet. Existing pages must render inside the new shell
 
 ## Phase 4 — Golden feature: Blocked Services
 
+Implemented on 1 August 2026. The desired-state schema, Save Draft lifecycle,
+deployment writer, read-back verification, and drift hashes remain unchanged.
+Catalogue metadata is controller-mediated, cached per node version/capability,
+and excluded from desired state.
+
 ### Deliverables
 
 - service catalogue API integration;

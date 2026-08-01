@@ -65,7 +65,7 @@ func run() error {
 	management := domain.NewManagementService(store, credentialCipher, probe)
 	configurationAdapter := adguard.NewConfigurationReader(probe)
 	inventoryService := inventory.NewService(store, credentialCipher, configurationAdapter)
-	controlplaneService := controlplane.NewService(store)
+	controlplaneService := controlplane.NewService(store, inventoryService)
 	deploymentExecutor := controlplane.NewExecutor(store, credentialCipher, configurationAdapter, inventoryService)
 	if err := deploymentExecutor.RecoverInterrupted(rootContext); err != nil {
 		return err

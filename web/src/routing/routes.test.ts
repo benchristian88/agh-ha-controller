@@ -28,4 +28,14 @@ describe("route migration", () => {
       to: "/ha/configuration",
     });
   });
+
+  it("resolves Blocked Services to its dedicated feature page", () => {
+    expect(resolveRoute("/filters/blocked-services")).toEqual({
+      kind: "blocked-services",
+    });
+    expect(resolveRoute("/settings/services")).toEqual({
+      kind: "redirect",
+      to: "/filters/blocked-services",
+    });
+  });
 });

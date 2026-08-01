@@ -192,6 +192,30 @@ export interface ServicesConfiguration {
   parentalControl: boolean;
   safeSearch: SafeSearchConfiguration;
 }
+export interface BlockedServiceCatalogueService {
+  id: string;
+  name: string;
+  groupId?: string;
+  supportedNodeIds: string[];
+  unsupportedNodeIds: string[];
+}
+export interface BlockedServiceCatalogueNode {
+  nodeId: string;
+  nodeName: string;
+  version?: string;
+  status: "available" | "stale" | "error" | "unsupported";
+  serviceCount: number;
+  fetchedAt?: string;
+  errorCode?: string;
+}
+export interface BlockedServicesCatalogue {
+  services: BlockedServiceCatalogueService[];
+  groups: { id: string }[];
+  nodes: BlockedServiceCatalogueNode[];
+  generatedAt: string;
+  stale: boolean;
+  partial: boolean;
+}
 export interface QueryLogPolicy {
   enabled: boolean;
   intervalMillis: number;

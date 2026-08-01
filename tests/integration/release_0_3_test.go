@@ -20,9 +20,11 @@ import (
 )
 
 type adGuardState struct {
-	mu          sync.Mutex
-	upstreamDNS []string
-	userRules   []string
+	mu              sync.Mutex
+	upstreamDNS     []string
+	userRules       []string
+	blockedServices []string
+	catalogue       []map[string]any
 }
 
 func (s *adGuardState) handler(response http.ResponseWriter, request *http.Request) {
@@ -45,8 +47,10 @@ func (s *adGuardState) handler(response http.ResponseWriter, request *http.Reque
 		_, _ = io.WriteString(response, `{"clients":[]}`)
 	case "/control/rewrite/list":
 		_, _ = io.WriteString(response, `[]`)
+	case "/control/blocked_services/all":
+		_ = json.NewEncoder(response).Encode(map[string]any{"blocked_services": s.catalogue})
 	case "/control/blocked_services/get":
-		_, _ = io.WriteString(response, `{"ids":[],"schedule":{"time_zone":"Local"}}`)
+		_ = json.NewEncoder(response).Encode(map[string]any{"ids": s.blockedServices, "schedule": map[string]any{"time_zone": "Local"}})
 	case "/control/safebrowsing/status", "/control/parental/status":
 		_, _ = io.WriteString(response, `{"enabled":false}`)
 	case "/control/safesearch/status":
@@ -70,6 +74,12 @@ func (s *adGuardState) handler(response http.ResponseWriter, request *http.Reque
 		}
 		_ = json.NewDecoder(request.Body).Decode(&body)
 		s.userRules = append([]string(nil), body.Rules...)
+	case "/control/blocked_services/update":
+		var body struct {
+			IDs []string `json:"ids"`
+		}
+		_ = json.NewDecoder(request.Body).Decode(&body)
+		s.blockedServices = append([]string(nil), body.IDs...)
 	default:
 		if request.Method != http.MethodPost && request.Method != http.MethodPut {
 			http.NotFound(response, request)
@@ -81,6 +91,12 @@ func (s *adGuardState) setUpstream(values ...string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.upstreamDNS = append([]string(nil), values...)
+}
+
+func (s *adGuardState) blockedServiceIDs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.blockedServices...)
 }
 
 func TestRelease03AuthoritativeConfigurationWorkflow(t *testing.T) {
@@ -110,7 +126,10 @@ func TestRelease03AuthoritativeConfigurationWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	states := []*adGuardState{{upstreamDNS: []string{"9.9.9.9"}}, {upstreamDNS: []string{"9.9.9.9"}}}
+	states := []*adGuardState{
+		{upstreamDNS: []string{"9.9.9.9"}, catalogue: []map[string]any{{"id": "youtube", "name": "YouTube"}, {"id": "chatgpt", "name": "ChatGPT"}}},
+		{upstreamDNS: []string{"9.9.9.9"}, catalogue: []map[string]any{{"id": "youtube", "name": "YouTube"}}},
+	}
 	servers := make([]*httptest.Server, 0, len(states))
 	for _, state := range states {
 		server := httptest.NewServer(http.HandlerFunc(state.handler))
@@ -138,10 +157,11 @@ func TestRelease03AuthoritativeConfigurationWorkflow(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	service := controlplane.NewService(store)
+	service := controlplane.NewService(store, inventoryService)
 	// Exercise the operator's initial workflow exactly: import every node, edit
 	// shared desired state, and save before any revision is published or active.
 	draft.Document.Shared.DNS.UpstreamDNS = []string{"9.9.9.9", "149.112.112.112"}
+	draft.Document.Shared.Services.BlockedServiceIDs = []string{"youtube"}
 	draft, issues, err := service.UpdateDraft(ctx, domain.Actor{UserID: setup.User.ID, RequestID: mustID(t)}, cluster.ID, draft.Version, draft.Document)
 	if err != nil || len(issues) != 0 {
 		t.Fatalf("update imported draft issues=%v error=%v", issues, err)
@@ -159,6 +179,32 @@ func TestRelease03AuthoritativeConfigurationWorkflow(t *testing.T) {
 		t.Fatalf("initial deployment worked=%v error=%v", worked, err)
 	}
 	assertDeploymentSucceeded(t, service, deployment.ID, 2)
+	for index, state := range states {
+		ids := state.blockedServiceIDs()
+		if len(ids) != 1 || ids[0] != "youtube" {
+			t.Fatalf("node %d blocked services = %#v", index, ids)
+		}
+	}
+
+	// A union catalogue entry that one enabled node does not support remains in
+	// the draft but blocks immutable publication with node-attributed preflight.
+	draft, err = store.DraftByCluster(ctx, cluster.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	draft.Document.Shared.Services.BlockedServiceIDs = []string{"youtube", "chatgpt"}
+	draft, issues, err = service.UpdateDraft(ctx, domain.Actor{UserID: setup.User.ID, RequestID: mustID(t)}, cluster.ID, draft.Version, draft.Document)
+	if err != nil || len(issues) != 0 {
+		t.Fatalf("save incompatible blocked service issues=%v error=%v", issues, err)
+	}
+	if _, err := service.Publish(ctx, domain.Actor{UserID: setup.User.ID, RequestID: mustID(t)}, cluster.ID, "Unsupported service", draft.Version); err == nil {
+		t.Fatal("publication accepted a service unsupported by one node")
+	}
+	draft.Document.Shared.Services.BlockedServiceIDs = []string{"youtube"}
+	draft, issues, err = service.UpdateDraft(ctx, domain.Actor{UserID: setup.User.ID, RequestID: mustID(t)}, cluster.ID, draft.Version, draft.Document)
+	if err != nil || len(issues) != 0 {
+		t.Fatalf("restore compatible blocked service issues=%v error=%v", issues, err)
+	}
 
 	states[0].setUpstream("8.8.8.8")
 	reconciler := controlplane.NewReconciler(store, service, inventoryService, slog.New(slog.NewTextHandler(io.Discard, nil)))

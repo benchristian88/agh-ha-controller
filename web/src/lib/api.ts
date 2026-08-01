@@ -2,6 +2,7 @@ import type {
   ApiErrorBody,
   AuditEvent,
   AuthResponse,
+  BlockedServicesCatalogue,
   CapabilityProfile,
   CertificatePolicy,
   Cluster,
@@ -179,6 +180,10 @@ export const api = {
       capabilities: CapabilityProfile[];
       draft?: ConfigurationDraft;
     }>(`/api/v1/clusters/${clusterId}/configuration-inventory`),
+  blockedServicesCatalogue: (clusterId: string) =>
+    request<BlockedServicesCatalogue>(
+      `/api/v1/clusters/${clusterId}/blocked-services/catalogue`,
+    ),
   compareConfigurations: (leftSnapshotId: string, rightSnapshotId: string) =>
     request<{ equal: boolean; differences: ConfigurationDifference[] }>(
       `/api/v1/configuration-comparisons?leftSnapshotId=${encodeURIComponent(leftSnapshotId)}&rightSnapshotId=${encodeURIComponent(rightSnapshotId)}`,
