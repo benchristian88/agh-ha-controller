@@ -177,9 +177,7 @@ export const api = {
       schemaVersion: number;
       snapshots: ConfigurationSnapshot[];
       capabilities: CapabilityProfile[];
-      // 0.2.0 returned null when a cluster had no draft. Keep accepting that
-      // response so the fixed UI can be deployed before the controller update.
-      draft?: ConfigurationDraft | null;
+      draft?: ConfigurationDraft;
     }>(`/api/v1/clusters/${clusterId}/configuration-inventory`),
   compareConfigurations: (leftSnapshotId: string, rightSnapshotId: string) =>
     request<{ equal: boolean; differences: ConfigurationDifference[] }>(

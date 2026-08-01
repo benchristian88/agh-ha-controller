@@ -153,12 +153,11 @@ export function ManagedSettingsPage({
           </p>
         </EmptyState>
       ) : draft.document.schemaVersion !== 2 ? (
-        <div className="notice notice--warning">
-          <strong>Schema upgrade required</strong>
+        <div className="notice notice--error">
+          <strong>Unsupported draft format</strong>
           <p>
-            This draft is the immutable 0.3 schema-v1 shape. Refresh and import
-            a current node observation from Configuration Control before editing
-            0.4 features.
+            Refresh an AdGuard Home 0.107.78 node observation in Configuration
+            Control and import it before editing managed settings.
           </p>
         </div>
       ) : (

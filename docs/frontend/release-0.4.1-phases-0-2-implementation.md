@@ -19,6 +19,10 @@ application shell without changing desired-state or deployment semantics.
   blocking page content.
 - Deferred and unimplemented canonical routes show an explicit planned state.
   Unknown paths show a 404.
+- Configuration authoring requires a schema-v2 draft collected from the
+  supported AdGuard Home 0.107.78 release. Obsolete draft schemas are not
+  rendered or published; Configuration Control keeps observation/import and
+  revision history available so the operator can replace them safely.
 
 ## Patch boundaries
 

@@ -81,6 +81,38 @@ const document: DesiredConfigurationDocument = {
 };
 
 describe("schema-v2 draft summary", () => {
+  it("rejects obsolete draft schemas without dereferencing v2-only fields", () => {
+    const legacy = {
+      schemaVersion: 1,
+      shared: {
+        dns: { upstreamDns: [] },
+        filtering: { enabled: true, filterUrls: [], userRules: [] },
+      },
+      nodeOverrides: {},
+      unsupported: [],
+    } as unknown as DesiredConfigurationDocument;
+
+    expect(buildDraftSummary(legacy)).toEqual([]);
+  });
+
+  it("treats nullable empty collections from JSON as empty", () => {
+    const nullable = structuredClone(document) as DesiredConfigurationDocument;
+    nullable.shared.clients = null as unknown as typeof nullable.shared.clients;
+    nullable.shared.rewrites =
+      null as unknown as typeof nullable.shared.rewrites;
+    nullable.shared.filtering.whitelistUrls = null as unknown as string[];
+    nullable.unsupported = null as unknown as typeof nullable.unsupported;
+
+    const sections = buildDraftSummary(nullable);
+
+    expect(
+      sections.find((section) => section.id === "clients")?.items[0]?.value,
+    ).toBe("0 clients");
+    expect(
+      sections.find((section) => section.id === "unsupported")?.items[0]?.value,
+    ).toBe("0 entries");
+  });
+
   it("covers every authoring domain without exposing an editor", () => {
     const sections = buildDraftSummary(
       document,

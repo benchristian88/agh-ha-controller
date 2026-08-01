@@ -45,7 +45,7 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
       setNodes(nodeResult.items);
       setSnapshots(inventory.snapshots);
       setCapabilities(inventory.capabilities);
-      setDraft(normaliseDraft(inventory.draft));
+      setDraft(inventory.draft);
       setRevisions(revisionResult.items);
       setError(undefined);
     } catch (caught) {
@@ -187,8 +187,17 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
   const activeRevision = revisions.find(
     (revision) => revision.active || revision.id === cluster.activeRevisionId,
   );
-  const draftSections = draft
-    ? buildDraftSummary(draft.document, activeRevision?.document, nodeNames)
+  const schemaV2Draft = draft?.document.schemaVersion === 2 ? draft : undefined;
+  const activeSchemaV2Document =
+    activeRevision?.document.schemaVersion === 2
+      ? activeRevision.document
+      : undefined;
+  const draftSections = schemaV2Draft
+    ? buildDraftSummary(
+        schemaV2Draft.document,
+        activeSchemaV2Document,
+        nodeNames,
+      )
     : [];
   return (
     <>
@@ -214,13 +223,25 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
           not change a node; publishing creates an immutable revision.
         </div>
       )}
-      {draft && (
+      {draft !== undefined && draft.document.schemaVersion !== 2 && (
+        <section className="section-block">
+          <div className="notice notice--error">
+            <strong>Unsupported draft format</strong>
+            <p>
+              Configuration Control requires a schema-v2 draft collected from
+              AdGuard Home 0.107.78. Refresh a node observation below and import
+              it to replace this draft before validating or publishing.
+            </p>
+          </div>
+        </section>
+      )}
+      {schemaV2Draft && (
         <section className="section-block">
           <div className="section-heading">
             <h2>Draft and change summary</h2>
             <small>
-              Schema {draft.document.schemaVersion} · optimistic draft version{" "}
-              {draft.version}
+              Schema {schemaV2Draft.document.schemaVersion} · optimistic draft
+              version {schemaV2Draft.version}
             </small>
           </div>
           <p className="muted">
@@ -598,12 +619,6 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
       </section>
     </>
   );
-}
-
-export function normaliseDraft(
-  draft: ConfigurationDraft | null | undefined,
-): ConfigurationDraft | undefined {
-  return draft ?? undefined;
 }
 
 export function formatValidationIssue(

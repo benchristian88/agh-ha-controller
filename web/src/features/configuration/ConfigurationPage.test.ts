@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatValidationIssue, normaliseDraft } from "./ConfigurationPage";
-
-describe("configuration draft response compatibility", () => {
-  it("normalises the 0.2.0 null response to an absent draft", () => {
-    expect(normaliseDraft(null)).toBeUndefined();
-    expect(normaliseDraft(undefined)).toBeUndefined();
-  });
-});
+import { formatValidationIssue } from "./ConfigurationPage";
 
 describe("configuration validation guidance", () => {
   const nodes = new Map([["node-a", "Primary DNS"]]);

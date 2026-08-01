@@ -15,8 +15,14 @@ export interface DraftSummarySection {
 }
 
 const yesNo = (value: boolean) => (value ? "Enabled" : "Disabled");
-const count = (value: unknown[], noun: string) =>
-  `${value.length} ${noun}${value.length === 1 ? "" : "s"}`;
+const count = (
+  value: readonly unknown[] | null | undefined,
+  noun: string,
+  plural = `${noun}s`,
+) => {
+  const length = value?.length ?? 0;
+  return `${length} ${length === 1 ? noun : plural}`;
+};
 const seconds = (value: number) => `${value} seconds`;
 const millis = (value: number) => `${value} ms`;
 
@@ -35,16 +41,19 @@ export function buildDraftSummary(
   active?: DesiredConfigurationDocument,
   nodeNames: ReadonlyMap<string, string> = new Map(),
 ): DraftSummarySection[] {
-  const { dns, filtering, clients, rewrites, services, queryLog, statistics } =
-    document.shared;
-  const safeSearchProviders = Object.entries(services.safeSearch)
+  if (document.schemaVersion !== 2) return [];
+
+  const { dns, filtering, services, queryLog, statistics } = document.shared;
+  const clients = document.shared.clients ?? [];
+  const rewrites = document.shared.rewrites ?? [];
+  const safeSearchProviders = Object.entries(services.safeSearch ?? {})
     .filter(([key, enabled]) => key !== "enabled" && enabled)
     .map(([key]) => key);
-  const scheduledDays = Object.values(services.blockedSchedule.days).filter(
-    (day) => day.end > day.start,
-  ).length;
+  const scheduledDays = Object.values(
+    services.blockedSchedule.days ?? {},
+  ).filter((day) => day.end > day.start).length;
 
-  const nodeItems = Object.entries(document.nodeOverrides).flatMap(
+  const nodeItems = Object.entries(document.nodeOverrides ?? {}).flatMap(
     ([nodeID, override]): DraftSummaryItem[] => {
       const name = nodeNames.get(nodeID) ?? nodeID;
       const items: DraftSummaryItem[] = [
@@ -225,14 +234,14 @@ export function buildDraftSummary(
         {
           label: "Identifiers",
           value: count(
-            clients.flatMap((client) => client.ids),
+            clients.flatMap((client) => client.ids ?? []),
             "identifier",
           ),
         },
         {
           label: "Client-specific blocked services",
           value: count(
-            clients.flatMap((client) => client.blockedServices),
+            clients.flatMap((client) => client.blockedServices ?? []),
             "selection",
           ),
         },
@@ -300,7 +309,7 @@ export function buildDraftSummary(
       items: [
         {
           label: "Retained entries",
-          value: count(document.unsupported, "entry"),
+          value: count(document.unsupported, "entry", "entries"),
         },
       ],
     },
