@@ -59,6 +59,36 @@ type catalogueReaderFake struct {
 	err    error
 }
 
+type blocklistReaderFake struct {
+	result inventory.BlocklistPresentation
+	err    error
+}
+
+func (f blocklistReaderFake) BlocklistPresentation(context.Context, string) (inventory.BlocklistPresentation, error) {
+	return f.result, f.err
+}
+
+func TestBlocklistPresentationEndpointReturnsOnlySanitisedMetadata(t *testing.T) {
+	server := &Server{
+		blocklists: blocklistReaderFake{result: inventory.BlocklistPresentation{
+			Nodes: []inventory.BlocklistNodePresentation{{NodeID: "node-a", NodeName: "Primary", Status: "available", Lists: []inventory.FilterListMetadata{{ID: 7, URL: "https://filters.test/list.txt", Name: "Example", Enabled: true, RulesCount: 321, Portable: true}}}},
+		}},
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/clusters/11111111-1111-4111-8111-111111111111/blocklists/presentation", nil)
+	request.SetPathValue("clusterId", "11111111-1111-4111-8111-111111111111")
+	response := httptest.NewRecorder()
+	server.handleBlocklistPresentation(response, request)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"ruleCount":321`) {
+		t.Fatalf("unexpected response: status=%d body=%s", response.Code, response.Body.String())
+	}
+	for _, forbidden := range []string{"credentials", "baseUrl", "canonicalHash", "document"} {
+		if strings.Contains(response.Body.String(), forbidden) {
+			t.Fatalf("response exposed %q: %s", forbidden, response.Body.String())
+		}
+	}
+}
+
 func (f catalogueReaderFake) BlockedServicesCatalogue(context.Context, string) (inventory.BlockedServicesCatalogue, error) {
 	return f.result, f.err
 }

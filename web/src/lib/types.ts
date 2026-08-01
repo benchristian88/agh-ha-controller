@@ -216,6 +216,30 @@ export interface BlockedServicesCatalogue {
   stale: boolean;
   partial: boolean;
 }
+export interface FilterListMetadata {
+  id: number;
+  url: string;
+  name: string;
+  enabled: boolean;
+  ruleCount: number;
+  lastUpdated?: string;
+  portable: boolean;
+}
+export interface BlocklistPresentationNode {
+  nodeId: string;
+  nodeName: string;
+  version?: string;
+  status: "available" | "stale" | "error" | "unsupported";
+  fetchedAt?: string;
+  errorCode?: string;
+  lists: FilterListMetadata[];
+}
+export interface BlocklistPresentation {
+  nodes: BlocklistPresentationNode[];
+  generatedAt: string;
+  stale: boolean;
+  partial: boolean;
+}
 export interface QueryLogPolicy {
   enabled: boolean;
   intervalMillis: number;

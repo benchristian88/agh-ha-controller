@@ -38,4 +38,10 @@ describe("route migration", () => {
       to: "/filters/blocked-services",
     });
   });
+
+  it("resolves DNS Blocklists to its dedicated feature page", () => {
+    expect(resolveRoute("/filters/blocklists")).toEqual({
+      kind: "blocklists",
+    });
+  });
 });

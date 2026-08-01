@@ -168,7 +168,8 @@ describe("blocked services page", () => {
       await screen.findByRole("heading", { name: "Blocked Services" }),
     ).not.toBeNull();
     expect(
-      (screen.getByLabelText("Block YouTube") as HTMLInputElement).checked,
+      ((await screen.findByLabelText("Block YouTube")) as HTMLInputElement)
+        .checked,
     ).toBe(true);
     expect(screen.getByText("legacy-service")).not.toBeNull();
 

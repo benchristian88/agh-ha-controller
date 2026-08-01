@@ -37,7 +37,7 @@
 ## Feature presentation
 
 - [x] Blocked Services catalogue.
-- [ ] Blocklist table.
+- [x] Blocklist table.
 - [ ] Allowlist table.
 - [ ] Client table/dialog.
 - [ ] Rewrite table/dialog.

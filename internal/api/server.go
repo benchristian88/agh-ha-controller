@@ -38,11 +38,16 @@ type BlockedServicesCatalogueReader interface {
 	BlockedServicesCatalogue(context.Context, string) (inventory.BlockedServicesCatalogue, error)
 }
 
+type BlocklistPresentationReader interface {
+	BlocklistPresentation(context.Context, string) (inventory.BlocklistPresentation, error)
+}
+
 type Server struct {
 	auth           *auth.Service
 	management     *domain.ManagementService
 	inventory      *inventory.Service
 	catalogue      BlockedServicesCatalogueReader
+	blocklists     BlocklistPresentationReader
 	controlplane   *controlplane.Service
 	audit          AuditReader
 	health         HealthChecker
@@ -60,7 +65,7 @@ func NewServer(authService *auth.Service, management *domain.ManagementService, 
 		controlplaneService = controlplanes[0]
 	}
 	server := &Server{
-		auth: authService, management: management, inventory: inventoryService, catalogue: inventoryService, audit: audit, health: health,
+		auth: authService, management: management, inventory: inventoryService, catalogue: inventoryService, blocklists: inventoryService, audit: audit, health: health,
 		controlplane: controlplaneService,
 		logger:       logger, secureCookies: secureCookies, publicBaseURL: publicBaseURL, healthInterval: healthInterval,
 		webDist: webDist, mux: http.NewServeMux(),
@@ -95,6 +100,7 @@ func (s *Server) routes() {
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/observations", s.authenticated(true, http.HandlerFunc(s.handleObserveNode)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/filter-refresh", s.authenticated(true, http.HandlerFunc(s.handleFilterRefresh)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/configuration-inventory", s.authenticated(false, http.HandlerFunc(s.handleConfigurationInventory)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/blocklists/presentation", s.authenticated(false, http.HandlerFunc(s.handleBlocklistPresentation)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/blocked-services/catalogue", s.authenticated(false, http.HandlerFunc(s.handleBlockedServicesCatalogue)))
 	s.mux.Handle("GET /api/v1/configuration-comparisons", s.authenticated(false, http.HandlerFunc(s.handleConfigurationComparison)))
 	s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-draft/import", s.authenticated(true, http.HandlerFunc(s.handleImportConfiguration)))

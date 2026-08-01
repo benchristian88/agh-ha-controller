@@ -190,3 +190,24 @@ func TestValidateDesiredAllowsCurrentV2FilterIntervalRange(t *testing.T) {
 		t.Fatalf("current schema-v2 interval rejected: %#v", issues)
 	}
 }
+
+func TestValidateDesiredRejectsNonPortableAndCredentialedFilterURLs(t *testing.T) {
+	document := DesiredDocument{
+		SchemaVersion: SchemaVersion,
+		Shared: Shared{Filtering: Filtering{FilterURLs: []string{
+			"/opt/adguard/list.txt",
+			"https://user:secret@filters.test/list.txt",
+		}}},
+		NodeOverrides: map[string]NodeSpecific{"node-a": {BindHosts: []string{"192.0.2.2"}, DNSPort: 53}},
+	}
+	issues := ValidateDesired(document, []string{"node-a"})
+	filterIssues := 0
+	for _, issue := range issues {
+		if strings.HasPrefix(issue.Field, "shared.filtering.filterUrls") {
+			filterIssues++
+		}
+	}
+	if filterIssues != 2 {
+		t.Fatalf("unsupported URLs were not rejected: %#v", issues)
+	}
+}

@@ -3,6 +3,7 @@ package inventory
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -15,11 +16,11 @@ type catalogueReaderFake struct {
 	unusedReader
 	byURL map[string]NodeBlockedServicesCatalogue
 	err   error
-	calls int
+	calls atomic.Int64
 }
 
 func (f *catalogueReaderFake) ReadBlockedServicesCatalogue(_ context.Context, request domain.NodeProbeRequest, _ string) (NodeBlockedServicesCatalogue, error) {
-	f.calls++
+	f.calls.Add(1)
 	if f.err != nil {
 		return NodeBlockedServicesCatalogue{}, f.err
 	}
@@ -50,8 +51,8 @@ func TestBlockedServicesCatalogueMergesNodeSupportAndPreservesPartialState(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reader.calls != 2 || catalogue.Partial || catalogue.Stale || len(catalogue.Services) != 2 || len(catalogue.Nodes) != 2 {
-		t.Fatalf("unexpected merged catalogue: %#v calls=%d", catalogue, reader.calls)
+	if reader.calls.Load() != 2 || catalogue.Partial || catalogue.Stale || len(catalogue.Services) != 2 || len(catalogue.Nodes) != 2 {
+		t.Fatalf("unexpected merged catalogue: %#v calls=%d", catalogue, reader.calls.Load())
 	}
 	if got := catalogue.Services[0]; got.ID != "chatgpt" || len(got.SupportedNodeIDs) != 1 || len(got.UnsupportedNodeIDs) != 1 || got.UnsupportedNodeIDs[0] != nodeB.ID {
 		t.Fatalf("unexpected ChatGPT compatibility: %#v", got)
@@ -80,8 +81,8 @@ func TestBlockedServicesCatalogueCacheRefreshesForVersionAndFallsBackAsStale(t *
 	if _, err := service.BlockedServicesCatalogue(context.Background(), catalogueClusterID); err != nil {
 		t.Fatal(err)
 	}
-	if reader.calls != 1 {
-		t.Fatalf("cache miss: calls=%d", reader.calls)
+	if reader.calls.Load() != 1 {
+		t.Fatalf("cache miss: calls=%d", reader.calls.Load())
 	}
 
 	now = now.Add(2 * time.Minute)
@@ -90,8 +91,8 @@ func TestBlockedServicesCatalogueCacheRefreshesForVersionAndFallsBackAsStale(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !stale.Stale || !stale.Partial || stale.Nodes[0].Status != "stale" || reader.calls != 2 {
-		t.Fatalf("unexpected stale fallback: %#v calls=%d", stale, reader.calls)
+	if !stale.Stale || !stale.Partial || stale.Nodes[0].Status != "stale" || reader.calls.Load() != 2 {
+		t.Fatalf("unexpected stale fallback: %#v calls=%d", stale, reader.calls.Load())
 	}
 
 	reader.err = nil
@@ -101,15 +102,15 @@ func TestBlockedServicesCatalogueCacheRefreshesForVersionAndFallsBackAsStale(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if refreshed.Stale || reader.calls != 3 {
-		t.Fatalf("version change did not refresh cache: %#v calls=%d", refreshed, reader.calls)
+	if refreshed.Stale || reader.calls.Load() != 3 {
+		t.Fatalf("version change did not refresh cache: %#v calls=%d", refreshed, reader.calls.Load())
 	}
 	repository.profiles[0].Features["blocked_services"] = false
 	if _, err := service.BlockedServicesCatalogue(context.Background(), catalogueClusterID); err != nil {
 		t.Fatal(err)
 	}
-	if reader.calls != 4 {
-		t.Fatalf("capability change did not refresh cache: calls=%d", reader.calls)
+	if reader.calls.Load() != 4 {
+		t.Fatalf("capability change did not refresh cache: calls=%d", reader.calls.Load())
 	}
 }
 

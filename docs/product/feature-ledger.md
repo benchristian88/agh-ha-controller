@@ -69,7 +69,7 @@ The operator completed Release 0.3 functional, PostgreSQL, Docker, and systemd v
 |---|---|---|---|
 | Canonical schema v2 | Implemented; automated checks pass | Broader shared policy, node DHCP overrides, redacted observations, deterministic canonicalisation/diff/validation, frozen-v1 projection | Upgrade/reference-node workflow |
 | Compatibility and capabilities | Implemented | v0.107.52 legacy v1; explicit v0.107.53–v0.107.78 v2 range; patch-level cache/timeout/filter/rewrite/ignore flags plus Ecosia/DHCP fleet preflight | Real supported-version matrix |
-| DNS, filtering, and refresh | Implemented | Full supported DNS payload, blocklist/allowlist reconciliation, custom rules, audited per-node refresh, fleet partial results | Real list refresh/write-back |
+| DNS, filtering, and refresh | Implemented | Full supported DNS payload; blocklist/allowlist reconciliation; custom rules; dedicated blocklist desired/observed table with node metadata and disable-oriented removal wording; audited per-node refresh with fleet partial results | Real list refresh/write-back |
 | Persistent clients and rewrites | Implemented | Set reconciliation, complete client safety/blocked-service schedule/upstream-cache preservation, typed UI, non-secure-origin row-key regression coverage | Browser and real-node workflow |
 | Services and safety | Implemented | Blocked IDs/schedules, Safe Browsing, parental control, Safe Search engine policy | Real-node workflow |
 | Query-log/statistics policy | Implemented | Node-local enablement, retention, ignore/anonymization policy via supported PUT APIs | Real-node workflow; ingestion deliberately later |

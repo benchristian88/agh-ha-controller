@@ -3,6 +3,7 @@ import type {
   AuditEvent,
   AuthResponse,
   BlockedServicesCatalogue,
+  BlocklistPresentation,
   CapabilityProfile,
   CertificatePolicy,
   Cluster,
@@ -183,6 +184,10 @@ export const api = {
   blockedServicesCatalogue: (clusterId: string) =>
     request<BlockedServicesCatalogue>(
       `/api/v1/clusters/${clusterId}/blocked-services/catalogue`,
+    ),
+  blocklistPresentation: (clusterId: string) =>
+    request<BlocklistPresentation>(
+      `/api/v1/clusters/${clusterId}/blocklists/presentation`,
     ),
   compareConfigurations: (leftSnapshotId: string, rightSnapshotId: string) =>
     request<{ equal: boolean; differences: ConfigurationDifference[] }>(

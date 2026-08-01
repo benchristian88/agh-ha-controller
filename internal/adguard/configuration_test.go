@@ -31,6 +31,26 @@ func TestVersionFixturesSuppressVolatileFields(t *testing.T) {
 	}
 }
 
+func TestReadBlocklistsPreservesVolatileMetadataOutsideConfiguration(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/control/filtering/status" {
+			http.NotFound(response, request)
+			return
+		}
+		_, _ = response.Write([]byte(`{"enabled":true,"filters":[{"id":7,"enabled":true,"url":"https://filters.test/list.txt","name":"Primary list","rules_count":321,"last_updated":"2026-08-01T01:02:03Z"},{"id":8,"enabled":false,"url":"/opt/adguard/local.txt","name":"Local list","rules_count":4}]}`))
+	}))
+	defer server.Close()
+
+	adapter := NewConfigurationReader(NewProbe(2 * time.Second))
+	lists, err := adapter.ReadBlocklists(context.Background(), probeRequest(server.URL), "v0.107.78")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lists) != 2 || lists[0].ID != 7 || lists[0].RulesCount != 321 || lists[0].LastUpdated == nil || lists[1].Enabled {
+		t.Fatalf("metadata was not retained: %#v", lists)
+	}
+}
+
 func TestValidateListenerStatusRejectsIncompleteIdentity(t *testing.T) {
 	for name, status := range map[string]statusResponse{
 		"missing":         {},

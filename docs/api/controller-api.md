@@ -107,6 +107,7 @@ Node removal requires `recordVersion` and `confirmName`. It soft-removes the rec
 ```text
 POST /api/v1/nodes/{nodeId}/observations
 GET  /api/v1/clusters/{clusterId}/configuration-inventory
+GET  /api/v1/clusters/{clusterId}/blocklists/presentation
 GET  /api/v1/clusters/{clusterId}/blocked-services/catalogue
 GET  /api/v1/configuration-comparisons?leftSnapshotId={uuid}&rightSnapshotId={uuid}
 POST /api/v1/clusters/{clusterId}/configuration-draft/import
@@ -122,9 +123,13 @@ Draft update accepts `expectedVersion` and a complete schema-v2 desired `documen
 
 The blocked-services catalogue route reads observed metadata through the controller and never mutates desired state. It returns the union of stable service IDs and names, optional group IDs, per-service supported/unsupported node IDs, per-node `available`, `stale`, `error`, or `unsupported` state, and response freshness. Upstream filtering rules and SVG icons are removed at the adapter boundary. Node URLs, credentials, and raw node errors are never returned. Metadata is cached per node version/capability signature for 15 minutes; version/capability changes force refresh, and an expired matching cache entry is exposed as stale only when a refresh fails.
 
+The blocklist presentation route reads `GET /control/filtering/status` through the controller and returns node-attributed filter ID, enabled state, name, rule count, last-update time, portability classification, fetch time, and safe node result. It includes disabled node entries so the UI can explain disable-oriented reconciliation. A successful value is cached only as a stale fallback for a later failed read. These fields are volatile presentation metadata: they are not written to observed configuration documents, drafts, revisions, canonical hashes, verification hashes, or drift comparison.
+
 Selected IDs remain the canonical `shared.services.blockedServiceIds` set. Save Draft preserves unknown legacy IDs. Validation, publication, and deployment preflight require every selected ID to be present in every enabled node's current catalogue and return node-attributed issues otherwise. Catalogue names, groups, counts, and freshness never participate in revision or drift hashes.
 
 `POST /api/v1/nodes/{nodeId}/filter-refresh` accepts `{ "whitelist": false }` (or true), requires an enabled node outside maintenance, and returns the node/list type with `status: "succeeded"`. The controller records `filters.refresh_requested` before the node call and exactly one `filters.refresh_succeeded` or `filters.refresh_failed` terminal event. Fleet fan-out is performed by the UI so partial node outcomes remain explicit.
+
+AdGuard Home's filter-refresh contract selects only blocklists versus allowlists; it does not accept URLs or filter IDs. The controller therefore does not expose a selected-row refresh operation. The blocklists page identifies that capability boundary instead of presenting a fleet-wide refresh as a targeted action.
 
 ## Revision, deployment, and drift routes
 

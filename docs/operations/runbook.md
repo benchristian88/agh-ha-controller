@@ -145,7 +145,12 @@ Release 0.3, including Docker and systemd installation and functional validation
 1. Upgrade PostgreSQL through migration `000004_release_0_4` and confirm existing schema-v1 revisions still compare, preview, roll back, and reconcile.
 2. Refresh every node. v0.107.52 must report schema v1 with an upgrade warning; v0.107.53–v0.107.78 must report schema v2 and explicit patch-level feature flags. A newer unverified contract must report unknown and block deployment.
 3. Import every enabled v2 node, then exercise `/settings/general`, `/settings/dns`, `/settings/encryption`, `/settings/clients`, `/settings/dhcp`, `/filters/blocklists`, `/filters/allowlists`, `/filters/rewrites`, `/filters/blocked-services`, and `/filters/custom-rules`. Save, publish from Configuration Control, deploy to two nodes, and confirm managed-field read-back convergence.
-4. Refresh blocklists and allowlists. Confirm a requested and terminal audit event per node and an explicit partial result if one node fails.
+4. On DNS Blocklists, confirm existing desired URLs appear as rows and inspect
+   node-attributed names, rule counts, last-update times, and application state.
+   Refresh all blocklists and then allowlists. Confirm a requested and terminal
+   audit event per node and an explicit partial result if one node fails.
+   Selected-row blocklist refresh must remain unavailable unless a future
+   supported AdGuard Home request can identify URLs or filter IDs.
 5. Confirm TLS inventory shows status/subject/issuer/validity only. Search API output, snapshots, audit metadata, and logs for certificate/key test markers and confirm none exist.
 6. Configure DHCP on two node overrides but enable only one. Confirm validation rejects two enabled nodes. For a handoff revision, confirm the deployment order disables the old node before enabling the new node and records both per-node results.
 7. Change a schema-v2 managed setting directly and confirm drift; change only TLS status or a dynamic lease and confirm no drift.

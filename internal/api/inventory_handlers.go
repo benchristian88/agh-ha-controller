@@ -63,6 +63,15 @@ func (s *Server) handleBlockedServicesCatalogue(response http.ResponseWriter, re
 	writeJSON(response, http.StatusOK, catalogue)
 }
 
+func (s *Server) handleBlocklistPresentation(response http.ResponseWriter, request *http.Request) {
+	presentation, err := s.blocklists.BlocklistPresentation(request.Context(), request.PathValue("clusterId"))
+	if err != nil {
+		s.writeError(response, request, err)
+		return
+	}
+	writeJSON(response, http.StatusOK, presentation)
+}
+
 func (s *Server) handleConfigurationComparison(response http.ResponseWriter, request *http.Request) {
 	left, right := request.URL.Query().Get("leftSnapshotId"), request.URL.Query().Get("rightSnapshotId")
 	if !domain.ValidID(left) || !domain.ValidID(right) {

@@ -561,8 +561,7 @@ func ValidateDesired(document DesiredDocument, nodeIDs []string) []ValidationIss
 		issues = append(issues, ValidationIssue{Field: "shared.filtering.updateIntervalHours", Message: "must be between 0 and 8760"})
 	}
 	for index, rawURL := range document.Shared.Filtering.FilterURLs {
-		parsed, err := url.Parse(rawURL)
-		if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		if !validHTTPURL(rawURL) {
 			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("shared.filtering.filterUrls[%d]", index), Message: "must be an absolute HTTP or HTTPS URL"})
 		}
 	}
@@ -597,7 +596,7 @@ func ValidateDesired(document DesiredDocument, nodeIDs []string) []ValidationIss
 
 func validHTTPURL(rawURL string) bool {
 	parsed, err := url.Parse(rawURL)
-	return err == nil && parsed.Host != "" && (parsed.Scheme == "http" || parsed.Scheme == "https")
+	return err == nil && parsed.Host != "" && parsed.User == nil && (parsed.Scheme == "http" || parsed.Scheme == "https")
 }
 
 func validateV2Shared(shared Shared) []ValidationIssue {

@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/benchristian88/agh-ha-controller/internal/configuration"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
@@ -54,22 +55,23 @@ type dnsInfoResponse struct {
 	UpstreamTimeout    *int     `json:"upstream_timeout"`
 }
 
+type filterListResponse struct {
+	ID          int64  `json:"id"`
+	Enabled     bool   `json:"enabled"`
+	URL         string `json:"url"`
+	Name        string `json:"name"`
+	RulesCount  int64  `json:"rules_count"`
+	LastUpdated string `json:"last_updated"`
+	Whitelist   bool   `json:"whitelist"`
+}
+
 type filterStatusResponse struct {
-	FilteringEnabled *bool `json:"filtering_enabled"`
-	Enabled          *bool `json:"enabled"`
-	Interval         int   `json:"interval"`
-	Filters          []struct {
-		Enabled   bool   `json:"enabled"`
-		URL       string `json:"url"`
-		Name      string `json:"name"`
-		Whitelist bool   `json:"whitelist"`
-	} `json:"filters"`
-	UserRules        []string `json:"user_rules"`
-	WhitelistFilters []struct {
-		Enabled bool   `json:"enabled"`
-		URL     string `json:"url"`
-		Name    string `json:"name"`
-	} `json:"whitelist_filters"`
+	FilteringEnabled *bool                `json:"filtering_enabled"`
+	Enabled          *bool                `json:"enabled"`
+	Interval         int                  `json:"interval"`
+	Filters          []filterListResponse `json:"filters"`
+	UserRules        []string             `json:"user_rules"`
+	WhitelistFilters []filterListResponse `json:"whitelist_filters"`
 }
 
 type clientsResponse struct {
@@ -332,6 +334,33 @@ func (r *ConfigurationReader) ReadBlockedServicesCatalogue(ctx context.Context, 
 	return result, nil
 }
 
+func (r *ConfigurationReader) ReadBlocklists(ctx context.Context, request domain.NodeProbeRequest, version string) ([]inventory.FilterListMetadata, error) {
+	if ConfigurationCompatibility(version) != domain.CompatibilitySupported {
+		return nil, domain.NewError(domain.ErrorCapability, "the node version is not supported for blocklist presentation")
+	}
+	var response filterStatusResponse
+	if err := r.get(ctx, request, "/control/filtering/status", &response); err != nil {
+		return nil, err
+	}
+	result := make([]inventory.FilterListMetadata, 0, len(response.Filters))
+	for _, filter := range response.Filters {
+		if filter.Whitelist {
+			continue
+		}
+		item := inventory.FilterListMetadata{ID: filter.ID, URL: filter.URL, Name: filter.Name, Enabled: filter.Enabled, RulesCount: filter.RulesCount}
+		if strings.TrimSpace(filter.LastUpdated) != "" {
+			updated, err := time.Parse(time.RFC3339, filter.LastUpdated)
+			if err != nil {
+				return nil, domain.NewError(domain.ErrorNodeResponse, "the node returned an invalid blocklist update time")
+			}
+			updated = updated.UTC()
+			item.LastUpdated = &updated
+		}
+		result = append(result, item)
+	}
+	return result, nil
+}
+
 func validateListenerStatus(status statusResponse) error {
 	if status.DNSPort < 1 || status.DNSPort > 65535 || len(status.DNSAddresses) == 0 {
 		return domain.NewError(domain.ErrorNodeResponse, "the node returned an invalid DNS listener configuration")
@@ -523,12 +552,8 @@ func (r *ConfigurationReader) reconcileFilterURLs(ctx context.Context, request d
 	targets := make(map[string]struct{}, len(desired))
 	currentItems := current.Filters
 	for _, item := range current.WhitelistFilters {
-		currentItems = append(currentItems, struct {
-			Enabled   bool   `json:"enabled"`
-			URL       string `json:"url"`
-			Name      string `json:"name"`
-			Whitelist bool   `json:"whitelist"`
-		}{Enabled: item.Enabled, URL: item.URL, Name: item.Name, Whitelist: true})
+		item.Whitelist = true
+		currentItems = append(currentItems, item)
 	}
 	for _, target := range desired {
 		targets[strings.ToLower(target)] = struct{}{}

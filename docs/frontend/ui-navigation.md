@@ -55,8 +55,11 @@ items retain their Phase 2 presentation until their assigned migration phase:
 - General renders safety services, Safe Search, and the existing query-log and
   statistics policy form;
 - Encryption and DHCP each render the existing combined infrastructure form;
-- DNS Blocklists, DNS Allowlists, and Custom Filter Rules each render the
-  existing combined filtering form;
+- DNS Blocklists renders the dedicated searchable desired/observed table,
+  add/edit dialogs, accurate disable-oriented removal confirmation, per-node
+  metadata, and audited refresh-all results;
+- DNS Allowlists and Custom Filter Rules each retain the existing combined
+  filtering form until their assigned migration phase;
 - Blocked Services renders the dedicated controller-mediated searchable
   catalogue and shared inactivity schedule, with Save Draft as its only write
   action;
