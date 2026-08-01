@@ -4,72 +4,98 @@
 
 ```text
 /
-  dashboard
-
-/query-log
 /statistics
 
+/settings/general
 /settings/dns
-/settings/filters
+/settings/encryption
 /settings/clients
-/settings/rewrites
-/settings/services
-/settings/privacy
-/settings/infrastructure
+/settings/dhcp
+
+/filters/blocklists
+/filters/allowlists
+/filters/rewrites
+/filters/blocked-services
+/filters/custom-rules
+
+/query-log
 
 /ha/nodes
 /ha/configuration
-/ha/revisions
 /ha/deployments
 /ha/drift
-/ha/forwarders
+/ha/history
+
+/setup-guide
 
 /system/users
 /system/audit
 /system/settings
+/system/backups
 /system/about
 ```
 
-## Implemented routes through Release 0.4
+## Release 0.4.1 Phases 0–2 implementation
 
-The implemented shell currently exposes:
+Every path above resolves explicitly. Statistics and Query Log identify their
+owning future release, and Setup Guide plus unimplemented administration pages
+show an explicit planned state. Unknown paths render Not Found and never render
+Dashboard.
 
-```text
-/
-  setup or login when unauthenticated
-  cluster health dashboard when authenticated
+The horizontal desktop header and mobile drawer share the Settings, Filters,
+and HA Controller hierarchy from `navigation-and-shell.md`. The context row
+uses existing controller reads for cluster, selected-node scope, active
+revision, node health, and active deployment. A context-read failure is shown
+as unavailable and does not block the feature page.
 
-/ha/nodes
-/ha/configuration
-/ha/deployments
-/settings/dns
-/settings/filters
-/settings/clients
-/settings/rewrites
-/settings/services
-/settings/privacy
-/settings/infrastructure
-/system/audit
-```
+Phase 2 establishes canonical URLs without redesigning Release 0.4 feature
+controls. Until the later presentation phases split those controls:
 
-`/ha/configuration` combines observations/import, desired draft authoring, immutable revision history, comparison, preview, deploy, and rollback. `/ha/deployments` combines deployment timeline/detail, reconciliation policy, and drift actions. The nested `/settings/*` routes edit the same optimistic draft and group routine settings like AdGuard Home: DNS; filters/refresh; clients; rewrites; services/safety; logs/statistics policy; and TLS/DHCP. Cluster selection remains global application state. The more granular planned revision/deployment/drift detail URLs remain future navigation refinements and are not rendered as placeholders.
+- General renders the existing query-log and statistics policy form;
+- Encryption and DHCP each render the existing combined infrastructure form;
+- DNS Blocklists, DNS Allowlists, and Custom Filter Rules each render the
+  existing combined filtering form;
+- Blocked Services renders the existing combined services and safety form;
+- Drift renders the existing combined deployments and drift page;
+- Change History renders Configuration Control, where immutable history and
+  comparison remain available.
+
+## Route migrations
+
+The browser retains the query string and fragment during these redirects.
+
+| Previous route | Canonical route |
+|---|---|
+| `/settings/filters` | `/filters/blocklists` |
+| `/settings/rewrites` | `/filters/rewrites` |
+| `/settings/services` | `/filters/blocked-services` |
+| `/settings/privacy` | `/settings/general` |
+| `/settings/infrastructure` | `/settings/encryption` |
+| `/ha/revisions` | `/ha/history` |
+| Any canonical path with a trailing slash | The same path without the trailing slash |
+
+## Configuration Control
+
+`/ha/configuration` is lifecycle control, not a duplicate settings editor. It
+contains the complete read-only schema-v2 draft/change summary, validation,
+observation and import, publication, immutable revision history and comparison,
+deployment preview/deploy, and rollback.
 
 ## Route principles
 
-- URLs should be stable and bookmarkable.
-- Cluster scope should be represented in application state and optionally URL query parameters.
-- Node-specific views should use node UUIDs.
-- Revision, deployment, and drift resources should have detail routes.
-- Sensitive values must never be placed in URLs.
+- URLs are stable and bookmarkable.
+- Cluster and selected-node scope remain application context; secrets never
+  appear in URLs.
+- Active submenu children highlight their parent.
+- Detail routes may add UUIDs in later releases.
+- Unknown routes fail visibly.
 
 ## Breadcrumbs
 
-Use breadcrumbs on detail pages, not on top-level pages.
-
-Examples:
+Use breadcrumbs on future detail pages, not top-level pages.
 
 ```text
 Nodes / AGH Node A
-Change history / Revision 42
+Change History / Revision 42
 Deployments / Deployment 8f...
 ```

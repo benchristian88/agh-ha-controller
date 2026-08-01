@@ -64,9 +64,11 @@ const titles: Record<SettingsArea, [string, string]> = {
 export function ManagedSettingsPage({
   cluster,
   area,
+  heading,
 }: {
   cluster: Cluster;
   area: SettingsArea;
+  heading?: readonly [title: string, description: string];
 }) {
   const [draft, setDraft] = useState<ConfigurationDraft>();
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -108,7 +110,7 @@ export function ManagedSettingsPage({
       setDraft(result.draft);
       setIssues(result.issues);
       setMessage(
-        "Draft saved. Publish and deploy it from Configuration when you are ready.",
+        "Draft saved. Publish and deploy it from Configuration Control when you are ready.",
       );
     } catch (caught) {
       setError(caught);
@@ -122,7 +124,7 @@ export function ManagedSettingsPage({
   if (draft === undefined && nodes.length === 0 && error === undefined)
     return <Loading label="Loading managed settings…" />;
 
-  const [title, description] = titles[area];
+  const [title, description] = heading ?? titles[area];
   return (
     <>
       <header className="page-header">
@@ -146,8 +148,8 @@ export function ManagedSettingsPage({
       {!draft ? (
         <EmptyState title="Import a node configuration first">
           <p>
-            Open Configuration, refresh a node, and import its observation to
-            create the cluster draft.
+            Open Configuration Control, refresh a node, and import its
+            observation to create the cluster draft.
           </p>
         </EmptyState>
       ) : draft.document.schemaVersion !== 2 ? (
@@ -155,8 +157,8 @@ export function ManagedSettingsPage({
           <strong>Schema upgrade required</strong>
           <p>
             This draft is the immutable 0.3 schema-v1 shape. Refresh and import
-            a current node observation from Configuration before editing 0.4
-            features.
+            a current node observation from Configuration Control before editing
+            0.4 features.
           </p>
         </div>
       ) : (
