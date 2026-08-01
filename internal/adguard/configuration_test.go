@@ -3,6 +3,7 @@ package adguard
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -221,7 +222,7 @@ func TestApplyConfigurationV2UsesDocumentedMethods(t *testing.T) {
 		response.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
-	desired := configuration.Document{SchemaVersion: configuration.SchemaVersion, Shared: configuration.Shared{Filtering: configuration.Filtering{UpdateInterval: 24}, Services: configuration.Services{BlockedSchedule: configuration.Schedule{TimeZone: "Local", Days: map[string]configuration.DayRange{}}}}, NodeSpecific: configuration.NodeSpecific{DHCP: &configuration.DHCPConfig{}}}
+	desired := configuration.Document{SchemaVersion: configuration.SchemaVersion, Shared: configuration.Shared{Filtering: configuration.Filtering{UpdateInterval: 24}, Services: configuration.Services{BlockedSchedule: configuration.Schedule{TimeZone: "Local", Days: map[string]configuration.DayRange{}}}}, NodeSpecific: configuration.NodeSpecific{DHCP: &configuration.DHCPConfig{Enabled: true, InterfaceName: "eth0", IPv4: configuration.DHCPIPv4{Gateway: "192.0.2.1", SubnetMask: "255.255.255.0", RangeStart: "192.0.2.100", RangeEnd: "192.0.2.200", LeaseDuration: 3600}}}}
 	adapter := NewConfigurationReader(NewProbe(2 * time.Second))
 	if err := adapter.ApplyConfiguration(context.Background(), probeRequest(server.URL), desired); err != nil {
 		t.Fatal(err)
@@ -238,6 +239,53 @@ func TestApplyConfigurationV2UsesDocumentedMethods(t *testing.T) {
 		if methods[path] != method {
 			t.Errorf("%s method = %q, want %q", path, methods[path], method)
 		}
+	}
+}
+
+func TestReconcileDHCPSkipsConfigurationWriteWhenAlreadyConverged(t *testing.T) {
+	requests := []string{}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests = append(requests, request.Method+" "+request.URL.Path)
+		if request.Method == http.MethodGet && request.URL.Path == "/control/dhcp/status" {
+			_, _ = response.Write([]byte(`{"enabled":false,"interface_name":"","v4":{"gateway_ip":"","subnet_mask":"","range_start":"","range_end":"","lease_duration":0},"v6":{"range_start":"","lease_duration":0},"static_leases":[]}`))
+			return
+		}
+		if request.Method == http.MethodPost && request.URL.Path == "/control/dhcp/add_static_lease" {
+			response.WriteHeader(http.StatusOK)
+			return
+		}
+		http.Error(response, "unexpected mutation", http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	adapter := NewConfigurationReader(NewProbe(time.Second))
+	desired := configuration.DHCPConfig{StaticLeases: []configuration.DHCPStaticLease{{MAC: "00:11:22:33:44:55", IP: "192.0.2.10", Hostname: "printer"}}}
+	if err := adapter.reconcileDHCP(context.Background(), probeRequest(server.URL), desired); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"GET /control/dhcp/status", "POST /control/dhcp/add_static_lease"}
+	if len(requests) != len(want) || requests[0] != want[0] || requests[1] != want[1] {
+		t.Fatalf("requests = %#v, want %#v without set_config", requests, want)
+	}
+}
+
+func TestMutationFailureIncludesSafeOperationAndStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		http.Error(response, "rejected payload containing secret-value", http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	adapter := NewConfigurationReader(NewProbe(time.Second))
+	err := adapter.post(context.Background(), probeRequest(server.URL), "/control/dhcp/set_config", map[string]any{"enabled": false})
+	var domainError *domain.Error
+	if !errors.As(err, &domainError) || domainError.Kind != domain.ErrorNodeApply {
+		t.Fatalf("error = %#v, want NODE_APPLY_FAILED", err)
+	}
+	if !strings.Contains(domainError.Message, "POST /control/dhcp/set_config") || !strings.Contains(domainError.Message, "HTTP 400") {
+		t.Fatalf("safe operation detail missing from %q", domainError.Message)
+	}
+	if strings.Contains(domainError.Message, "secret-value") {
+		t.Fatalf("node response body leaked into error: %q", domainError.Message)
 	}
 }
 

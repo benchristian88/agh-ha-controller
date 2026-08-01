@@ -28,6 +28,8 @@ The project intends to follow Semantic Versioning once the first public release 
 ### Fixed
 
 - Prevent the rewrites, persistent-clients, and DHCP static-lease editors from crashing on non-secure HTTP origins by using stable local row keys instead of the secure-context-only browser UUID API.
+- Avoid redundant `/control/dhcp/set_config` writes when a node's schema-v2 DHCP configuration already matches the immutable revision. This prevents disabled, unconfigured DHCP nodes from rejecting an otherwise successful deployment after DNS settings have been applied, while static leases continue to reconcile.
+- Include the safe AdGuard Home HTTP method, operation path, and status in `NODE_APPLY_FAILED` task details and show that existing per-node diagnostic on the Deployments page without retaining node response bodies.
 
 ### Deferred
 

@@ -712,9 +712,11 @@ func (r *ConfigurationReader) reconcileDHCP(ctx context.Context, request domain.
 	if err := r.get(ctx, request, "/control/dhcp/status", &current); err != nil {
 		return err
 	}
-	payload := map[string]any{"enabled": desired.Enabled, "interface_name": desired.InterfaceName, "v4": map[string]any{"gateway_ip": desired.IPv4.Gateway, "subnet_mask": desired.IPv4.SubnetMask, "range_start": desired.IPv4.RangeStart, "range_end": desired.IPv4.RangeEnd, "lease_duration": desired.IPv4.LeaseDuration}, "v6": map[string]any{"range_start": desired.IPv6.RangeStart, "lease_duration": desired.IPv6.LeaseDuration}}
-	if err := r.post(ctx, request, "/control/dhcp/set_config", payload); err != nil {
-		return err
+	if !dhcpConfigurationMatches(current, desired) {
+		payload := map[string]any{"enabled": desired.Enabled, "interface_name": desired.InterfaceName, "v4": map[string]any{"gateway_ip": desired.IPv4.Gateway, "subnet_mask": desired.IPv4.SubnetMask, "range_start": desired.IPv4.RangeStart, "range_end": desired.IPv4.RangeEnd, "lease_duration": desired.IPv4.LeaseDuration}, "v6": map[string]any{"range_start": desired.IPv6.RangeStart, "lease_duration": desired.IPv6.LeaseDuration}}
+		if err := r.post(ctx, request, "/control/dhcp/set_config", payload); err != nil {
+			return err
+		}
 	}
 	byMAC, targets := map[string]dhcpLeaseResponse{}, map[string]bool{}
 	for _, lease := range current.StaticLeases {
@@ -743,6 +745,18 @@ func (r *ConfigurationReader) reconcileDHCP(ctx context.Context, request domain.
 		}
 	}
 	return nil
+}
+
+func dhcpConfigurationMatches(current dhcpStatusResponse, desired configuration.DHCPConfig) bool {
+	return current.Enabled == desired.Enabled &&
+		current.InterfaceName == desired.InterfaceName &&
+		current.V4.Gateway == desired.IPv4.Gateway &&
+		current.V4.SubnetMask == desired.IPv4.SubnetMask &&
+		current.V4.RangeStart == desired.IPv4.RangeStart &&
+		current.V4.RangeEnd == desired.IPv4.RangeEnd &&
+		current.V4.LeaseDuration == desired.IPv4.LeaseDuration &&
+		current.V6.RangeStart == desired.IPv6.RangeStart &&
+		current.V6.LeaseDuration == desired.IPv6.LeaseDuration
 }
 
 func (r *ConfigurationReader) post(ctx context.Context, request domain.NodeProbeRequest, path string, payload any) error {
@@ -791,7 +805,7 @@ func (r *ConfigurationReader) send(ctx context.Context, request domain.NodeProbe
 		return domain.NewError(domain.ErrorNodeAuth, "the node rejected its stored credentials")
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return domain.NewError(domain.ErrorNodeApply, "the node rejected a configuration change")
+		return domain.NewError(domain.ErrorNodeApply, fmt.Sprintf("AdGuard Home rejected %s %s with HTTP %d", method, path, response.StatusCode))
 	}
 	return nil
 }

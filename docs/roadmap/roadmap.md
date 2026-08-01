@@ -267,6 +267,11 @@ Post-implementation correction on 31 July 2026:
 - Settings-editor row keys no longer depend on the secure-context-only browser UUID API. Rewrites, persistent clients, and DHCP static leases now render on explicit HTTP origins; the frontend regression suite, type check, lint, and production build pass. The broader browser accessibility/visual release gate remains pending.
 - The application sidebar is now the sole settings navigation, removing the repeated in-page menu, and larger DHCP node, client, and blocked-services schedule headings render inside their configuration cards while retaining accessible fieldset labels. The same frontend gates pass; the browser visual release gate remains pending.
 
+Post-implementation deployment correction on 2 August 2026:
+
+- Schema-v2 DHCP reconciliation no longer sends `/control/dhcp/set_config` when the node already matches the immutable revision, fixing the reported deployment failure on disabled, unconfigured DHCP nodes without weakening static-lease reconciliation or disable-before-enable ordering.
+- Per-node `NODE_APPLY_FAILED` details now identify the safe AdGuard method, operation path, and HTTP status in the deployment timeline while continuing to discard response bodies and payloads. Automated adapter and DOM regressions cover both behaviors. The real-node two-node deployment and controlled DHCP handoff remain release gates and are not marked complete by this correction.
+
 Deliberately deferred without changing roadmap history:
 
 - TLS certificate/key mutation is excluded until controller-managed secret references are designed; TLS is redacted inventory only.

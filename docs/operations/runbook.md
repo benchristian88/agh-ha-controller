@@ -75,7 +75,7 @@ Correct the underlying issue and use “Test” in the Nodes page. Direct AdGuar
 
 ## Failed deployment
 
-1. Identify failed node and phase.
+1. Identify the failed node and inspect its per-node error detail in **HA Controller > Deployments**. `NODE_APPLY_FAILED` now includes the safe AdGuard Home method, operation path, and HTTP status, for example `POST /control/dhcp/set_config` with `HTTP 400`.
 2. Confirm whether earlier nodes changed successfully.
 3. Review verification result.
 4. Decide:
@@ -85,6 +85,10 @@ Correct the underlying issue and use “Test” in the Nodes page. Direct AdGuar
 5. Preserve deployment and audit history.
 
 Release 0.3 stops after the first failed node and records `partially_succeeded` when an earlier node verified. It never silently rolls back. Repair the cause, then deliberately deploy the desired revision again or review and deploy a historical revision as rollback. A controller restart marks an in-flight attempt `interrupted`; re-observe all affected nodes before starting another deployment.
+
+For systemd, correlate the deployment request ID with controller logs using `journalctl -u agh-ha-controller --since "30 minutes ago" --no-pager -o short-iso`. For Docker Compose, use `docker compose logs --since=30m --timestamps controller`. AdGuard Home may log additional validation context on the node; the common systemd command is `journalctl -u AdGuardHome --since "30 minutes ago" --no-pager -o short-iso`, while a containerised node can be inspected with `docker logs --since 30m --timestamps <container-name>`. Controller diagnostics deliberately exclude AdGuard response bodies and configuration payloads.
+
+If DNS settings were applied before a DHCP failure, refresh the node before retrying. Release 0.4 applies DHCP after DNS. Already-converged disabled DHCP configuration is now left untouched while static leases still reconcile; a continuing `/control/dhcp/set_config` rejection therefore indicates a genuine desired/current DHCP difference that should be reviewed on the node-specific DHCP page.
 
 ## Controller restore
 
