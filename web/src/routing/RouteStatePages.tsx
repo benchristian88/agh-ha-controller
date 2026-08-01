@@ -1,8 +1,14 @@
+import { PageContainer, PageHeader } from "../components/Page";
+
 export function NotFoundPage({ pathname }: { pathname: string }) {
   return (
-    <section className="route-state" aria-labelledby="not-found-title">
-      <p className="eyebrow">404 · Not Found</p>
-      <h1 id="not-found-title">This page does not exist</h1>
+    <PageContainer size="narrow" className="route-state">
+      <PageHeader
+        eyebrow="404 · Not Found"
+        title="This page does not exist"
+        titleId="not-found-title"
+        focusOnMount
+      />
       <p className="muted">
         <code>{pathname}</code> is not a recognised controller route. Check the
         address or return to the cluster dashboard.
@@ -10,7 +16,7 @@ export function NotFoundPage({ pathname }: { pathname: string }) {
       <a className="button" href="/">
         Return to Dashboard
       </a>
-    </section>
+    </PageContainer>
   );
 }
 

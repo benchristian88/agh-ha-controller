@@ -1,7 +1,40 @@
 import { useCallback, useEffect, useState } from "react";
-import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
+import { DataTable, type DataTableColumn } from "../../components/DataDisplay";
+import { PageContainer, PageHeader } from "../../components/Page";
 import { api } from "../../lib/api";
 import type { AuditEvent } from "../../lib/types";
+
+const columns: readonly DataTableColumn<AuditEvent>[] = [
+  {
+    id: "time",
+    header: "Time",
+    render: (event) => new Date(event.createdAt).toLocaleString(),
+  },
+  {
+    id: "action",
+    header: "Action",
+    render: (event) => <strong>{event.action}</strong>,
+  },
+  {
+    id: "resource",
+    header: "Resource",
+    render: (event) => (
+      <>
+        {event.resourceType}
+        <span className="table-subtitle monospace">
+          {event.resourceId ?? "—"}
+        </span>
+      </>
+    ),
+  },
+  { id: "actor", header: "Actor", render: (event) => event.actorType },
+  {
+    id: "request",
+    header: "Request ID",
+    className: "monospace",
+    render: (event) => event.requestId,
+  },
+];
 
 export function AuditPage() {
   const [events, setEvents] = useState<AuditEvent[]>();
@@ -19,60 +52,24 @@ export function AuditPage() {
   }, [load]);
 
   return (
-    <>
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">System</p>
-          <h1>Audit log</h1>
-          <p className="muted">
-            Durable security and node-management activity.
-          </p>
-        </div>
-      </header>
-      {events === undefined && error === undefined && (
-        <Loading label="Loading audit events…" />
-      )}
-      {events === undefined && error !== undefined && (
-        <ErrorState error={error} retry={() => void load()} />
-      )}
-      {events?.length === 0 && (
-        <EmptyState title="No audit events">
-          <p>Material actions will appear here.</p>
-        </EmptyState>
-      )}
-      {events !== undefined && events.length > 0 && (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Action</th>
-                <th>Resource</th>
-                <th>Actor</th>
-                <th>Request ID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map((event) => (
-                <tr key={event.id}>
-                  <td>{new Date(event.createdAt).toLocaleString()}</td>
-                  <td>
-                    <strong>{event.action}</strong>
-                  </td>
-                  <td>
-                    {event.resourceType}
-                    <span className="table-subtitle monospace">
-                      {event.resourceId ?? "—"}
-                    </span>
-                  </td>
-                  <td>{event.actorType}</td>
-                  <td className="monospace">{event.requestId}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </>
+    <PageContainer size="wide">
+      <PageHeader
+        eyebrow="System"
+        title="Audit log"
+        description="Durable security and node-management activity."
+      />
+      <DataTable
+        columns={columns}
+        rows={events ?? []}
+        rowKey={(event) => event.id}
+        caption="Audit events"
+        loading={events === undefined && error === undefined}
+        loadingLabel="Loading audit events…"
+        error={events === undefined ? error : undefined}
+        retry={() => void load()}
+        emptyTitle="No audit events"
+        emptyDescription={<p>Material actions will appear here.</p>}
+      />
+    </PageContainer>
   );
 }
