@@ -1,0 +1,87 @@
+/* AGH HA Controller original semantic token starter. */
+
+:root {
+  --aghha-font-sans: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+
+  --aghha-header-height: 64px;
+  --aghha-context-height: 48px;
+
+  --aghha-space-1: 4px;
+  --aghha-space-2: 8px;
+  --aghha-space-3: 12px;
+  --aghha-space-4: 16px;
+  --aghha-space-5: 20px;
+  --aghha-space-6: 24px;
+  --aghha-space-8: 32px;
+  --aghha-space-10: 40px;
+  --aghha-space-12: 48px;
+
+  --aghha-radius-control: 6px;
+  --aghha-radius-card: 8px;
+  --aghha-radius-dialog: 12px;
+  --aghha-radius-pill: 999px;
+
+  --aghha-page: #f7f8fa;
+  --aghha-page-subtle: #eef1f4;
+  --aghha-header: #ffffff;
+  --aghha-card: #ffffff;
+  --aghha-popup: #ffffff;
+  --aghha-border: #d9dee5;
+  --aghha-text: #24303d;
+  --aghha-text-muted: #667384;
+  --aghha-text-disabled: #98a2af;
+  --aghha-input: #f7f8fa;
+  --aghha-input-border: #cbd2db;
+
+  --aghha-primary: #43a047;
+  --aghha-primary-hover: #388e3c;
+  --aghha-primary-soft: #e8f5e9;
+
+  --aghha-success: #2f8f46;
+  --aghha-success-soft: #e9f6ec;
+  --aghha-info: #2878c7;
+  --aghha-info-soft: #e9f2fb;
+  --aghha-warning: #c47a10;
+  --aghha-warning-soft: #fff4df;
+  --aghha-danger: #cf3f45;
+  --aghha-danger-soft: #fdecee;
+  --aghha-neutral-soft: #eef1f4;
+
+  --aghha-link: #268b4a;
+  --aghha-overlay: rgb(15 23 42 / 55%);
+  --aghha-shadow-popup: 0 12px 32px rgb(25 35 50 / 14%);
+  --aghha-focus: 0 0 0 3px rgb(67 160 71 / 28%);
+}
+
+[data-theme="dark"] {
+  --aghha-page: #171c22;
+  --aghha-page-subtle: #20262e;
+  --aghha-header: #20262e;
+  --aghha-card: #252c35;
+  --aghha-popup: #252c35;
+  --aghha-border: #3b4652;
+  --aghha-text: #edf1f5;
+  --aghha-text-muted: #b0bac5;
+  --aghha-text-disabled: #73808e;
+  --aghha-input: #20262e;
+  --aghha-input-border: #46515d;
+
+  --aghha-primary: #55b85b;
+  --aghha-primary-hover: #67c56d;
+  --aghha-primary-soft: #213c29;
+
+  --aghha-success: #69c278;
+  --aghha-success-soft: #243d2a;
+  --aghha-info: #6eafe8;
+  --aghha-info-soft: #203649;
+  --aghha-warning: #f0ad4e;
+  --aghha-warning-soft: #44331d;
+  --aghha-danger: #ef7479;
+  --aghha-danger-soft: #48282b;
+  --aghha-neutral-soft: #303944;
+
+  --aghha-link: #65c87c;
+  --aghha-overlay: rgb(0 0 0 / 70%);
+  --aghha-shadow-popup: 0 14px 36px rgb(0 0 0 / 35%);
+  --aghha-focus: 0 0 0 3px rgb(85 184 91 / 30%);
+}

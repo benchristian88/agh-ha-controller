@@ -1,0 +1,173 @@
+# Release 0.4.1 — Frontend Product Alignment Roadmap
+
+## Goal
+
+Align the Release 0.4 frontend with the AdGuard Home operator model without breaking the desired-state control plane.
+
+## Branch strategy
+
+Create one integration branch:
+
+```text
+feature/release-0.4.1-ui-alignment
+```
+
+Use short-lived child branches or sequential commits per phase.
+
+Do not combine all phases into one Codex task or one commit.
+
+## Phase 0 — Baseline and routing safety
+
+### Deliverables
+
+- screenshot baseline;
+- test baseline;
+- route inventory;
+- explicit Not Found page;
+- old-to-new redirect table;
+- no Dashboard fallback for unknown routes.
+
+### Exit gate
+
+All existing critical workflows still pass.
+
+## Phase 1 — Configuration Control reconciliation
+
+### Deliverables
+
+- rename Configuration to Configuration Control;
+- remove schema-v1 copy;
+- remove duplicate narrow editor;
+- complete schema-v2 draft summary;
+- links to settings pages;
+- preserve observation/import, validation, revision history, comparison, publish, deploy, rollback.
+
+### Why first
+
+This removes stale product language before the new navigation exposes the page more prominently.
+
+## Phase 2 — Navigation and context shell
+
+### Deliverables
+
+- horizontal desktop navigation;
+- dropdowns;
+- mobile drawer;
+- context row;
+- active parent state;
+- cluster, scope, active revision, health, and active deployment indicators;
+- administration menu.
+
+### Exit gate
+
+No feature content redesign yet. Existing pages must render inside the new shell.
+
+## Phase 3 — Shared design primitives
+
+### Deliverables
+
+- tokens;
+- PageHeader and PageContainer;
+- settings primitives;
+- tables;
+- dialogs;
+- status badges;
+- list editors;
+- duration and network controls;
+- loading, empty, error, stale, and partial states.
+
+## Phase 4 — Golden feature: Blocked Services
+
+### Deliverables
+
+- service catalogue API integration;
+- grouped searchable catalogue;
+- schedule;
+- compatibility validation;
+- Save Draft lifecycle;
+- tests.
+
+### Why first
+
+This is the clearest example of transport-oriented UI that must become product-oriented UI.
+
+## Phase 5 — Filter subscriptions
+
+### Deliverables
+
+- separate blocklist and allowlist routes;
+- tables and dialogs;
+- refresh selected/all;
+- observed rule count and freshness;
+- node deployment state.
+
+## Phase 6 — Clients
+
+### Deliverables
+
+- searchable table;
+- add/edit dialog;
+- identifier editor;
+- tags;
+- service catalogue reuse;
+- removal confirmation;
+- inherited policy presentation.
+
+## Phase 7 — DNS Rewrites
+
+### Deliverables
+
+- searchable table;
+- validation;
+- add/edit dialog;
+- delete confirmation;
+- revision and convergence context.
+
+## Phase 8 — DHCP presentation and safety tools
+
+### Deliverables
+
+- interface discovery;
+- active-DHCP check;
+- active leases;
+- static lease table/dialog;
+- duration and network validation;
+- reset actions only with explicit audit and confirmation.
+
+Preserve one-active-node validation and disable-before-enable deployment ordering.
+
+## Phase 9 — General settings refinement
+
+### Deliverables
+
+- structured ignored-domain lists;
+- friendly durations;
+- human-readable cache size;
+- conditional custom blocking fields;
+- terminology fixes;
+- upstream testing;
+- operational clear/reset actions.
+
+## Phase 10 — Regression and cleanup
+
+### Deliverables
+
+- remove unused sidebar and old components;
+- update docs;
+- run complete test suite;
+- visual regression;
+- accessibility;
+- mobile;
+- systemd/Docker packaged checks.
+
+## Release gate
+
+Release 0.4.1 is complete when:
+
+- Release 0.4 behaviour is preserved;
+- navigation matches the approved structure;
+- Configuration Control is schema-v2 aligned;
+- Blocked Services, filters, clients, rewrites, and DHCP use operator-appropriate controls;
+- unknown routes cannot masquerade as Dashboard;
+- no secret or DHCP safety regression exists;
+- documentation matches implementation.
