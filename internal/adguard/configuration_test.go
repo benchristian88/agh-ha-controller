@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -457,6 +458,64 @@ func TestFindActiveDHCPTimeoutIsNodeUnreachable(t *testing.T) {
 	if !errors.As(err, &domainError) || domainError.Kind != domain.ErrorNodeUnreachable {
 		t.Fatalf("error = %#v, want node unreachable", err)
 	}
+}
+
+func TestDHCPResetOperationsUseExactNoBodyEndpoints(t *testing.T) {
+	paths := []string{}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPost {
+			t.Errorf("method = %s, want POST", request.Method)
+		}
+		body, err := io.ReadAll(request.Body)
+		if err != nil {
+			t.Error(err)
+		}
+		if len(body) != 0 || request.Header.Get("Content-Type") != "" {
+			t.Errorf("reset request unexpectedly had body=%q content-type=%q", body, request.Header.Get("Content-Type"))
+		}
+		paths = append(paths, request.URL.Path)
+		response.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	adapter := NewConfigurationReader(NewProbe(time.Second))
+	request := probeRequest(server.URL)
+	if err := adapter.ResetDHCPLeases(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	if err := adapter.ResetDHCPConfiguration(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	if len(paths) != 2 || paths[0] != "/control/dhcp/reset_leases" || paths[1] != "/control/dhcp/reset" {
+		t.Fatalf("paths = %#v", paths)
+	}
+}
+
+func TestDHCPResetFailureAndTimeoutAreSanitised(t *testing.T) {
+	t.Run("upstream body", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+			http.Error(response, "credential=secret private response", http.StatusInternalServerError)
+		}))
+		defer server.Close()
+		adapter := NewConfigurationReader(NewProbe(time.Second))
+		err := adapter.ResetDHCPConfiguration(context.Background(), probeRequest(server.URL))
+		var domainError *domain.Error
+		if !errors.As(err, &domainError) || domainError.Kind != domain.ErrorNodeApply || strings.Contains(err.Error(), "credential") || strings.Contains(err.Error(), "secret") {
+			t.Fatalf("unsafe error = %#v", err)
+		}
+	})
+	t.Run("timeout", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+			time.Sleep(50 * time.Millisecond)
+			response.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+		adapter := NewConfigurationReader(NewProbe(5 * time.Millisecond))
+		err := adapter.ResetDHCPLeases(context.Background(), probeRequest(server.URL))
+		var domainError *domain.Error
+		if !errors.As(err, &domainError) || domainError.Kind != domain.ErrorNodeUnreachable {
+			t.Fatalf("error = %#v, want node unreachable", err)
+		}
+	})
 }
 
 func TestReadBlockedServicesCatalogueSupportsUngroupedAndGroupedContracts(t *testing.T) {

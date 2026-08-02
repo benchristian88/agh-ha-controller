@@ -24,6 +24,14 @@ Release 0.3 adds `000003_release_0_3.up.sql` and `.down.sql`. It promotes legacy
 
 Release 0.4 adds `000004_release_0_4.up.sql` and `.down.sql`. It permits canonical schema versions 1 and 2 in the four existing versioned configuration tables. No released record is rewritten: schema-v1 snapshots/revisions keep their JSON and hash, while new v2 observations, drafts, and revisions use the same repositories and relationships. Down migration is intentionally blocked by PostgreSQL constraints until all v2 records have been removed in a disposable development environment.
 
+Release 0.4.1 Phase 8B adds
+`000005_release_0_4_1_dhcp_operations.up.sql` and `.down.sql`. It stores
+`operational_commands` separately from desired revisions/deployments and stores
+explicit per-node outcomes in `operational_command_node_results`. UUID
+idempotency is unique per requesting user. Terminal records reference their
+append-only audit event and optional post-command observation without storing
+raw upstream responses or credentials.
+
 Migration files are embedded in the `migrations` Go package. The runner takes a PostgreSQL advisory lock, executes each version in a transaction, and rejects checksum changes to previously applied versions. The controller applies pending migrations by default; `cmd/migrate` provides explicit up and single-step development down modes.
 
 ## JSON usage

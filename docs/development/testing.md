@@ -56,6 +56,25 @@ the production Vite build. PostgreSQL integration cases remain environment
 gated by `TEST_DATABASE_URL`, and a controlled real-network DHCP handoff remains
 a Release 0.4 reference-node gate. Phase 8A adds no database migration.
 
+Release 0.4.1 Phase 8B adds exact no-body DHCP reset adapter contracts;
+success, rejection, timeout, unreachable, and redaction cases; authenticated
+CSRF-protected node-only controller routes; maintenance/deployment safety;
+durable result and requested/terminal audit transactions; per-user UUID
+idempotency; observation refresh; desired-state immutability; and managed drift
+classification after configuration versus lease reset. Frontend DOM coverage
+includes exact node/cluster/consequence/recoverability copy, typed confirmation,
+keyboard dismissal and focus behavior, duplicate-click suppression, durable
+request/audit result presentation, observation reload, and no fleet selector.
+The PostgreSQL case validates migration up/down/up plus command/result/audit
+persistence when `TEST_DATABASE_URL` is available.
+
+On 2 August 2026, Phase 8B passed the complete uncached Go race suite,
+`go vet ./...`, controller/migration builds, all 156 frontend tests across 25
+files, TypeScript validation, Biome lint, the production Vite build, and
+`git diff --check`. The PostgreSQL migration/persistence case compiled but
+skipped execution because `TEST_DATABASE_URL` was unset; real-node destructive
+reset validation remains an explicit controlled-environment release gate.
+
 Local validation on 30 July 2026 passed the full Go suite with race detection (`go test -race -count=1 ./...`), `go vet ./...`, the controller build, frontend TypeScript check, seven Vitest tests, Biome lint, the Vite production build, shell syntax validation, the production npm dependency audit with zero reported vulnerabilities, and `git diff --check`. The PostgreSQL cases compiled but skipped because `TEST_DATABASE_URL` was not available. Docker Compose configuration validation could not run because the Docker CLI is not installed in the validation workspace.
 
 On 31 July 2026, the non-secure-origin settings regression check passed with the full eight-test Vitest suite, TypeScript validation, Biome lint, and the Vite production build. The test removes `crypto.randomUUID` from the runtime and verifies that editor row keys remain unique, covering rewrites, persistent clients, and DHCP static leases without weakening the recommendation to serve the controller over HTTPS. Removal of the duplicate in-page settings navigation and placement of DHCP, client, and blocked-services schedule headings inside their cards passed the same frontend gates; browser visual/accessibility smoke validation remains pending.

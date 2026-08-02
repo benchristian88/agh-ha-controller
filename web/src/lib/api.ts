@@ -17,6 +17,7 @@ import type {
   DesiredConfigurationDocument,
   DhcpActiveCheckResult,
   DhcpInterfaces,
+  DhcpOperation,
   DriftEvent,
   Node,
   ValidationIssue,
@@ -181,6 +182,30 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ interfaceName }),
       },
+    ),
+  resetDhcpLeases: (
+    nodeId: string,
+    confirmation: string,
+    idempotencyKey: string,
+  ) =>
+    request<DhcpOperation>(`/api/v1/nodes/${nodeId}/dhcp/reset-leases`, {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ confirmation }),
+    }),
+  resetDhcpConfiguration: (
+    nodeId: string,
+    confirmation: string,
+    idempotencyKey: string,
+  ) =>
+    request<DhcpOperation>(`/api/v1/nodes/${nodeId}/dhcp/reset-configuration`, {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ confirmation }),
+    }),
+  dhcpOperations: (nodeId: string) =>
+    request<{ items: DhcpOperation[] }>(
+      `/api/v1/nodes/${nodeId}/dhcp/operations?limit=10`,
     ),
   setNodeMaintenance: (node: Node, enabled: boolean) =>
     request<Node>(`/api/v1/nodes/${node.id}/maintenance`, {

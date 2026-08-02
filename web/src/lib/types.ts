@@ -314,6 +314,34 @@ export interface DhcpActiveCheckResult {
   ipv6: DhcpCheckValue;
   checkedAt: string;
 }
+export type DhcpOperationCommand =
+  | "dhcp_reset_leases"
+  | "dhcp_reset_configuration";
+export interface DhcpOperationNodeResult {
+  id: string;
+  nodeId: string;
+  nodeName: string;
+  status: "running" | "succeeded" | "failed";
+  errorCode?: string;
+  startedAt: string;
+  completedAt?: string;
+}
+export interface DhcpOperation {
+  id: string;
+  clusterId: string;
+  clusterName: string;
+  command: DhcpOperationCommand;
+  status: "running" | "succeeded" | "failed";
+  requestId: string;
+  observationStatus: "not_run" | "succeeded" | "failed";
+  observationSnapshotId?: string;
+  observationErrorCode?: string;
+  auditReference?: string;
+  requestedAt: string;
+  completedAt?: string;
+  nodeResults: DhcpOperationNodeResult[];
+  duplicate?: boolean;
+}
 export interface TlsStatus {
   enabled: boolean;
   serverName: string;

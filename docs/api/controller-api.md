@@ -181,6 +181,36 @@ GET /api/v1/system/version
 
 Audit pagination is bounded to 100 records per request. Audit metadata excludes secrets.
 
+## DHCP operational commands
+
+```text
+POST /api/v1/nodes/{nodeId}/dhcp/reset-leases
+POST /api/v1/nodes/{nodeId}/dhcp/reset-configuration
+GET  /api/v1/nodes/{nodeId}/dhcp/operations?limit=10
+```
+
+Both POST routes require authentication, CSRF, an explicit UUID node path, and
+a UUID `Idempotency-Key` header. Their JSON bodies contain only the fixed
+controller confirmation token: `RESET_LEASES` or
+`RESET_DHCP_CONFIGURATION`. The target must be enabled, in maintenance mode,
+reachable through its configured trust/authentication policy, and in a cluster
+without an active deployment. Configuration reset additionally requires Manual
+or Alert reconciliation so a later drift mismatch cannot be silently Enforced;
+lease reset changes observed-only data. No fleet DHCP reset route exists.
+
+The controller invokes exactly one no-body AdGuard request:
+`POST /control/dhcp/reset_leases` or `POST /control/dhcp/reset`. A terminal
+duplicate idempotency key returns the original persistent result without a
+second node call. Results contain cluster and node identity, per-node status,
+stable safe errors, request ID, terminal audit reference, observation outcome,
+and timestamps. They never contain node URLs, credentials, upstream bodies, or
+raw upstream errors.
+
+Successful commands immediately create a normal fresh observation. Dynamic
+lease changes remain observed-only. A configuration reset does not mutate the
+draft or active revision; its observed mismatch remains subject to the existing
+restore/adopt drift workflow after the maintenance boundary is reviewed.
+
 ## Operational probes
 
 ```text

@@ -8,6 +8,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../lib/api";
 import type {
@@ -153,6 +154,7 @@ function mockLoad({
     refreshedAt: "2026-08-02T00:00:00Z",
     staleAfterSeconds: 60,
   });
+  vi.spyOn(api, "dhcpOperations").mockResolvedValue({ items: [] });
   const interfaces = vi.spyOn(api, "dhcpInterfaces");
   if (interfaceError) interfaces.mockRejectedValue(interfaceError);
   else
@@ -193,6 +195,157 @@ describe("DHCP page", () => {
     expect(screen.getByText("Stale observation")).not.toBeNull();
     expect(container.querySelectorAll("table")).toHaveLength(2);
     expect(screen.getByText(/Observed-only runtime leases/)).not.toBeNull();
+    expect(screen.getByText("Maintenance mode required")).not.toBeNull();
+  });
+
+  it("uses accessible strongly confirmed node-scoped destructive dialogs", async () => {
+    mockLoad({ draft: makeDraft("eth0") });
+    vi.mocked(api.nodes).mockResolvedValue({
+      items: [{ ...node, maintenanceMode: true }],
+      refreshedAt: "2026-08-02T00:00:00Z",
+      staleAfterSeconds: 60,
+    });
+    render(<DHCPPage cluster={cluster} />);
+    const open = await screen.findByRole("button", {
+      name: "Reset DHCP configuration",
+    });
+    fireEvent.click(open);
+    let dialog = screen.getByRole("dialog", {
+      name: "Reset DHCP configuration",
+    });
+    expect(within(dialog).getByText("Exact node")).not.toBeNull();
+    expect(within(dialog).getByText("Primary")).not.toBeNull();
+    expect(within(dialog).getByText("Current cluster")).not.toBeNull();
+    expect(within(dialog).getByText("Home")).not.toBeNull();
+    expect(within(dialog).getByText("Consequence")).not.toBeNull();
+    expect(within(dialog).getByText("Recoverable")).not.toBeNull();
+    expect(
+      within(dialog).getByText(/not Save Draft, Publish, or Deploy/),
+    ).not.toBeNull();
+    const confirm = within(dialog).getByRole("button", {
+      name: "Reset DHCP configuration",
+    }) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    fireEvent.click(open);
+    dialog = screen.getByRole("dialog", {
+      name: "Reset DHCP configuration",
+    });
+    await userEvent.type(
+      within(dialog).getByLabelText(/Type RESET DHCP CONFIGURATION/),
+      "RESET DHCP CONFIGURATION",
+    );
+    expect(
+      (
+        within(dialog).getByRole("button", {
+          name: "Reset DHCP configuration",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false);
+    expect(within(dialog).queryByText(/entire cluster/i)).toBeNull();
+  });
+
+  it("blocks destructive commands under Enforce reconciliation", async () => {
+    mockLoad({ draft: makeDraft("eth0") });
+    vi.mocked(api.nodes).mockResolvedValue({
+      items: [{ ...node, maintenanceMode: true }],
+      refreshedAt: "2026-08-02T00:00:00Z",
+      staleAfterSeconds: 60,
+    });
+    render(
+      <DHCPPage cluster={{ ...cluster, reconciliationPolicy: "enforce" }} />,
+    );
+    expect(
+      await screen.findByText("Enforce reconciliation must be paused"),
+    ).not.toBeNull();
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Reset DHCP configuration",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Reset DHCP leases",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(false);
+  });
+
+  it("submits one reset, refreshes observation, and renders durable request and audit references", async () => {
+    mockLoad({ draft: makeDraft("eth0") });
+    vi.mocked(api.nodes).mockResolvedValue({
+      items: [{ ...node, maintenanceMode: true }],
+      refreshedAt: "2026-08-02T00:00:00Z",
+      staleAfterSeconds: 60,
+    });
+    const operation = {
+      id: "77777777-7777-4777-8777-777777777777",
+      clusterId: cluster.id,
+      clusterName: cluster.name,
+      command: "dhcp_reset_leases" as const,
+      status: "succeeded" as const,
+      requestId: "88888888-8888-4888-8888-888888888888",
+      observationStatus: "succeeded" as const,
+      observationSnapshotId: "99999999-9999-4999-8999-999999999999",
+      auditReference: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      requestedAt: "2026-08-02T00:00:00Z",
+      completedAt: "2026-08-02T00:00:01Z",
+      nodeResults: [
+        {
+          id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          nodeId: node.id,
+          nodeName: node.name,
+          status: "succeeded" as const,
+          startedAt: "2026-08-02T00:00:00Z",
+          completedAt: "2026-08-02T00:00:01Z",
+        },
+      ],
+    };
+    vi.mocked(api.dhcpOperations)
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValue({ items: [operation] });
+    let resolveReset: (value: typeof operation) => void = () => undefined;
+    const reset = vi.spyOn(api, "resetDhcpLeases").mockReturnValue(
+      new Promise((resolve) => {
+        resolveReset = resolve;
+      }),
+    );
+    render(<DHCPPage cluster={cluster} />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Reset DHCP leases" }),
+    );
+    const dialog = screen.getByRole("dialog", {
+      name: "Reset DHCP leases",
+    });
+    await userEvent.type(
+      within(dialog).getByLabelText(/Type RESET DHCP LEASES/),
+      "RESET DHCP LEASES",
+    );
+    const confirm = within(dialog).getByRole("button", {
+      name: "Reset DHCP leases",
+    });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    expect(reset).toHaveBeenCalledTimes(1);
+    expect(reset).toHaveBeenCalledWith(
+      node.id,
+      "RESET_LEASES",
+      expect.stringMatching(/^[0-9a-f-]{36}$/),
+    );
+    resolveReset(operation);
+    expect(await screen.findByText(operation.requestId)).not.toBeNull();
+    expect(screen.getByText(operation.auditReference)).not.toBeNull();
+    expect(api.configurationInventory).toHaveBeenCalledTimes(2);
+    expect(
+      screen.getByRole("table", {
+        name: "DHCP operational results for Primary",
+      }),
+    ).not.toBeNull();
   });
 
   it("preserves the imported interface when discovery is unreachable", async () => {

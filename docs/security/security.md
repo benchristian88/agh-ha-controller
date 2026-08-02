@@ -56,6 +56,7 @@ Release 0.1.1 installation keeps these boundaries unchanged. The Docker controll
 - DHCP settings and static leases are node-specific desired state. Validation permits only one enabled node, and role handoff disables other managed nodes before enabling the selected node.
 - Rejected AdGuard configuration mutations expose only a fixed HTTP method/path and numeric response status in the per-node deployment diagnostic. Node response bodies, request payloads, credentials, base URLs, and authorities are not stored or displayed.
 - Filter refresh requires an authenticated CSRF-protected request and an enabled node outside maintenance. Requested and succeeded/failed audit events contain only node identity, list type, and a stable error code.
+- Destructive DHCP lease/configuration resets require authenticated CSRF-protected node-only routes, typed confirmation, an enabled maintenance node, no active cluster deployment, and a per-user UUID idempotency key. Configuration reset additionally rejects Enforce reconciliation so its managed mismatch retains an explicit restore/adopt choice; lease reset changes only observed data. Durable results and requested/terminal audits contain only stable IDs/status/error codes; raw upstream bodies, node URLs, and credentials are discarded.
 - Query-log/statistics policy does not ingest DNS activity into PostgreSQL in 0.4; it only changes node-local retention, ignore, enablement, and anonymization settings.
 
 ## Node credentials

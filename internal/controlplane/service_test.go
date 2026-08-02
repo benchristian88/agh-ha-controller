@@ -95,6 +95,24 @@ func TestManagedDifferencesIgnoreObservedCompatibilityMetadata(t *testing.T) {
 	}
 }
 
+func TestManagedDifferencesDetectDHCPConfigurationResetButIgnoreLeaseReset(t *testing.T) {
+	dhcp := &configuration.DHCPConfig{
+		Enabled: true, InterfaceName: "eth0",
+		IPv4: configuration.DHCPIPv4{Gateway: "192.0.2.1", SubnetMask: "255.255.255.0", RangeStart: "192.0.2.100", RangeEnd: "192.0.2.200", LeaseDuration: 3600},
+	}
+	desired := configuration.Document{SchemaVersion: configuration.SchemaVersion, NodeSpecific: configuration.NodeSpecific{DHCP: dhcp}}
+	leasesReset := desired
+	leasesReset.ObservedOnly.DHCPLeases = []configuration.DHCPLease{}
+	if differences := managedDifferences(desired, leasesReset); len(differences) != 0 {
+		t.Fatalf("dynamic lease reset caused managed drift: %#v", differences)
+	}
+	configurationReset := desired
+	configurationReset.NodeSpecific.DHCP = &configuration.DHCPConfig{}
+	if differences := managedDifferences(desired, configurationReset); len(differences) == 0 {
+		t.Fatal("DHCP configuration reset did not cause managed drift")
+	}
+}
+
 func TestPreviewOrdersDHCPDisableBeforeEnable(t *testing.T) {
 	const (
 		clusterID = "11111111-1111-4111-8111-111111111111"

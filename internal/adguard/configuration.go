@@ -665,6 +665,14 @@ func (r *ConfigurationReader) RefreshFilters(ctx context.Context, request domain
 	return r.post(ctx, request, "/control/filtering/refresh", map[string]any{"whitelist": whitelist})
 }
 
+func (r *ConfigurationReader) ResetDHCPLeases(ctx context.Context, request domain.NodeProbeRequest) error {
+	return r.post(ctx, request, "/control/dhcp/reset_leases", nil)
+}
+
+func (r *ConfigurationReader) ResetDHCPConfiguration(ctx context.Context, request domain.NodeProbeRequest) error {
+	return r.post(ctx, request, "/control/dhcp/reset", nil)
+}
+
 func (r *ConfigurationReader) reconcileFilterURLs(ctx context.Context, request domain.NodeProbeRequest, current filterStatusResponse, desired []string, whitelist bool) error {
 	targets := make(map[string]struct{}, len(desired))
 	currentItems := current.Filters

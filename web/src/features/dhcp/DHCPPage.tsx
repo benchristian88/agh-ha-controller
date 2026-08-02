@@ -6,7 +6,11 @@ import {
   Loading,
 } from "../../components/Feedback";
 import { LeaseTable, type LeaseTableRow } from "../../components/LeaseTable";
-import { ConfirmDialog, Dialog } from "../../components/Overlays";
+import {
+  ConfirmDialog,
+  Dialog,
+  OperationalCommandDialog,
+} from "../../components/Overlays";
 import {
   Field,
   ScopeIndicator,
@@ -23,6 +27,8 @@ import type {
   DhcpConfiguration,
   DhcpInterface,
   DhcpInterfaces,
+  DhcpOperation,
+  DhcpOperationCommand,
   DhcpStaticLease,
   Node,
   ValidationIssue,
@@ -91,6 +97,11 @@ export function DHCPPage({ cluster }: { cluster: Cluster }) {
       setLoading(false);
     }
   }, [cluster.id, loadInterfaces]);
+
+  const refreshSnapshots = useCallback(async () => {
+    const inventory = await api.configurationInventory(cluster.id);
+    setSnapshots(inventory.snapshots);
+  }, [cluster.id]);
 
   useEffect(() => void load(), [load]);
 
@@ -207,6 +218,8 @@ export function DHCPPage({ cluster }: { cluster: Cluster }) {
                 snapshot={snapshot}
                 interfaceState={interfaces[node.id] ?? { status: "loading" }}
                 retryInterfaces={() => void loadInterfaces(node.id)}
+                cluster={cluster}
+                refreshSnapshots={refreshSnapshots}
                 update={(value) => setDhcp(node.id, value)}
               />
             ) : (
@@ -321,17 +334,21 @@ function DHCPHAStatus({
 
 function DHCPNodeSection({
   node,
+  cluster,
   dhcp,
   snapshot,
   interfaceState,
   retryInterfaces,
+  refreshSnapshots,
   update,
 }: {
   node: Node;
+  cluster: Cluster;
   dhcp: DhcpConfiguration;
   snapshot?: ConfigurationSnapshot;
   interfaceState: InterfaceState;
   retryInterfaces: () => void;
+  refreshSnapshots: () => Promise<void>;
   update: (dhcp: DhcpConfiguration) => void;
 }) {
   const [check, setCheck] = useState<{
@@ -640,8 +657,263 @@ function DHCPNodeSection({
         value={dhcp.staticLeases}
         onChange={(staticLeases) => update({ ...dhcp, staticLeases })}
       />
+
+      <DHCPOperations
+        node={node}
+        cluster={cluster}
+        refreshSnapshots={refreshSnapshots}
+      />
     </article>
   );
+}
+
+function DHCPOperations({
+  node,
+  cluster,
+  refreshSnapshots,
+}: {
+  node: Node;
+  cluster: Cluster;
+  refreshSnapshots: () => Promise<void>;
+}) {
+  const [operations, setOperations] = useState<DhcpOperation[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState<unknown>();
+  const [command, setCommand] = useState<DhcpOperationCommand>();
+  const [idempotencyKey, setIdempotencyKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [commandError, setCommandError] = useState<unknown>();
+  const [message, setMessage] = useState("");
+
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const result = await api.dhcpOperations(node.id);
+      setOperations(result.items);
+      setHistoryError(undefined);
+    } catch (caught) {
+      setHistoryError(caught);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [node.id]);
+
+  useEffect(() => void loadHistory(), [loadHistory]);
+
+  function open(next: DhcpOperationCommand) {
+    setCommand(next);
+    setIdempotencyKey(newIdempotencyKey());
+    setCommandError(undefined);
+    setMessage("");
+  }
+
+  async function run() {
+    if (!command || busy) return;
+    setBusy(true);
+    setCommandError(undefined);
+    try {
+      const result =
+        command === "dhcp_reset_leases"
+          ? await api.resetDhcpLeases(node.id, "RESET_LEASES", idempotencyKey)
+          : await api.resetDhcpConfiguration(
+              node.id,
+              "RESET_DHCP_CONFIGURATION",
+              idempotencyKey,
+            );
+      if (result.status !== "succeeded") {
+        const errorCode = result.nodeResults[0]?.errorCode ?? "UNKNOWN_ERROR";
+        setCommandError(
+          new Error(
+            `${commandLabel(result.command)} failed with ${errorCode}. Request ID: ${result.requestId}.`,
+          ),
+        );
+        setCommand(undefined);
+        await loadHistory();
+        return;
+      }
+      setMessage(
+        `${commandLabel(result.command)} succeeded on ${node.name}. Observation: ${result.observationStatus}.`,
+      );
+      setCommand(undefined);
+      await Promise.all([loadHistory(), refreshSnapshots()]);
+    } catch (caught) {
+      setCommandError(caught);
+      setCommand(undefined);
+      setIdempotencyKey(newIdempotencyKey());
+      await loadHistory();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const resetConfiguration = command === "dhcp_reset_configuration";
+  const resetConfigurationSafe =
+    node.maintenanceMode && cluster.reconciliationPolicy !== "enforce";
+  return (
+    <SettingsGroup
+      title="Operational commands"
+      description="Immediate, audited node commands. These are separate from desired-state revision and deployment workflows."
+    >
+      <div className="dhcp-group-content">
+        {!node.maintenanceMode && (
+          <Banner tone="warning" title="Maintenance mode required">
+            Put {node.name} into maintenance mode from HA Controller → Nodes
+            before using either destructive command. This suppresses automatic
+            reconciliation while you inspect the fresh observation.
+          </Banner>
+        )}
+        {cluster.reconciliationPolicy === "enforce" && (
+          <Banner tone="warning" title="Enforce reconciliation must be paused">
+            Change {cluster.name} to Manual or Alert reconciliation before
+            resetting DHCP configuration. Lease reset remains available because
+            dynamic leases are observed-only and cannot create managed drift.
+          </Banner>
+        )}
+        {commandError !== undefined && (
+          <ErrorState
+            error={commandError}
+            title="DHCP operational command failed"
+          />
+        )}
+        {message && (
+          <Banner tone="success" title="Operational command completed">
+            {message}
+          </Banner>
+        )}
+        <div className="settings-actions">
+          <button
+            type="button"
+            className="button button--danger"
+            disabled={!node.maintenanceMode || busy}
+            onClick={() => open("dhcp_reset_leases")}
+          >
+            Reset DHCP leases
+          </button>
+          <button
+            type="button"
+            className="button button--danger"
+            disabled={!resetConfigurationSafe || busy}
+            onClick={() => open("dhcp_reset_configuration")}
+          >
+            Reset DHCP configuration
+          </button>
+        </div>
+
+        <h3>Persistent results</h3>
+        {historyLoading ? (
+          <Loading label={`Loading DHCP operations for ${node.name}…`} />
+        ) : historyError !== undefined ? (
+          <ErrorState error={historyError} retry={() => void loadHistory()} />
+        ) : operations.length === 0 ? (
+          <p className="muted">
+            No DHCP reset operations recorded for this node.
+          </p>
+        ) : (
+          <div className="table-wrap">
+            <table aria-label={`DHCP operational results for ${node.name}`}>
+              <thead>
+                <tr>
+                  <th>Action</th>
+                  <th>Node result</th>
+                  <th>Observation</th>
+                  <th>Request ID</th>
+                  <th>Audit reference</th>
+                  <th>Completed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {operations.map((operation) => {
+                  const nodeResult = operation.nodeResults[0];
+                  return (
+                    <tr key={operation.id}>
+                      <td>{commandLabel(operation.command)}</td>
+                      <td>
+                        <StatusBadge
+                          status={operationBadge(
+                            nodeResult?.status ?? operation.status,
+                          )}
+                          label={nodeResult?.status ?? operation.status}
+                        />
+                        {nodeResult?.errorCode && (
+                          <span className="table-subtitle">
+                            {nodeResult.errorCode}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {operation.observationStatus}
+                        {operation.observationErrorCode && (
+                          <span className="table-subtitle">
+                            {operation.observationErrorCode}
+                          </span>
+                        )}
+                      </td>
+                      <td className="monospace">{operation.requestId}</td>
+                      <td className="monospace">
+                        {operation.auditReference ?? "Pending"}
+                      </td>
+                      <td>
+                        {operation.completedAt
+                          ? formatTimestamp(operation.completedAt)
+                          : "Running"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <OperationalCommandDialog
+        open={command !== undefined}
+        onClose={() => {
+          if (!busy) setCommand(undefined);
+        }}
+        onConfirm={() => void run()}
+        command={command ? commandLabel(command) : "DHCP operation"}
+        target={node.name}
+        cluster={cluster.name}
+        consequence={
+          resetConfiguration
+            ? `Resets node-local DHCP configuration and lease data on ${node.name}. DHCP service on this node may stop until configuration is restored.`
+            : `Permanently clears every dynamic DHCP lease on ${node.name}. Clients may need to renew. Static leases and desired DHCP configuration are unchanged.`
+        }
+        recoverable={
+          resetConfiguration
+            ? "No. The controller cannot undo the command. Desired state remains unchanged so you can explicitly restore it or adopt the observation."
+            : "No. Cleared lease records cannot be restored by the controller; clients can acquire fresh leases."
+        }
+        confirmationText={
+          resetConfiguration ? "RESET DHCP CONFIGURATION" : "RESET DHCP LEASES"
+        }
+        busy={busy}
+        destructive
+      />
+    </SettingsGroup>
+  );
+}
+
+function commandLabel(command: DhcpOperationCommand) {
+  return command === "dhcp_reset_leases"
+    ? "Reset DHCP leases"
+    : "Reset DHCP configuration";
+}
+
+function operationBadge(status: DhcpOperation["status"]) {
+  if (status === "running") return "pending" as const;
+  if (status === "succeeded") return "success" as const;
+  return "failed" as const;
+}
+
+function newIdempotencyKey() {
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
+  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
+  const value = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"));
+  return `${value.slice(0, 4).join("")}-${value.slice(4, 6).join("")}-${value.slice(6, 8).join("")}-${value.slice(8, 10).join("")}-${value.slice(10).join("")}`;
 }
 
 function InterfaceDetails({

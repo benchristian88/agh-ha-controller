@@ -8,6 +8,8 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Added
 
+- Release 0.4.1 Phase 8B node-scoped reset-leases and reset-DHCP-configuration operational commands with maintenance/deployment and configuration-reset reconciliation-policy guards, typed confirmation, durable per-node results, per-user idempotency, redacted requested/terminal audits, and immediate post-command observation.
+- Authenticated CSRF-protected DHCP reset and durable-result controller routes plus migration `000005_release_0_4_1_dhcp_operations`; there is no fleet reset route and destructive commands never mutate desired state.
 - Release 0.4.1 Phase 7 DNS Rewrites searchable table and add/edit dialogs with contract-bounded domain/answer validation, inferred A/AAAA/CNAME/passthrough presentation, duplicate prevention, confirmed draft-only deletion, capability-aware enablement, and draft/revision/convergence context.
 - Release 0.4.1 Phase 5B dedicated DNS Allowlists page, shared Blocklist/Allowlist table and dialog composition, observed-only rule-count/freshness and per-node application metadata, safer removal confirmation, and audited refresh-all partial results using allowlist semantics.
 - Authenticated `GET /api/v1/clusters/{clusterId}/allowlists/presentation` endpoint with category-separated stale caching and safe node-attributed metadata.

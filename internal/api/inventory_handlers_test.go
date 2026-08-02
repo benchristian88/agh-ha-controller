@@ -10,7 +10,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/benchristian88/agh-ha-controller/internal/auth"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 )
@@ -64,14 +66,22 @@ func TestPresentationEndpointsRequireAuthentication(t *testing.T) {
 	}
 }
 
-func TestDHCPActiveCheckEndpointRequiresAuthentication(t *testing.T) {
-	server := &Server{mux: http.NewServeMux()}
-	server.routes()
-	request := httptest.NewRequest(http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/dhcp/active-check", strings.NewReader(`{"interfaceName":"eth0"}`))
-	response := httptest.NewRecorder()
-	server.mux.ServeHTTP(response, request)
-	if response.Code != http.StatusUnauthorized || !strings.Contains(response.Body.String(), `"code":"AUTHENTICATION_REQUIRED"`) {
-		t.Fatalf("unexpected response: status=%d body=%s", response.Code, response.Body.String())
+func TestDHCPOperationEndpointsRequireAuthentication(t *testing.T) {
+	for path, body := range map[string]string{
+		"/api/v1/nodes/22222222-2222-4222-8222-222222222222/dhcp/active-check":        `{"interfaceName":"eth0"}`,
+		"/api/v1/nodes/22222222-2222-4222-8222-222222222222/dhcp/reset-leases":        `{"confirmation":"RESET_LEASES"}`,
+		"/api/v1/nodes/22222222-2222-4222-8222-222222222222/dhcp/reset-configuration": `{"confirmation":"RESET_DHCP_CONFIGURATION"}`,
+	} {
+		t.Run(path, func(t *testing.T) {
+			server := &Server{mux: http.NewServeMux()}
+			server.routes()
+			request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+			response := httptest.NewRecorder()
+			server.mux.ServeHTTP(response, request)
+			if response.Code != http.StatusUnauthorized || !strings.Contains(response.Body.String(), `"code":"AUTHENTICATION_REQUIRED"`) {
+				t.Fatalf("unexpected response: status=%d body=%s", response.Code, response.Body.String())
+			}
+		})
 	}
 }
 
@@ -102,6 +112,27 @@ func (f dhcpInterfacesReaderFake) DHCPInterfaces(context.Context, string) (inven
 type dhcpCheckerFake struct {
 	result inventory.DHCPActiveCheckResult
 	err    error
+}
+
+type dhcpOperationsFake struct {
+	result       inventory.DHCPOperation
+	items        []inventory.DHCPOperation
+	err          error
+	calls        int
+	nodeID       string
+	command      inventory.DHCPOperationCommand
+	confirmation string
+	idempotency  string
+}
+
+func (f *dhcpOperationsFake) RunDHCPOperation(_ context.Context, _ domain.Actor, nodeID string, command inventory.DHCPOperationCommand, confirmation, idempotency string) (inventory.DHCPOperation, error) {
+	f.calls++
+	f.nodeID, f.command, f.confirmation, f.idempotency = nodeID, command, confirmation, idempotency
+	return f.result, f.err
+}
+
+func (f *dhcpOperationsFake) ListDHCPOperations(context.Context, string, int) ([]inventory.DHCPOperation, error) {
+	return f.items, f.err
 }
 
 func (f dhcpCheckerFake) FindActiveDHCP(context.Context, domain.Actor, string, string) (inventory.DHCPActiveCheckResult, error) {
@@ -231,5 +262,108 @@ func TestDHCPActiveCheckEndpointReturnsControllerResult(t *testing.T) {
 	server.handleDHCPActiveCheck(response, request)
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"status":"none"`) || !strings.Contains(response.Body.String(), `"interfaceName":"eth0"`) {
 		t.Fatalf("unexpected response: status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestDHCPResetHandlersKeepCommandsSeparateAndReturnDurableResult(t *testing.T) {
+	for _, test := range []struct {
+		name, path, confirmation string
+		command                  inventory.DHCPOperationCommand
+	}{
+		{name: "leases", path: "/api/v1/nodes/node-a/dhcp/reset-leases", confirmation: "RESET_LEASES", command: inventory.DHCPOperationResetLeases},
+		{name: "configuration", path: "/api/v1/nodes/node-a/dhcp/reset-configuration", confirmation: "RESET_DHCP_CONFIGURATION", command: inventory.DHCPOperationResetConfiguration},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			operation := inventory.DHCPOperation{ID: "operation-a", Status: "succeeded", RequestID: "request-a", AuditReference: "audit-a", NodeResults: []inventory.DHCPOperationNodeResult{{NodeID: "node-a", Status: "succeeded"}}}
+			service := &dhcpOperationsFake{result: operation}
+			server := &Server{dhcpOperations: service, logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+			request := httptest.NewRequest(http.MethodPost, test.path, strings.NewReader(`{"confirmation":"`+test.confirmation+`"}`))
+			request.SetPathValue("nodeId", "node-a")
+			request.Header.Set(idempotencyHeader, "55555555-5555-4555-8555-555555555555")
+			response := httptest.NewRecorder()
+			server.handleDHCPOperation(response, request, test.command)
+			if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"auditReference":"audit-a"`) || !strings.Contains(response.Body.String(), `"requestId":"request-a"`) {
+				t.Fatalf("unexpected response: status=%d body=%s", response.Code, response.Body.String())
+			}
+			if service.calls != 1 || service.command != test.command || service.confirmation != test.confirmation || service.nodeID != "node-a" {
+				t.Fatalf("service call = %#v", service)
+			}
+		})
+	}
+}
+
+type apiAuthRepositoryFake struct {
+	session domain.Session
+	user    domain.User
+}
+
+func (*apiAuthRepositoryFake) HasUsers(context.Context) (bool, error) { return true, nil }
+func (*apiAuthRepositoryFake) CreateInitialUser(context.Context, domain.User, domain.Session, domain.AuditEvent, domain.AuditEvent) error {
+	return nil
+}
+func (*apiAuthRepositoryFake) UserByEmail(context.Context, string) (domain.User, error) {
+	return domain.User{}, domain.NewError(domain.ErrorNotFound, "user not found")
+}
+func (*apiAuthRepositoryFake) CreateLoginSession(context.Context, domain.Session, domain.AuditEvent) error {
+	return nil
+}
+func (f *apiAuthRepositoryFake) AuthenticatedSession(context.Context, []byte, time.Time) (domain.Session, domain.User, error) {
+	return f.session, f.user, nil
+}
+func (*apiAuthRepositoryFake) TouchSession(context.Context, string, time.Time) error { return nil }
+func (*apiAuthRepositoryFake) RevokeSession(context.Context, string, time.Time, domain.AuditEvent) error {
+	return nil
+}
+func (*apiAuthRepositoryFake) RecordAuditEvent(context.Context, domain.AuditEvent) error { return nil }
+
+func TestDHCPResetEndpointRequiresCSRFAndAcceptsMatchingToken(t *testing.T) {
+	tokens, err := auth.NewTokenManager([]byte("0123456789abcdef0123456789abcdef"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const csrf = "csrf-token"
+	repository := &apiAuthRepositoryFake{
+		session: domain.Session{ID: "session-a", CSRFHash: tokens.HashCSRFToken(csrf)},
+		user:    domain.User{ID: "33333333-3333-4333-8333-333333333333", Enabled: true},
+	}
+	authService, err := auth.NewService(repository, tokens, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	operations := &dhcpOperationsFake{result: inventory.DHCPOperation{ID: "operation-a", Status: "succeeded", NodeResults: []inventory.DHCPOperationNodeResult{{NodeID: "22222222-2222-4222-8222-222222222222", Status: "succeeded"}}}}
+	server := &Server{auth: authService, dhcpOperations: operations, logger: slog.New(slog.NewTextHandler(io.Discard, nil)), mux: http.NewServeMux()}
+	server.routes()
+	path := "/api/v1/nodes/22222222-2222-4222-8222-222222222222/dhcp/reset-leases"
+
+	withoutCSRF := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"confirmation":"RESET_LEASES"}`))
+	withoutCSRF.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+	withoutResponse := httptest.NewRecorder()
+	server.mux.ServeHTTP(withoutResponse, withoutCSRF)
+	if withoutResponse.Code != http.StatusForbidden || operations.calls != 0 || !strings.Contains(withoutResponse.Body.String(), `"code":"AUTHORISATION_DENIED"`) {
+		t.Fatalf("missing CSRF response: status=%d calls=%d body=%s", withoutResponse.Code, operations.calls, withoutResponse.Body.String())
+	}
+
+	withCSRF := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"confirmation":"RESET_LEASES"}`))
+	withCSRF.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+	withCSRF.AddCookie(&http.Cookie{Name: csrfCookieName, Value: csrf})
+	withCSRF.Header.Set(csrfHeader, csrf)
+	withCSRF.Header.Set(idempotencyHeader, "55555555-5555-4555-8555-555555555555")
+	withResponse := httptest.NewRecorder()
+	server.mux.ServeHTTP(withResponse, withCSRF)
+	if withResponse.Code != http.StatusOK || operations.calls != 1 {
+		t.Fatalf("matching CSRF response: status=%d calls=%d body=%s", withResponse.Code, operations.calls, withResponse.Body.String())
+	}
+}
+
+func TestNoFleetWideDHCPResetRouteExists(t *testing.T) {
+	server := &Server{mux: http.NewServeMux()}
+	server.routes()
+	for _, path := range []string{"/api/v1/dhcp/reset-leases", "/api/v1/clusters/11111111-1111-4111-8111-111111111111/dhcp/reset-configuration"} {
+		request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"confirmation":"RESET_LEASES"}`))
+		response := httptest.NewRecorder()
+		server.mux.ServeHTTP(response, request)
+		if response.Code != http.StatusNotFound {
+			t.Fatalf("fleet reset path %s returned %d", path, response.Code)
+		}
 	}
 }

@@ -213,6 +213,10 @@ export function OperationalCommandDialog({
   command,
   scope,
   impact,
+  target,
+  cluster,
+  consequence,
+  recoverable,
   confirmationText,
   busy = false,
   destructive = false,
@@ -221,8 +225,12 @@ export function OperationalCommandDialog({
   onClose: () => void;
   onConfirm: () => void;
   command: string;
-  scope: string;
-  impact: ReactNode;
+  scope?: string;
+  impact?: ReactNode;
+  target?: string;
+  cluster?: string;
+  consequence?: ReactNode;
+  recoverable?: ReactNode;
   confirmationText?: string;
   busy?: boolean;
   destructive?: boolean;
@@ -233,21 +241,55 @@ export function OperationalCommandDialog({
       onClose={onClose}
       onConfirm={onConfirm}
       title={command}
-      description="Operational commands act directly through the controller and do not modify the configuration draft."
+      description="This is an immediate operational command. It is not Save Draft, Publish, or Deploy. Operational commands do not modify the configuration draft or desired state."
       confirmLabel={command}
       confirmationText={confirmationText}
       busy={busy}
       danger={destructive}
     >
       <dl className="operational-command-summary">
-        <div>
-          <dt>Target scope</dt>
-          <dd>{scope}</dd>
-        </div>
-        <div>
-          <dt>Expected impact</dt>
-          <dd>{impact}</dd>
-        </div>
+        {target !== undefined && (
+          <div>
+            <dt>Exact node</dt>
+            <dd>{target}</dd>
+          </div>
+        )}
+        {cluster !== undefined && (
+          <div>
+            <dt>Current cluster</dt>
+            <dd>{cluster}</dd>
+          </div>
+        )}
+        {target !== undefined && (
+          <div>
+            <dt>Action</dt>
+            <dd>{command}</dd>
+          </div>
+        )}
+        {consequence !== undefined && (
+          <div>
+            <dt>Consequence</dt>
+            <dd>{consequence}</dd>
+          </div>
+        )}
+        {recoverable !== undefined && (
+          <div>
+            <dt>Recoverable</dt>
+            <dd>{recoverable}</dd>
+          </div>
+        )}
+        {scope !== undefined && (
+          <div>
+            <dt>Target scope</dt>
+            <dd>{scope}</dd>
+          </div>
+        )}
+        {impact !== undefined && (
+          <div>
+            <dt>Expected impact</dt>
+            <dd>{impact}</dd>
+          </div>
+        )}
       </dl>
     </ConfirmDialog>
   );
