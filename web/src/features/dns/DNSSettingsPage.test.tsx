@@ -440,9 +440,6 @@ describe("DNS Settings", () => {
         profile(secondary, { test_upstream_dns: true, cache_clear: true }),
       ],
     });
-    vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue(
-      "77777777-7777-4777-8777-777777777777",
-    );
     const run = vi.spyOn(api, "testUpstreamDNS").mockResolvedValue({
       id: "88888888-8888-4888-8888-888888888888",
       clusterId: cluster.id,
@@ -516,9 +513,6 @@ describe("DNS Settings", () => {
         profile(secondary, { test_upstream_dns: true, cache_clear: true }),
       ],
     });
-    vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue(
-      "99999999-9999-4999-8999-999999999999",
-    );
     const clear = vi.spyOn(api, "clearDNSCache").mockResolvedValue({
       id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       clusterId: cluster.id,

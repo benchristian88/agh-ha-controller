@@ -24,6 +24,7 @@ import {
   validateNetwork,
 } from "../../components/StructuredInputs";
 import { api } from "../../lib/api";
+import { newIdempotencyKey } from "../../lib/idempotency";
 import type {
   CapabilityProfile,
   Cluster,
@@ -260,7 +261,7 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
     setCommandResult(undefined);
     setCommandUpstreams(submittedUpstreams);
     try {
-      const idempotencyKey = crypto.randomUUID();
+      const idempotencyKey = newIdempotencyKey();
       let result =
         command === "test"
           ? await api.testUpstreamDNS(
