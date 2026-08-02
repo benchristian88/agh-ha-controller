@@ -122,7 +122,7 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
 
   if (loading && draft === undefined) {
     return (
-      <PageContainer size="standard">
+      <PageContainer size="full">
         <PageHeader title="DNS settings" />
         <LoadingSkeleton label="Loading DNS Settings" rows={9} />
       </PageContainer>
@@ -130,7 +130,7 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
   }
   if (error !== undefined && draft === undefined) {
     return (
-      <PageContainer size="standard">
+      <PageContainer size="full">
         <PageHeader title="DNS settings" />
         <ErrorState error={error} retry={() => void load()} />
       </PageContainer>
@@ -186,7 +186,7 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
     ) ?? [];
 
   return (
-    <PageContainer size="standard" className="dns-settings-page">
+    <PageContainer size="full" className="dns-settings-page">
       <PageHeader
         eyebrow="Settings"
         title="DNS settings"

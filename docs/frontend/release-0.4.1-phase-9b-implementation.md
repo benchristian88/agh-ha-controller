@@ -18,6 +18,8 @@ behavior.
   exact whole-second duration controls.
 - Scope, draft version, active revision, affected nodes, unsaved state, and
   node-attributed capability differences remain visible.
+- The page uses the full available content width, consistent with Clients and
+  other migrated Settings pages.
 - The UI uses “Disable IPv6 answers”, matching the actual resolver behavior.
 
 ## Collection semantics

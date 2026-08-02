@@ -194,9 +194,10 @@ describe("DNS Settings", () => {
         issues: [],
       }));
     const user = userEvent.setup();
-    render(<DNSSettingsPage cluster={cluster} />);
+    const { container } = render(<DNSSettingsPage cluster={cluster} />);
 
     expect(await screen.findByText("Revision #12")).not.toBeNull();
+    expect(container.querySelector(".page-container--full")).not.toBeNull();
     expect(screen.getByText("Version 4")).not.toBeNull();
     expect(screen.getByText("2", { selector: "dd" })).not.toBeNull();
     expect(

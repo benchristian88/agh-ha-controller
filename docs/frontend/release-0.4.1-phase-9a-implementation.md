@@ -10,6 +10,8 @@ The page presents four coherent groups, friendly preset/custom durations,
 validated ignored-domain rows, human-readable Safe Search providers, and the
 current draft, active revision, affected-node, and capability context. The
 Statistics ignored-domain enable switch is colocated with its Statistics list.
+The page uses the full available content width, consistent with other migrated
+Settings pages.
 
 Save Draft is the only write action. Publication, deployment, read-back
 verification, and drift handling remain separate HA Controller workflows.
@@ -84,4 +86,3 @@ redirects, and removal of superseded controls.
 Existing backend and integration tests remain the authority for publication,
 durable deployment, node writes, read-back verification, active revision, and
 drift behavior because Phase 9A adds no backend contract or node operation.
-

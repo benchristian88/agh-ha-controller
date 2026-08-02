@@ -343,7 +343,7 @@ describe("General Settings", () => {
     expect(await screen.findByText("Protection and filtering")).not.toBeNull();
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(
-      desktop.container.querySelector(".page-container--standard"),
+      desktop.container.querySelector(".page-container--full"),
     ).not.toBeNull();
     desktop.unmount();
 
@@ -360,7 +360,7 @@ describe("General Settings", () => {
     await user.keyboard(" ");
     expect((protection as HTMLInputElement).checked).toBe(false);
     expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(container.querySelector(".page-container--standard")).not.toBeNull();
+    expect(container.querySelector(".page-container--full")).not.toBeNull();
   });
 
   it("renders loading, retryable error, and missing-draft states", async () => {

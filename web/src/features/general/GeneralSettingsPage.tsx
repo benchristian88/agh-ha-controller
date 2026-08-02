@@ -97,7 +97,7 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
 
   if (loading && draft === undefined) {
     return (
-      <PageContainer size="standard">
+      <PageContainer size="full">
         <PageHeader title="General settings" />
         <LoadingSkeleton label="Loading General Settings" rows={8} />
       </PageContainer>
@@ -105,7 +105,7 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
   }
   if (error !== undefined && draft === undefined) {
     return (
-      <PageContainer size="standard">
+      <PageContainer size="full">
         <PageHeader title="General settings" />
         <ErrorState error={error} retry={() => void load()} />
       </PageContainer>
@@ -181,7 +181,7 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
     !LEGACY_FILTER_INTERVALS.has(shared.filtering.updateIntervalHours);
 
   return (
-    <PageContainer size="standard" className="general-settings-page">
+    <PageContainer size="full" className="general-settings-page">
       <PageHeader
         eyebrow="Settings"
         title="General settings"
