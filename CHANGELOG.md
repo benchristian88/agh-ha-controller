@@ -8,6 +8,7 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Added
 
+- Release 0.4.1 Phase 9C-1 durable audited DNS operational commands: current-draft upstream tests, confirmed selected-node/fleet cache clearing, encrypted queued input, per-node/per-resolver results, idempotency, restart-safe non-replay, and post-clear observation.
 - Release 0.4.1 Phase 8B node-scoped reset-leases and reset-DHCP-configuration operational commands with maintenance/deployment and configuration-reset reconciliation-policy guards, typed confirmation, durable per-node results, per-user idempotency, redacted requested/terminal audits, and immediate post-command observation.
 - Authenticated CSRF-protected DHCP reset and durable-result controller routes plus migration `000005_release_0_4_1_dhcp_operations`; there is no fleet reset route and destructive commands never mutate desired state.
 - Release 0.4.1 Phase 7 DNS Rewrites searchable table and add/edit dialogs with contract-bounded domain/answer validation, inferred A/AAAA/CNAME/passthrough presentation, duplicate prevention, confirmed draft-only deletion, capability-aware enablement, and draft/revision/convergence context.

@@ -9,12 +9,14 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/benchristian88/agh-ha-controller/internal/configuration"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/operations"
 )
 
 func TestVersionFixturesSuppressVolatileFields(t *testing.T) {
@@ -260,6 +262,85 @@ func TestReadConfigurationV2MapsBroaderInventoryWithoutTLSSecrets(t *testing.T) 
 	}
 	if strings.Contains(string(body), "SECRET") {
 		t.Fatalf("TLS secret entered canonical inventory: %s", body)
+	}
+}
+
+func TestDNSOperationalCommandsMapSafeResultsAndExactPaths(t *testing.T) {
+	requests := make([]string, 0, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests = append(requests, request.Method+" "+request.URL.Path)
+		switch request.URL.Path {
+		case "/control/test_upstream_dns":
+			var payload map[string]any
+			if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+				t.Fatal(err)
+			}
+			if payload["upstream_mode"] != "parallel" {
+				t.Fatalf("payload=%#v", payload)
+			}
+			response.Header().Set("Content-Type", "application/json")
+			_, _ = response.Write([]byte(`{"https://user:secret@dns.example/dns-query":"","192.0.2.53":"dial detail that must not escape"}`))
+		case "/control/cache_clear":
+			response.WriteHeader(http.StatusOK)
+		default:
+			http.NotFound(response, request)
+		}
+	}))
+	defer server.Close()
+	adapter := NewConfigurationReader(NewProbe(2 * time.Second))
+	results, err := adapter.TestUpstreamDNS(context.Background(), probeRequest(server.URL), operations.UpstreamInput{
+		DraftVersion: 4, UpstreamDNS: []string{"https://user:secret@dns.example/dns-query", "192.0.2.53"}, UpstreamMode: "parallel",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 2 || results[0].ResolverID != "upstream-1" || results[0].Status != "succeeded" || results[1].ErrorCode != "UPSTREAM_TEST_FAILED" {
+		t.Fatalf("results=%#v", results)
+	}
+	encoded, _ := json.Marshal(results)
+	if strings.Contains(string(encoded), "secret") || strings.Contains(string(encoded), "dial detail") {
+		t.Fatalf("unsafe result=%s", encoded)
+	}
+	if err := adapter.ClearDNSCache(context.Background(), probeRequest(server.URL)); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(requests, []string{"POST /control/test_upstream_dns", "POST /control/cache_clear"}) {
+		t.Fatalf("requests=%#v", requests)
+	}
+}
+
+func TestUpstreamOperationalCommandMapsCapabilityInvalidAndTimeoutErrors(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		status     int
+		body       string
+		delay      time.Duration
+		timeout    time.Duration
+		wantedKind domain.ErrorKind
+	}{
+		{name: "capability", status: http.StatusNotFound, wantedKind: domain.ErrorCapability},
+		{name: "invalid response", status: http.StatusOK, body: `{`, wantedKind: domain.ErrorNodeResponse},
+		{name: "timeout", status: http.StatusOK, body: `{}`, delay: 50 * time.Millisecond, timeout: time.Millisecond, wantedKind: domain.ErrorNodeUnreachable},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				if test.delay > 0 {
+					time.Sleep(test.delay)
+				}
+				response.WriteHeader(test.status)
+				_, _ = response.Write([]byte(test.body))
+			}))
+			defer server.Close()
+			timeout := test.timeout
+			if timeout == 0 {
+				timeout = time.Second
+			}
+			_, err := NewConfigurationReader(NewProbe(timeout)).TestUpstreamDNS(context.Background(), probeRequest(server.URL), operations.UpstreamInput{DraftVersion: 1, UpstreamDNS: []string{"1.1.1.1"}, UpstreamMode: "load_balance"})
+			var domainError *domain.Error
+			if !errors.As(err, &domainError) || domainError.Kind != test.wantedKind {
+				t.Fatalf("error=%#v want kind=%s", err, test.wantedKind)
+			}
+		})
 	}
 }
 

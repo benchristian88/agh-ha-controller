@@ -503,3 +503,49 @@ export interface ApiErrorBody {
   field?: string;
   requestId: string;
 }
+
+export type OperationalTarget =
+  | { scope: "node"; nodeId: string }
+  | { scope: "all_compatible_enabled_nodes" };
+
+export interface DNSOperationalCommand {
+  id: string;
+  clusterId: string;
+  clusterName: string;
+  command: "test_upstream_dns" | "clear_dns_cache";
+  target: OperationalTarget;
+  status:
+    | "queued"
+    | "running"
+    | "succeeded"
+    | "partial_success"
+    | "failed"
+    | "interrupted";
+  requestId: string;
+  auditReference?: string;
+  requestedAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  duplicate?: boolean;
+  excludedNodes: {
+    nodeId: string;
+    nodeName: string;
+    errorCode: string;
+  }[];
+  nodeResults: {
+    id: string;
+    nodeId: string;
+    nodeName: string;
+    position: number;
+    status: "pending" | "running" | "succeeded" | "failed" | "skipped";
+    errorCode?: string;
+    upstreamResults?: {
+      resolverId: string;
+      status: "succeeded" | "failed";
+      errorCode?: string;
+    }[];
+    observationStatus?: "not_run" | "succeeded" | "failed";
+    observationSnapshotId?: string;
+    observationErrorCode?: string;
+  }[];
+}

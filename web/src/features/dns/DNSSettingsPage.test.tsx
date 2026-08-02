@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -23,6 +24,7 @@ import { DNSSettingsPage } from "./DNSSettingsPage";
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  window.sessionStorage.clear();
   delete document.documentElement.dataset.theme;
 });
 
@@ -413,7 +415,7 @@ describe("DNS Settings", () => {
     expect(
       (
         screen.getByRole("button", {
-          name: "Test Upstreams (Phase 9C)",
+          name: "Test upstreams",
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
@@ -429,6 +431,178 @@ describe("DNS Settings", () => {
     expect(update.mock.calls[0]?.[2].shared.dns.blockingMode).toBe(
       "future_block",
     );
+  });
+
+  it("tests current unsaved upstream values across an explicit fleet scope and keeps partial results", async () => {
+    mockLoad({
+      capabilities: [
+        profile(primary, { test_upstream_dns: true, cache_clear: true }),
+        profile(secondary, { test_upstream_dns: true, cache_clear: true }),
+      ],
+    });
+    vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue(
+      "77777777-7777-4777-8777-777777777777",
+    );
+    const run = vi.spyOn(api, "testUpstreamDNS").mockResolvedValue({
+      id: "88888888-8888-4888-8888-888888888888",
+      clusterId: cluster.id,
+      clusterName: cluster.name,
+      command: "test_upstream_dns",
+      target: { scope: "all_compatible_enabled_nodes" },
+      status: "partial_success",
+      requestId: "request-a",
+      requestedAt: "2026-08-02T00:00:00Z",
+      excludedNodes: [],
+      nodeResults: [
+        {
+          id: "result-a",
+          nodeId: primary.id,
+          nodeName: primary.name,
+          position: 1,
+          status: "succeeded",
+          upstreamResults: [{ resolverId: "upstream-1", status: "succeeded" }],
+        },
+        {
+          id: "result-b",
+          nodeId: secondary.id,
+          nodeName: secondary.name,
+          position: 2,
+          status: "failed",
+          errorCode: "NODE_UNREACHABLE",
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<DNSSettingsPage cluster={cluster} />);
+    const editor = (await screen.findByLabelText(
+      "Primary upstreams",
+    )) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "tls://unsaved.example" } });
+    await user.click(screen.getByRole("button", { name: "Test upstreams" }));
+    const dialog = screen.getByRole("dialog", { name: "Test upstreams" });
+    await user.selectOptions(
+      within(dialog).getByLabelText("Target scope"),
+      "all_compatible_enabled_nodes",
+    );
+    expect(
+      within(dialog).getByText("All compatible enabled nodes (2)"),
+    ).not.toBeNull();
+    await user.click(
+      within(dialog).getByRole("button", { name: "Test upstreams" }),
+    );
+    await waitFor(() => expect(run).toHaveBeenCalledOnce());
+    expect(run.mock.calls[0]?.[1]).toEqual({
+      scope: "all_compatible_enabled_nodes",
+    });
+    expect(run.mock.calls[0]?.[2].upstreamDns).toEqual([
+      "tls://unsaved.example",
+    ]);
+    expect(
+      await screen.findByText("DNS command partially completed"),
+    ).not.toBeNull();
+    expect(screen.getByText("tls://unsaved.example: succeeded")).not.toBeNull();
+    expect(screen.getAllByText(/NODE_UNREACHABLE/).length).toBeGreaterThan(0);
+  });
+
+  it("uses a narrow default and accurate destructive cache confirmation", async () => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+    });
+    document.documentElement.dataset.theme = "dark";
+    mockLoad({
+      capabilities: [
+        profile(primary, { test_upstream_dns: true, cache_clear: true }),
+        profile(secondary, { test_upstream_dns: true, cache_clear: true }),
+      ],
+    });
+    vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue(
+      "99999999-9999-4999-8999-999999999999",
+    );
+    const clear = vi.spyOn(api, "clearDNSCache").mockResolvedValue({
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      clusterId: cluster.id,
+      clusterName: cluster.name,
+      command: "clear_dns_cache",
+      target: { scope: "node", nodeId: primary.id },
+      status: "succeeded",
+      requestId: "request-b",
+      requestedAt: "2026-08-02T00:00:00Z",
+      completedAt: "2026-08-02T00:00:01Z",
+      excludedNodes: [],
+      nodeResults: [
+        {
+          id: "result-a",
+          nodeId: primary.id,
+          nodeName: primary.name,
+          position: 1,
+          status: "succeeded",
+          observationStatus: "succeeded",
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<DNSSettingsPage cluster={cluster} />);
+    await user.click(
+      await screen.findByRole("button", { name: "Clear DNS cache" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Clear DNS cache" });
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(within(dialog).getAllByText("Selected node").length).toBeGreaterThan(
+      0,
+    );
+    expect(within(dialog).getAllByText("Primary").length).toBeGreaterThan(0);
+    expect(
+      within(dialog).getByText(
+        /New queries resolve upstream until the cache warms again/,
+      ),
+    ).not.toBeNull();
+    expect(
+      within(dialog).getByText(/draft, and active revision remain unchanged/),
+    ).not.toBeNull();
+    await user.click(
+      within(dialog).getByRole("button", { name: "Clear DNS cache" }),
+    );
+    await waitFor(() => expect(clear).toHaveBeenCalledOnce());
+    expect(clear.mock.calls[0]?.[1]).toEqual({
+      scope: "node",
+      nodeId: primary.id,
+    });
+    expect(await screen.findByText("DNS cache clear result")).not.toBeNull();
+  });
+
+  it("restores the last durable command result after remount", async () => {
+    mockLoad();
+    window.sessionStorage.setItem(
+      `aghha-dns-operation:${cluster.id}`,
+      JSON.stringify({ id: "operation-restored", upstreams: ["1.1.1.1"] }),
+    );
+    const read = vi.spyOn(api, "dnsOperation").mockResolvedValue({
+      id: "operation-restored",
+      clusterId: cluster.id,
+      clusterName: cluster.name,
+      command: "test_upstream_dns",
+      target: { scope: "node", nodeId: primary.id },
+      status: "succeeded",
+      requestId: "request-restored",
+      requestedAt: "2026-08-02T00:00:00Z",
+      completedAt: "2026-08-02T00:00:01Z",
+      excludedNodes: [],
+      nodeResults: [
+        {
+          id: "result-restored",
+          nodeId: primary.id,
+          nodeName: primary.name,
+          position: 1,
+          status: "succeeded",
+          upstreamResults: [{ resolverId: "upstream-1", status: "succeeded" }],
+        },
+      ],
+    });
+    render(<DNSSettingsPage cluster={cluster} />);
+    expect(await screen.findByText("Upstream test result")).not.toBeNull();
+    expect(screen.getByText("1.1.1.1: succeeded")).not.toBeNull();
+    expect(read).toHaveBeenCalledWith("operation-restored");
   });
 
   it("renders mobile and themed semantic states plus loading, retryable error, empty, and unsupported drafts", async () => {

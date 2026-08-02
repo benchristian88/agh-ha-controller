@@ -15,6 +15,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/configuration"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
+	"github.com/benchristian88/agh-ha-controller/internal/operations"
 )
 
 type ConfigurationReader struct{ probe *Probe }
@@ -228,7 +229,7 @@ type dhcpActiveCheckResponse struct {
 }
 
 func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request domain.NodeProbeRequest, version string) (configuration.Document, inventory.CapabilityProfile, error) {
-	profile := inventory.CapabilityProfile{ProductVersion: version, Compatibility: string(ConfigurationCompatibility(version)), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"dns": false, "cache_toggle": false, "upstream_timeout": false, "filtering": false, "filter_interval_arbitrary": false, "clients": false, "rewrites": false, "rewrite_toggle": false, "blocked_services": false, "safety": false, "safe_search_ecosia": supportsEcosia(version), "query_log": false, "statistics": false, "ignored_lists_toggle": false, "tls": false, "dhcp": false}, Warnings: []string{}}
+	profile := inventory.CapabilityProfile{ProductVersion: version, Compatibility: string(ConfigurationCompatibility(version)), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"dns": false, "cache_toggle": false, "upstream_timeout": false, "test_upstream_dns": false, "cache_clear": false, "filtering": false, "filter_interval_arbitrary": false, "clients": false, "rewrites": false, "rewrite_toggle": false, "blocked_services": false, "safety": false, "safe_search_ecosia": supportsEcosia(version), "query_log": false, "statistics": false, "ignored_lists_toggle": false, "tls": false, "dhcp": false}, Warnings: []string{}}
 	if ConfigurationCompatibility(version) != domain.CompatibilitySupported {
 		profile.Warnings = append(profile.Warnings, "This AdGuard Home version is outside the tested configuration inventory range.")
 		return configuration.Document{}, profile, domain.NewError(domain.ErrorNodeResponse, "the node version is not supported for configuration inventory")
@@ -248,6 +249,8 @@ func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request dom
 		return configuration.Document{}, profile, err
 	}
 	profile.Features["dns"] = true
+	profile.Features["test_upstream_dns"] = true
+	profile.Features["cache_clear"] = true
 	profile.Features["cache_toggle"] = dns.CacheEnabled != nil
 	profile.Features["upstream_timeout"] = dns.UpstreamTimeout != nil
 	var filtering filterStatusResponse
@@ -665,6 +668,36 @@ func (r *ConfigurationReader) RefreshFilters(ctx context.Context, request domain
 	return r.post(ctx, request, "/control/filtering/refresh", map[string]any{"whitelist": whitelist})
 }
 
+func (r *ConfigurationReader) TestUpstreamDNS(ctx context.Context, request domain.NodeProbeRequest, input operations.UpstreamInput) ([]operations.ResolverResult, error) {
+	payload := map[string]any{
+		"upstream_dns": input.UpstreamDNS, "bootstrap_dns": input.BootstrapDNS,
+		"fallback_dns": input.FallbackDNS, "private_reverse_dns": input.PrivateReverseDNS,
+		"upstream_mode":             input.UpstreamMode,
+		"use_private_ptr_resolvers": input.UsePrivateReverseResolvers,
+	}
+	var response map[string]string
+	if err := r.postOperationalResource(ctx, request, "/control/test_upstream_dns", payload, &response); err != nil {
+		return nil, err
+	}
+	results := make([]operations.ResolverResult, 0, len(input.UpstreamDNS))
+	for index, upstream := range input.UpstreamDNS {
+		value, ok := response[upstream]
+		if !ok {
+			return nil, domain.NewError(domain.ErrorNodeResponse, "the node upstream test response omitted a requested resolver")
+		}
+		result := operations.ResolverResult{ResolverID: fmt.Sprintf("upstream-%d", index+1), Status: "succeeded"}
+		if strings.TrimSpace(value) != "" {
+			result.Status, result.ErrorCode = "failed", "UPSTREAM_TEST_FAILED"
+		}
+		results = append(results, result)
+	}
+	return results, nil
+}
+
+func (r *ConfigurationReader) ClearDNSCache(ctx context.Context, request domain.NodeProbeRequest) error {
+	return r.post(ctx, request, "/control/cache_clear", nil)
+}
+
 func (r *ConfigurationReader) ResetDHCPLeases(ctx context.Context, request domain.NodeProbeRequest) error {
 	return r.post(ctx, request, "/control/dhcp/reset_leases", nil)
 }
@@ -939,6 +972,57 @@ func (r *ConfigurationReader) postResource(ctx context.Context, request domain.N
 	}
 	if err := json.Unmarshal(responseBody, target); err != nil {
 		return domain.NewError(domain.ErrorNodeResponse, "the node returned invalid active DHCP JSON")
+	}
+	return nil
+}
+
+func (r *ConfigurationReader) postOperationalResource(ctx context.Context, request domain.NodeProbeRequest, path string, payload, target any) error {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("encode AdGuard Home operational request: %w", err)
+	}
+	transport, err := r.probe.transport(request.CertificatePolicy, request.CustomCAPEM)
+	if err != nil {
+		return err
+	}
+	defer transport.CloseIdleConnections()
+	endpoint, err := configurationEndpoint(request.BaseURL, path)
+	if err != nil {
+		return domain.NewError(domain.ErrorNodeResponse, "the node URL is invalid")
+	}
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create AdGuard Home operational request: %w", err)
+	}
+	httpRequest.SetBasicAuth(request.Credentials.Username, request.Credentials.Password)
+	httpRequest.Header.Set("Accept", "application/json")
+	httpRequest.Header.Set("Content-Type", "application/json")
+	client := &http.Client{Transport: transport, Timeout: r.probe.timeout, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
+	response, err := client.Do(httpRequest)
+	if err != nil {
+		return classifyNetworkError(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
+		return domain.NewError(domain.ErrorNodeAuth, "the node rejected its stored credentials")
+	}
+	if response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusNotImplemented {
+		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, maxConfigurationBody))
+		return domain.NewError(domain.ErrorCapability, "the node does not support this operational command")
+	}
+	if response.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, maxConfigurationBody))
+		return domain.NewError(domain.ErrorNodeResponse, "the node operational endpoint returned an unexpected status")
+	}
+	responseBody, err := io.ReadAll(io.LimitReader(response.Body, maxConfigurationBody+1))
+	if err != nil {
+		return domain.NewError(domain.ErrorNodeResponse, "the node operational response could not be read")
+	}
+	if len(responseBody) > maxConfigurationBody {
+		return domain.NewError(domain.ErrorNodeResponse, "the node operational response was too large")
+	}
+	if err := json.Unmarshal(responseBody, target); err != nil {
+		return domain.NewError(domain.ErrorNodeResponse, "the node returned invalid operational JSON")
 	}
 	return nil
 }

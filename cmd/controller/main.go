@@ -19,6 +19,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 	"github.com/benchristian88/agh-ha-controller/internal/jobs"
+	"github.com/benchristian88/agh-ha-controller/internal/operations"
 	"github.com/benchristian88/agh-ha-controller/internal/version"
 )
 
@@ -65,6 +66,11 @@ func run() error {
 	management := domain.NewManagementService(store, credentialCipher, probe)
 	configurationAdapter := adguard.NewConfigurationReader(probe)
 	inventoryService := inventory.NewService(store, credentialCipher, configurationAdapter)
+	operationService := operations.NewService(store, credentialCipher)
+	operationExecutor := operations.NewExecutor(store, credentialCipher, credentialCipher, configurationAdapter, inventoryService)
+	if err := operationExecutor.RecoverInterrupted(rootContext); err != nil {
+		return err
+	}
 	controlplaneService := controlplane.NewService(store, inventoryService)
 	deploymentExecutor := controlplane.NewExecutor(store, credentialCipher, configurationAdapter, inventoryService)
 	if err := deploymentExecutor.RecoverInterrupted(rootContext); err != nil {
@@ -74,6 +80,7 @@ func run() error {
 	healthPoller := jobs.NewHealthPoller(store, credentialCipher, probe, configuration.NodeHealthInterval, logger)
 	go healthPoller.Run(rootContext)
 	go jobs.RunDeploymentExecutor(rootContext, deploymentExecutor, logger)
+	go jobs.RunOperationalCommandExecutor(rootContext, operationExecutor, logger)
 	go jobs.RunReconciler(rootContext, reconciler, configuration.NodeHealthInterval, logger)
 	go jobs.RunSessionCleanup(rootContext, store, logger)
 
@@ -83,6 +90,7 @@ func run() error {
 		configuration.NodeHealthInterval, configuration.WebDistDirectory,
 		controlplaneService,
 	)
+	apiServer.SetDNSOperations(operationService)
 	httpServer := &http.Server{
 		Addr:              configuration.HTTPAddress,
 		Handler:           apiServer.Handler(),

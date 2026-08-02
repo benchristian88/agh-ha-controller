@@ -116,6 +116,15 @@ type EncryptedCredentials struct {
 	Algorithm  string
 }
 
+// EncryptedPayload stores short-lived sensitive operational-command input.
+// The associated-data scope binds the ciphertext to its command resource.
+type EncryptedPayload struct {
+	Ciphertext []byte
+	Nonce      []byte
+	KeyVersion int
+	Algorithm  string
+}
+
 type NodeSecretMaterial struct {
 	Credentials EncryptedCredentials
 	CustomCAPEM string

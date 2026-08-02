@@ -51,6 +51,11 @@ authoritative. Cache sizes use exact bytes with binary KiB/MiB presentation,
 and DNS TTL/timeout values use exact whole-second duration conversion. Upstream
 testing remains excluded until the separate Phase 9C controller command.
 
+Phase 9C-1 composes `OperationalCommandDialog`, `PartialSuccessPanel`, and
+`StatusBadge` on DNS Settings for current-draft upstream testing and confirmed
+DNS cache clearing. Both commands have explicit selected-node/fleet scope,
+durable node-attributed results, and remain outside desired state.
+
 ## Shell
 
 - `AppHeader`

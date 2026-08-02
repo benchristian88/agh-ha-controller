@@ -160,8 +160,14 @@ presentation) were implemented on 2 August 2026. Phase 9B preserves schema-v2
 collection semantics and the existing capability/deployment path while adding
 specialist resolver editors, network validation, conditional address fields,
 exact byte/duration presentation, terminology fixes, and lifecycle context.
-Upstream testing and operational clear/reset commands remain unimplemented and
-must use the separate audited-command boundary in Phase 9C.
+Operational tests and clear/reset commands use the separate audited-command
+boundary in Phase 9C.
+
+Phase 9C-1 was implemented on 2 August 2026. It adds durable current-draft
+upstream tests and confirmed DNS cache clearing with encrypted queued input,
+explicit selected-node/fleet scope, per-node results, and post-clear
+observation. Host-filter testing, Query Log clearing, and Statistics reset
+remain in 9C-2 and 9C-3.
 
 ### Deliverables
 

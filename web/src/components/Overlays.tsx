@@ -220,6 +220,7 @@ export function OperationalCommandDialog({
   confirmationText,
   busy = false,
   destructive = false,
+  children,
 }: {
   open: boolean;
   onClose: () => void;
@@ -234,6 +235,7 @@ export function OperationalCommandDialog({
   confirmationText?: string;
   busy?: boolean;
   destructive?: boolean;
+  children?: ReactNode;
 }) {
   return (
     <ConfirmDialog
@@ -291,6 +293,7 @@ export function OperationalCommandDialog({
           </div>
         )}
       </dl>
+      {children}
     </ConfirmDialog>
   );
 }

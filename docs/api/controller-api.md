@@ -211,6 +211,37 @@ lease changes remain observed-only. A configuration reset does not mutate the
 draft or active revision; its observed mismatch remains subject to the existing
 restore/adopt drift workflow after the maintenance boundary is reviewed.
 
+## DNS operational commands
+
+```text
+POST /api/v1/clusters/{clusterId}/operational-commands/test-upstream-dns
+POST /api/v1/clusters/{clusterId}/operational-commands/clear-dns-cache
+GET  /api/v1/operational-commands/{operationId}
+GET  /api/v1/clusters/{clusterId}/operational-commands?command={type}&limit=10
+```
+
+POST requests require authentication, CSRF, and a UUID `Idempotency-Key`.
+Their target is either `{ "scope": "node", "nodeId": "uuid" }` or the
+explicit `{ "scope": "all_compatible_enabled_nodes" }`. Fleet targets are
+resolved once when the durable command is created. Disabled nodes are not
+targeted; incompatible or maintenance nodes are reported as exclusions.
+
+Upstream tests accept the currently displayed draft resolver fields and draft
+version. Values are validated, AES-256-GCM encrypted while queued, and
+discarded at terminal completion. Results identify resolvers as `upstream-1`,
+`upstream-2`, and so on; raw resolver text and raw AdGuard errors are not
+persisted in result or audit DTOs.
+
+Cache clear requires `CLEAR_DNS_CACHE`. A successful node call is followed by a
+normal configuration observation. Observation failure is reported separately
+and does not change command success. Neither operation mutates a draft,
+revision, deployment, or active-revision pointer.
+
+POST returns HTTP 202 for queued/running resources. Poll the operation URL for
+`succeeded`, `partial_success`, `failed`, or `interrupted`. A repeated terminal
+idempotency key returns the original result without another node call. Running
+commands interrupted by controller restart are not automatically replayed.
+
 ## Operational probes
 
 ```text

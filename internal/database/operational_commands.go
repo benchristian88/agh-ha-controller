@@ -30,8 +30,8 @@ func (s *Store) BeginDHCPOperation(ctx context.Context, operation inventory.DHCP
 	result, err := tx.Exec(ctx, `
 		INSERT INTO operational_commands
 			(id,cluster_id,command_type,status,requested_by,request_id,idempotency_key,
-			 observation_status,requested_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+			 observation_status,requested_at,started_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9)
 		ON CONFLICT (requested_by,idempotency_key) DO NOTHING`,
 		operation.ID, operation.ClusterID, operation.Command, operation.Status,
 		operation.RequestedBy, operation.RequestID, operation.IdempotencyKey,
