@@ -11,6 +11,7 @@ import { ConfigurationPage } from "./features/configuration/ConfigurationPage";
 import { ControlPlanePage } from "./features/controlplane/ControlPlanePage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { NodesPage } from "./features/nodes/NodesPage";
+import { RewritesPage } from "./features/rewrites/RewritesPage";
 import { ManagedSettingsPage } from "./features/settings/ManagedSettingsPage";
 import { ApiError, api } from "./lib/api";
 import type { Cluster, User } from "./lib/types";
@@ -188,6 +189,8 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
         content =
           route.area === "clients" ? (
             <ClientsPage cluster={selected} />
+          ) : route.area === "rewrites" ? (
+            <RewritesPage cluster={selected} />
           ) : (
             <ManagedSettingsPage
               cluster={selected}

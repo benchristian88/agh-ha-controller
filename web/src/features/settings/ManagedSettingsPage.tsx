@@ -9,7 +9,6 @@ import type {
   DhcpConfiguration,
   DhcpStaticLease,
   Node,
-  Rewrite,
   SafeSearchConfiguration,
   ValidationIssue,
 } from "../../lib/types";
@@ -171,9 +170,6 @@ export function ManagedSettingsPage({
           {area === "dns" && <DNSForm draft={draft} setDraft={setDraft} />}
           {area === "filters" && (
             <FiltersForm draft={draft} setDraft={setDraft} />
-          )}
-          {area === "rewrites" && (
-            <RewritesForm draft={draft} setDraft={setDraft} />
           )}
           {area === "privacy" && (
             <>
@@ -447,114 +443,6 @@ function FiltersForm({ draft, setDraft }: DraftProps) {
         onChange={(value) => update({ userRules: value })}
         rows={12}
       />
-    </div>
-  );
-}
-
-function RewritesForm({ draft, setDraft }: DraftProps) {
-  const rewrites = draft.document.shared.rewrites ?? [];
-  const [rewriteKeys, setRewriteKeys] = useState(() =>
-    rewrites.map(() => createEditorRowKey("rewrite")),
-  );
-  const setRewrites = (value: Rewrite[]) =>
-    setDraft({
-      ...draft,
-      document: {
-        ...draft.document,
-        shared: { ...draft.document.shared, rewrites: value },
-      },
-    });
-  const addRewrite = () => {
-    setRewriteKeys([...rewriteKeys, createEditorRowKey("rewrite")]);
-    setRewrites([...rewrites, { domain: "", answer: "", enabled: true }]);
-  };
-  const removeRewrite = (index: number) => {
-    setRewriteKeys(rewriteKeys.filter((_, itemIndex) => itemIndex !== index));
-    setRewrites(rewrites.filter((_, itemIndex) => itemIndex !== index));
-  };
-  return (
-    <div className="card form-stack">
-      <div className="section-heading">
-        <h2>Rewrite entries</h2>
-        <button
-          type="button"
-          className="button button--secondary"
-          onClick={addRewrite}
-        >
-          Add rewrite
-        </button>
-      </div>
-      <Check
-        label="DNS rewrites enabled globally"
-        checked={draft.document.shared.rewritesEnabled}
-        onChange={(value) =>
-          setDraft({
-            ...draft,
-            document: {
-              ...draft.document,
-              shared: {
-                ...draft.document.shared,
-                rewritesEnabled: value,
-              },
-            },
-          })
-        }
-      />
-      {rewrites.map((rewrite, index) => (
-        <div className="form-grid repeat-row" key={rewriteKeys[index]}>
-          <label>
-            Domain
-            <input
-              value={rewrite.domain}
-              onChange={(event) =>
-                setRewrites(
-                  rewrites.map((item, i) =>
-                    i === index
-                      ? { ...item, domain: event.target.value }
-                      : item,
-                  ),
-                )
-              }
-            />
-          </label>
-          <label>
-            Answer
-            <input
-              value={rewrite.answer}
-              onChange={(event) =>
-                setRewrites(
-                  rewrites.map((item, i) =>
-                    i === index
-                      ? { ...item, answer: event.target.value }
-                      : item,
-                  ),
-                )
-              }
-            />
-          </label>
-          <Check
-            label="Rewrite enabled"
-            checked={rewrite.enabled}
-            onChange={(value) =>
-              setRewrites(
-                rewrites.map((item, i) =>
-                  i === index ? { ...item, enabled: value } : item,
-                ),
-              )
-            }
-          />
-          <button
-            type="button"
-            className="button button--danger"
-            onClick={() => removeRewrite(index)}
-          >
-            Remove
-          </button>
-        </div>
-      ))}
-      {rewrites.length === 0 && (
-        <p className="muted">No rewrites are managed.</p>
-      )}
     </div>
   );
 }

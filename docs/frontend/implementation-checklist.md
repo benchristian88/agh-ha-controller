@@ -38,9 +38,9 @@
 
 - [x] Blocked Services catalogue.
 - [x] Blocklist table.
-- [ ] Allowlist table.
-- [ ] Client table/dialog.
-- [ ] Rewrite table/dialog.
+- [x] Allowlist table.
+- [x] Client table/dialog.
+- [x] Rewrite table/dialog.
 - [ ] DHCP interface discovery.
 - [ ] Active leases.
 - [ ] Static lease table/dialog.

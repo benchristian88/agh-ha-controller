@@ -8,6 +8,7 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Added
 
+- Release 0.4.1 Phase 7 DNS Rewrites searchable table and add/edit dialogs with contract-bounded domain/answer validation, inferred A/AAAA/CNAME/passthrough presentation, duplicate prevention, confirmed draft-only deletion, capability-aware enablement, and draft/revision/convergence context.
 - Release 0.4.1 Phase 5B dedicated DNS Allowlists page, shared Blocklist/Allowlist table and dialog composition, observed-only rule-count/freshness and per-node application metadata, safer removal confirmation, and audited refresh-all partial results using allowlist semantics.
 - Authenticated `GET /api/v1/clusters/{clusterId}/allowlists/presentation` endpoint with category-separated stale caching and safe node-attributed metadata.
 - Release 0.4.1 Phase 4 Blocked Services page with a controller-mediated, version-aware per-node catalogue; searchable grouped service selection; compatibility warnings; selected counts and group actions; shared schedule editing; and publication/deployment preflight for unsupported IDs.
@@ -22,6 +23,7 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Changed
 
+- Replace the Release 0.4 inline DNS rewrite editor at `/filters/rewrites` while preserving the schema-v2 desired-state representation, controller-only browser boundary, and separate Save Draft, Publish, and Deploy lifecycle.
 - Move Safe Browsing, parental control, and Safe Search presentation to Settings > General; `/filters/blocked-services` now contains only the blocked-service catalogue and inactivity schedule while preserving the existing desired-state fields.
 - Default controller, image, installer, and web version is 0.4.0.
 - Release 0.3, including Docker and systemd installation and functional validation, is recorded as complete.

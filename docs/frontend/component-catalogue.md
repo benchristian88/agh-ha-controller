@@ -25,6 +25,12 @@ Phase 6 adds the shared `TagMultiSelect` and composes `DataTable`, `Dialog`,
 Persistent Clients use that composition for searchable rows and structured
 add/edit/remove draft interactions.
 
+Phase 7 composes `DataTable`, `Dialog`, `ConfirmDialog`, `Field`, `SettingRow`,
+`SettingsGroup`, `StatusBadge`, `ConvergenceSummary`, feedback, and
+`UnsavedChangesNotice` under `web/src/features/rewrites/`. DNS Rewrites use that
+composition for searchable rows, contract-bounded validation and type
+inference, capability-aware enablement, and confirmed draft-only deletion.
+
 ## Shell
 
 - `AppHeader`

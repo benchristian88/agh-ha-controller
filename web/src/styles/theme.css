@@ -293,6 +293,14 @@ tr:last-child td { border-bottom: 0; }
 .client-dialog__group-content { display: grid; gap: var(--aghha-space-4); padding-block: var(--aghha-space-5); }
 .safe-search-providers { margin: 0 0 var(--aghha-space-5); }
 .cache-size-field { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: var(--aghha-space-2); }
+.rewrite-table-toolbar { display: grid; grid-template-columns: minmax(240px, 440px) 1fr; gap: var(--aghha-space-4); align-items: end; margin-bottom: var(--aghha-space-4); }
+.rewrite-table-toolbar p { margin: 0 0 var(--aghha-space-3); text-align: right; }
+.rewrite-table__actions { min-width: 145px; flex-wrap: wrap; }
+.rewrite-value { display: grid; width: fit-content; gap: var(--aghha-space-2); }
+.rewrite-answer { overflow-wrap: anywhere; }
+.rewrite-convergence { padding-block: var(--aghha-space-5); }
+.rewrite-dialog__fields { display: grid; gap: var(--aghha-space-5); }
+.rewrite-dialog__fields .setting-row { grid-template-columns: minmax(0, 1fr) minmax(180px, .55fr); padding-bottom: 0; }
 
 .banner { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--aghha-space-4); margin-block: var(--aghha-space-3); padding: var(--aghha-space-3) var(--aghha-space-4); border: 1px solid var(--aghha-border); border-radius: var(--aghha-radius-control); background: var(--aghha-neutral-soft); color: var(--aghha-text); line-height: 1.45; }
 .banner--info { border-color: color-mix(in srgb, var(--aghha-info) 45%, transparent); background: var(--aghha-info-soft); }
@@ -445,9 +453,11 @@ th[data-align="right"], td[data-align="right"] { text-align: right; }
   .structured-diff__row dl div + div { border-top: 1px solid var(--aghha-border); border-left: 0; }
   .list-field__row, .list-field__add { grid-template-columns: 1fr; }
   .list-field__row .button, .list-field__add .button { justify-self: start; }
-  .tag-multi-select__add, .client-table-toolbar, .cache-size-field { grid-template-columns: 1fr; }
+  .tag-multi-select__add, .client-table-toolbar, .rewrite-table-toolbar, .cache-size-field { grid-template-columns: 1fr; }
   .tag-multi-select__add .button { justify-self: start; }
   .client-table-toolbar p { margin: 0; text-align: left; }
+  .rewrite-table-toolbar p { margin: 0; text-align: left; }
+  .rewrite-dialog__fields .setting-row { grid-template-columns: 1fr; }
   .convergence-summary dl { grid-template-columns: 1fr 1fr; }
   .progress-timeline__step, .partial-success-panel header, .banner { flex-direction: column; }
   .pagination { justify-content: space-between; }
