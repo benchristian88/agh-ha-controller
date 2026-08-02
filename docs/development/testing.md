@@ -44,6 +44,16 @@ On 31 July 2026, the non-secure-origin settings regression check passed with the
 
 On 2 August 2026, the DHCP deployment correction passed the full Go suite, the uncached race suite, `go vet`, and the production controller build. Both PostgreSQL integration workflows compiled but skipped because `TEST_DATABASE_URL` was not set. The frontend passed all 68 tests across 18 files, TypeScript validation, Biome lint, and the production Vite build. Real-node replay of the originally reported disabled-DHCP deployment remains required before closing the Release 0.4 reference-node gate.
 
+On 2 August 2026, Release 0.4.1 Phase 6 Persistent Clients presentation
+passed 98 frontend tests across 21 files, TypeScript validation, Biome lint,
+and the production Vite build. The complete uncached Go race suite and
+`go vet ./...` also passed. The two-node PostgreSQL integration fixture now
+models persistent-client add/update/delete, verifies the complete client
+payload and ordered upstreams after deployment/read-back, and uses a direct
+client filtering-policy change for drift creation and Enforce convergence. It
+compiled in the full Go run but skipped execution because `TEST_DATABASE_URL`
+was not set.
+
 ## Integration tests
 
 Use real PostgreSQL.
@@ -60,7 +70,7 @@ Use real or containerised AdGuard Home versions for:
 
 `tests/integration/release_0_1_test.go` uses an isolated schema in real PostgreSQL. It verifies migration up/down/up, one-time first-admin setup, repeat-setup rejection, secure cookies, authenticated cluster creation, two-node onboarding, absence of credentials in responses, encrypted database storage, required audit actions, and controller/node process independence. `make test-integration` requires `TEST_DATABASE_URL`; ordinary `go test` runs skip this package only when that variable is absent.
 
-`tests/integration/release_0_3_test.go` uses the same isolated-schema harness and two stateful AdGuard HTTP fixtures. It proves multi-node import followed by a shared desired-state save, immutable publication while no revision is active, two-node sequential apply/read-back convergence, active-revision selection, direct-change detection, Enforce restoration and resolution, a second revision, and deployment-based rollback. Its fixture now serves the full schema-v2 observation surface, so the same core workflow also exercises 0.4 capability preflight and broader writer/read-back behavior. It is compiled in every Go test run and executes when `TEST_DATABASE_URL` is present.
+`tests/integration/release_0_3_test.go` uses the same isolated-schema harness and two stateful AdGuard HTTP fixtures. It proves multi-node import followed by a shared desired-state save, immutable publication while no revision is active, two-node sequential apply/read-back convergence, active-revision selection, direct-change detection, Enforce restoration and resolution, a second revision, and deployment-based rollback. Its fixture serves the full schema-v2 observation surface and stateful persistent-client add/update/delete operations, so the same core workflow exercises 0.4 capability preflight, complete client payload convergence, ordered client upstreams, client-policy drift, and broader writer/read-back behavior. It is compiled in every Go test run and executes when `TEST_DATABASE_URL` is present.
 
 ## Contract tests
 

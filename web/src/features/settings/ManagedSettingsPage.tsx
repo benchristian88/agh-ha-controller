@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
-import { ScheduleEditor } from "../../components/ScheduleEditor";
 import { api } from "../../lib/api";
 import type {
   CapabilityProfile,
@@ -10,7 +9,6 @@ import type {
   DhcpConfiguration,
   DhcpStaticLease,
   Node,
-  PersistentClient,
   Rewrite,
   SafeSearchConfiguration,
   ValidationIssue,
@@ -173,9 +171,6 @@ export function ManagedSettingsPage({
           {area === "dns" && <DNSForm draft={draft} setDraft={setDraft} />}
           {area === "filters" && (
             <FiltersForm draft={draft} setDraft={setDraft} />
-          )}
-          {area === "clients" && (
-            <ClientsForm draft={draft} setDraft={setDraft} />
           )}
           {area === "rewrites" && (
             <RewritesForm draft={draft} setDraft={setDraft} />
@@ -456,225 +451,6 @@ function FiltersForm({ draft, setDraft }: DraftProps) {
   );
 }
 
-const emptySafeSearch = (): SafeSearchConfiguration => ({
-  enabled: false,
-  bing: true,
-  duckDuckGo: true,
-  ecosia: true,
-  google: true,
-  pixabay: true,
-  yandex: true,
-  youTube: true,
-});
-function emptyClient(): PersistentClient {
-  return {
-    name: "",
-    ids: [],
-    useGlobalSettings: true,
-    filteringEnabled: true,
-    parentalEnabled: false,
-    safeBrowsingEnabled: false,
-    safeSearch: emptySafeSearch(),
-    useGlobalBlockedServices: true,
-    blockedServices: [],
-    blockedServicesSchedule: { timeZone: "Local", days: {} },
-    upstreams: [],
-    upstreamsCacheEnabled: false,
-    upstreamsCacheSize: 0,
-    tags: [],
-    ignoreQueryLog: false,
-    ignoreStatistics: false,
-  };
-}
-
-function ClientsForm({ draft, setDraft }: DraftProps) {
-  const clients = draft.document.shared.clients ?? [];
-  const [clientKeys, setClientKeys] = useState(() =>
-    clients.map(() => createEditorRowKey("client")),
-  );
-  const setClients = (value: PersistentClient[]) =>
-    setDraft({
-      ...draft,
-      document: {
-        ...draft.document,
-        shared: { ...draft.document.shared, clients: value },
-      },
-    });
-  const addClient = () => {
-    setClientKeys([...clientKeys, createEditorRowKey("client")]);
-    setClients([...clients, emptyClient()]);
-  };
-  const removeClient = (index: number) => {
-    setClientKeys(clientKeys.filter((_, itemIndex) => itemIndex !== index));
-    setClients(clients.filter((_, itemIndex) => itemIndex !== index));
-  };
-  return (
-    <div className="form-stack">
-      <div className="section-heading">
-        <h2>Managed clients</h2>
-        <button
-          type="button"
-          className="button button--secondary"
-          onClick={addClient}
-        >
-          Add client
-        </button>
-      </div>
-      {clients.length === 0 ? (
-        <EmptyState title="No persistent clients">
-          <p>
-            Add a client to manage its identity and policy across every node.
-          </p>
-        </EmptyState>
-      ) : (
-        clients.map((client, index) => {
-          const update = (patch: Partial<PersistentClient>) =>
-            setClients(
-              clients.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, ...patch } : item,
-              ),
-            );
-          return (
-            <fieldset className="card" key={clientKeys[index]}>
-              <legend className="visually-hidden">
-                Client {index + 1} settings
-              </legend>
-              <h3 className="form-card__title">Client {index + 1}</h3>
-              <div className="form-grid">
-                <label>
-                  Name
-                  <input
-                    value={client.name}
-                    onChange={(event) => update({ name: event.target.value })}
-                  />
-                </label>
-                <TextLines
-                  label="Identifiers (IP, CIDR, MAC, or ClientID)"
-                  value={client.ids}
-                  onChange={(value) => update({ ids: value })}
-                />
-                <TextLines
-                  label="Client-specific upstreams (ordered)"
-                  value={client.upstreams}
-                  onChange={(value) => update({ upstreams: value })}
-                />
-                <TextLines
-                  label="Tags"
-                  value={client.tags}
-                  onChange={(value) => update({ tags: value })}
-                />
-                <TextLines
-                  label="Blocked services"
-                  value={client.blockedServices}
-                  onChange={(value) => update({ blockedServices: value })}
-                />
-                <NumberField
-                  label="Per-client upstream cache size"
-                  value={client.upstreamsCacheSize}
-                  onChange={(value) => update({ upstreamsCacheSize: value })}
-                />
-              </div>
-              <div className="toggle-grid">
-                <Check
-                  label="Use global filtering settings"
-                  checked={client.useGlobalSettings}
-                  onChange={(value) => update({ useGlobalSettings: value })}
-                />
-                <Check
-                  label="Filtering"
-                  checked={client.filteringEnabled}
-                  onChange={(value) => update({ filteringEnabled: value })}
-                />
-                <Check
-                  label="Safe Browsing"
-                  checked={client.safeBrowsingEnabled}
-                  onChange={(value) => update({ safeBrowsingEnabled: value })}
-                />
-                <Check
-                  label="Parental controls"
-                  checked={client.parentalEnabled}
-                  onChange={(value) => update({ parentalEnabled: value })}
-                />
-                <Check
-                  label="Use global blocked services"
-                  checked={client.useGlobalBlockedServices}
-                  onChange={(value) =>
-                    update({ useGlobalBlockedServices: value })
-                  }
-                />
-                <Check
-                  label="Cache client-specific upstream responses"
-                  checked={client.upstreamsCacheEnabled}
-                  onChange={(value) => update({ upstreamsCacheEnabled: value })}
-                />
-                <Check
-                  label="Client Safe Search"
-                  checked={client.safeSearch.enabled}
-                  onChange={(value) =>
-                    update({
-                      safeSearch: { ...client.safeSearch, enabled: value },
-                    })
-                  }
-                />
-                {!client.useGlobalSettings &&
-                  client.safeSearch.enabled &&
-                  (
-                    [
-                      "bing",
-                      "duckDuckGo",
-                      "ecosia",
-                      "google",
-                      "pixabay",
-                      "yandex",
-                      "youTube",
-                    ] as const
-                  ).map((engine) => (
-                    <Check
-                      key={engine}
-                      label={`Client Safe Search: ${engine}`}
-                      checked={client.safeSearch[engine]}
-                      onChange={(value) =>
-                        update({
-                          safeSearch: { ...client.safeSearch, [engine]: value },
-                        })
-                      }
-                    />
-                  ))}
-                <Check
-                  label="Exclude from query log"
-                  checked={client.ignoreQueryLog}
-                  onChange={(value) => update({ ignoreQueryLog: value })}
-                />
-                <Check
-                  label="Exclude from statistics"
-                  checked={client.ignoreStatistics}
-                  onChange={(value) => update({ ignoreStatistics: value })}
-                />
-              </div>
-              {!client.useGlobalBlockedServices && (
-                <ScheduleEditor
-                  value={client.blockedServicesSchedule}
-                  onChange={(value) =>
-                    update({ blockedServicesSchedule: value })
-                  }
-                  label="Client blocked-services schedule"
-                />
-              )}
-              <button
-                type="button"
-                className="button button--danger"
-                onClick={() => removeClient(index)}
-              >
-                Remove client
-              </button>
-            </fieldset>
-          );
-        })
-      )}
-    </div>
-  );
-}
-
 function RewritesForm({ draft, setDraft }: DraftProps) {
   const rewrites = draft.document.shared.rewrites ?? [];
   const [rewriteKeys, setRewriteKeys] = useState(() =>
@@ -782,6 +558,17 @@ function RewritesForm({ draft, setDraft }: DraftProps) {
     </div>
   );
 }
+
+const emptySafeSearch = (): SafeSearchConfiguration => ({
+  enabled: false,
+  bing: true,
+  duckDuckGo: true,
+  ecosia: true,
+  google: true,
+  pixabay: true,
+  yandex: true,
+  youTube: true,
+});
 
 function SafetyForm({ draft, setDraft }: DraftProps) {
   const services = draft.document.shared.services;

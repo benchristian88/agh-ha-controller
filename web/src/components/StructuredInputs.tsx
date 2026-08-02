@@ -298,6 +298,113 @@ export function IdentifierListEditor({
   );
 }
 
+export function TagMultiSelect({
+  label,
+  value,
+  options,
+  onChange,
+  help,
+}: {
+  label: string;
+  value: string[];
+  options: string[];
+  onChange: (value: string[]) => void;
+  help?: ReactNode;
+}) {
+  const id = useId();
+  const [nextValue, setNextValue] = useState("");
+  const selected = new Set(value.map((tag) => tag.toLocaleLowerCase()));
+  const available = [...new Set([...options, ...value])].sort((left, right) =>
+    left.localeCompare(right),
+  );
+
+  function add() {
+    const tag = nextValue.trim();
+    if (tag === "" || selected.has(tag.toLocaleLowerCase())) return;
+    onChange([...value, tag]);
+    setNextValue("");
+  }
+
+  return (
+    <fieldset className="tag-multi-select">
+      <legend>{label}</legend>
+      {help !== undefined && <p className="field__help">{help}</p>}
+      {value.length === 0 ? (
+        <p className="list-field__empty">No tags selected.</p>
+      ) : (
+        <div className="tag-multi-select__selected">
+          {value.map((tag) => (
+            <span className="tag-chip" key={tag}>
+              {tag}
+              <button
+                type="button"
+                aria-label={`Remove tag ${tag}`}
+                onClick={() => onChange(value.filter((item) => item !== tag))}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="tag-multi-select__add">
+        <label className="visually-hidden" htmlFor={`${id}-new`}>
+          New tag
+        </label>
+        <input
+          id={`${id}-new`}
+          value={nextValue}
+          placeholder="Add a tag"
+          onChange={(event) => setNextValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            add();
+          }}
+        />
+        <button
+          type="button"
+          className="button button--secondary"
+          disabled={
+            nextValue.trim() === "" ||
+            selected.has(nextValue.trim().toLocaleLowerCase())
+          }
+          onClick={add}
+        >
+          Add tag
+        </button>
+      </div>
+      {available.length > 0 && (
+        <div className="tag-multi-select__options">
+          {available.map((tag) => {
+            const checked = selected.has(tag.toLocaleLowerCase());
+            return (
+              <label key={tag}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(event) =>
+                    onChange(
+                      event.target.checked
+                        ? [...value, tag]
+                        : value.filter(
+                            (item) =>
+                              item.toLocaleLowerCase() !==
+                              tag.toLocaleLowerCase(),
+                          ),
+                    )
+                  }
+                />
+                {tag}
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
 export function OrderedTextEditor({
   label,
   value,
@@ -375,7 +482,7 @@ export function UpstreamEditor(
         props.help ??
         "Enter one AdGuard upstream expression per line. Order is preserved."
       }
-      validateLine={props.validateUpstream ?? validateUpstream}
+      validateLine={props.validateUpstream ?? validateAdGuardUpstream}
     />
   );
 }
@@ -460,13 +567,17 @@ export function validateIdentifier(
     return "Enter a valid IP, CIDR, MAC address, or ClientID.";
   if (/^[0-9.]+$/.test(candidate) && !isIpAddress(candidate))
     return "Enter a valid IP, CIDR, MAC address, or ClientID.";
+  const looksLikeMac = /^(?:[0-9a-f]{2}[:-]){1,7}[0-9a-f]{2}$/i.test(candidate);
+  const isMac = /^(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}$/i.test(candidate);
+  if (looksLikeMac && !isMac && !isIpAddress(candidate))
+    return "Enter a valid IP, CIDR, MAC address, or ClientID.";
   const kind: IdentifierKind | undefined =
     candidate.includes("/") &&
     validateNetwork(candidate, false, true) === undefined
       ? "cidr"
       : isIpAddress(candidate)
         ? "ip"
-        : /^(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}$/i.test(candidate)
+        : isMac
           ? "mac"
           : /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(candidate)
             ? "clientId"
@@ -506,10 +617,25 @@ function validateRule(value: string, index: number): ValidationResult {
     : undefined;
 }
 
-function validateUpstream(value: string, index: number): ValidationResult {
+export function validateAdGuardUpstream(
+  value: string,
+  index: number,
+): ValidationResult {
   const candidate = value.trim();
   if (candidate === "") return undefined;
-  return /\s/.test(candidate)
-    ? `Upstream ${index + 1} cannot contain whitespace.`
-    : undefined;
+  if (/\s/.test(candidate))
+    return `Upstream ${index + 1} cannot contain whitespace.`;
+  if (candidate.startsWith("[/")) {
+    const closingBracket = candidate.indexOf("]");
+    if (closingBracket < 3)
+      return `Upstream ${index + 1} has an invalid domain selector.`;
+    const selector = candidate.slice(2, closingBracket);
+    if (!selector.endsWith("/") || selector === "/")
+      return `Upstream ${index + 1} has an invalid domain selector.`;
+    if (candidate.slice(closingBracket + 1) === "")
+      return `Upstream ${index + 1} needs a resolver or # after its selector.`;
+  } else if (candidate.includes("[") || candidate.includes("]")) {
+    return `Upstream ${index + 1} has unmatched selector brackets.`;
+  }
+  return undefined;
 }

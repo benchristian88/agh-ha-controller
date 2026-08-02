@@ -19,6 +19,12 @@ composition under `web/src/features/filterlists/`. DNS Blocklists and DNS
 Allowlists use that composition through separate route wrappers, desired-state
 fields, presentation reads, copy, and API flags.
 
+Phase 6 adds the shared `TagMultiSelect` and composes `DataTable`, `Dialog`,
+`ConfirmDialog`, `IdentifierListEditor`, `UpstreamEditor`, the Phase 4
+`ServiceCatalogue`, and `ScheduleEditor` under `web/src/features/clients/`.
+Persistent Clients use that composition for searchable rows and structured
+add/edit/remove draft interactions.
+
 ## Shell
 
 - `AppHeader`

@@ -14,6 +14,7 @@ import (
 
 	"github.com/benchristian88/agh-ha-controller/internal/adguard"
 	"github.com/benchristian88/agh-ha-controller/internal/auth"
+	"github.com/benchristian88/agh-ha-controller/internal/configuration"
 	"github.com/benchristian88/agh-ha-controller/internal/controlplane"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
@@ -25,6 +26,7 @@ type adGuardState struct {
 	userRules       []string
 	blockedServices []string
 	catalogue       []map[string]any
+	clients         []map[string]any
 }
 
 func (s *adGuardState) handler(response http.ResponseWriter, request *http.Request) {
@@ -44,7 +46,7 @@ func (s *adGuardState) handler(response http.ResponseWriter, request *http.Reque
 	case "/control/filtering/status":
 		_ = json.NewEncoder(response).Encode(map[string]any{"enabled": true, "interval": 24, "filters": []any{}, "whitelist_filters": []any{}, "user_rules": s.userRules})
 	case "/control/clients":
-		_, _ = io.WriteString(response, `{"clients":[]}`)
+		_ = json.NewEncoder(response).Encode(map[string]any{"clients": s.clients})
 	case "/control/rewrite/list":
 		_, _ = io.WriteString(response, `[]`)
 	case "/control/blocked_services/all":
@@ -80,6 +82,33 @@ func (s *adGuardState) handler(response http.ResponseWriter, request *http.Reque
 		}
 		_ = json.NewDecoder(request.Body).Decode(&body)
 		s.blockedServices = append([]string(nil), body.IDs...)
+	case "/control/clients/add":
+		var client map[string]any
+		_ = json.NewDecoder(request.Body).Decode(&client)
+		s.clients = append(s.clients, client)
+	case "/control/clients/update":
+		var body struct {
+			Name string         `json:"name"`
+			Data map[string]any `json:"data"`
+		}
+		_ = json.NewDecoder(request.Body).Decode(&body)
+		for index, client := range s.clients {
+			if client["name"] == body.Name {
+				s.clients[index] = body.Data
+				break
+			}
+		}
+	case "/control/clients/delete":
+		var body struct {
+			Name string `json:"name"`
+		}
+		_ = json.NewDecoder(request.Body).Decode(&body)
+		for index, client := range s.clients {
+			if client["name"] == body.Name {
+				s.clients = append(s.clients[:index], s.clients[index+1:]...)
+				break
+			}
+		}
 	default:
 		if request.Method != http.MethodPost && request.Method != http.MethodPut {
 			http.NotFound(response, request)
@@ -87,16 +116,34 @@ func (s *adGuardState) handler(response http.ResponseWriter, request *http.Reque
 	}
 }
 
-func (s *adGuardState) setUpstream(values ...string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.upstreamDNS = append([]string(nil), values...)
-}
-
 func (s *adGuardState) blockedServiceIDs() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]string(nil), s.blockedServices...)
+}
+
+func (s *adGuardState) clientValues() []map[string]any {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	values := make([]map[string]any, len(s.clients))
+	for index, client := range s.clients {
+		values[index] = make(map[string]any, len(client))
+		for key, value := range client {
+			values[index][key] = value
+		}
+	}
+	return values
+}
+
+func (s *adGuardState) setClientFiltering(name string, enabled bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, client := range s.clients {
+		if client["name"] == name {
+			client["filtering_enabled"] = enabled
+			return
+		}
+	}
 }
 
 func TestRelease03AuthoritativeConfigurationWorkflow(t *testing.T) {
@@ -162,6 +209,24 @@ func TestRelease03AuthoritativeConfigurationWorkflow(t *testing.T) {
 	// shared desired state, and save before any revision is published or active.
 	draft.Document.Shared.DNS.UpstreamDNS = []string{"9.9.9.9", "149.112.112.112"}
 	draft.Document.Shared.Services.BlockedServiceIDs = []string{"youtube"}
+	draft.Document.Shared.Clients = []configuration.PersistentClient{{
+		Name:                     "Printer",
+		IDs:                      []string{"192.0.2.10", "printer-client-id"},
+		UseGlobalSettings:        false,
+		FilteringEnabled:         true,
+		ParentalEnabled:          false,
+		SafeBrowsingEnabled:      true,
+		SafeSearch:               configuration.SafeSearch{Enabled: true, Bing: true, DuckDuckGo: false, Ecosia: true, Google: true, Pixabay: true, Yandex: true, YouTube: true},
+		UseGlobalBlockedServices: false,
+		BlockedServices:          []string{"youtube"},
+		BlockedServicesSchedule:  configuration.Schedule{TimeZone: "Local", Days: map[string]configuration.DayRange{}},
+		Upstreams:                []string{"tls://dns.example", "1.1.1.1"},
+		UpstreamsCacheEnabled:    true,
+		UpstreamsCacheSize:       2_097_152,
+		Tags:                     []string{"device_printer", "legacy_tag"},
+		IgnoreQueryLog:           true,
+		IgnoreStatistics:         false,
+	}}
 	draft, issues, err := service.UpdateDraft(ctx, domain.Actor{UserID: setup.User.ID, RequestID: mustID(t)}, cluster.ID, draft.Version, draft.Document)
 	if err != nil || len(issues) != 0 {
 		t.Fatalf("update imported draft issues=%v error=%v", issues, err)
@@ -183,6 +248,14 @@ func TestRelease03AuthoritativeConfigurationWorkflow(t *testing.T) {
 		ids := state.blockedServiceIDs()
 		if len(ids) != 1 || ids[0] != "youtube" {
 			t.Fatalf("node %d blocked services = %#v", index, ids)
+		}
+		clients := state.clientValues()
+		if len(clients) != 1 || clients[0]["name"] != "Printer" || clients[0]["filtering_enabled"] != true || clients[0]["ignore_querylog"] != true || clients[0]["upstreams_cache_size"] != float64(2_097_152) {
+			t.Fatalf("node %d persistent clients = %#v", index, clients)
+		}
+		upstreams, ok := clients[0]["upstreams"].([]any)
+		if !ok || len(upstreams) != 2 || upstreams[0] != "tls://dns.example" || upstreams[1] != "1.1.1.1" {
+			t.Fatalf("node %d client upstream order = %#v", index, clients[0]["upstreams"])
 		}
 	}
 
@@ -206,7 +279,7 @@ func TestRelease03AuthoritativeConfigurationWorkflow(t *testing.T) {
 		t.Fatalf("restore compatible blocked service issues=%v error=%v", issues, err)
 	}
 
-	states[0].setUpstream("8.8.8.8")
+	states[0].setClientFiltering("Printer", false)
 	reconciler := controlplane.NewReconciler(store, service, inventoryService, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err := reconciler.RunOnce(ctx); err != nil {
 		t.Fatal(err)
@@ -224,6 +297,9 @@ func TestRelease03AuthoritativeConfigurationWorkflow(t *testing.T) {
 	drift, err = service.ListDrift(ctx, cluster.ID)
 	if err != nil || drift[0].Status != "resolved" {
 		t.Fatalf("resolved drift = %#v, error=%v", drift, err)
+	}
+	if clients := states[0].clientValues(); len(clients) != 1 || clients[0]["filtering_enabled"] != true {
+		t.Fatalf("client drift did not converge: %#v", clients)
 	}
 
 	draft, err = store.DraftByCluster(ctx, cluster.ID)

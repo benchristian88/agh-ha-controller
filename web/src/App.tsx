@@ -5,6 +5,7 @@ import { AuditPage } from "./features/audit/AuditPage";
 import { LoginPage, SetupPage } from "./features/auth/AuthPages";
 import { BlockedServicesPage } from "./features/blockedservices/BlockedServicesPage";
 import { BlocklistsPage } from "./features/blocklists/BlocklistsPage";
+import { ClientsPage } from "./features/clients/ClientsPage";
 import { ClusterCreate } from "./features/clusters/ClusterCreate";
 import { ConfigurationPage } from "./features/configuration/ConfigurationPage";
 import { ControlPlanePage } from "./features/controlplane/ControlPlanePage";
@@ -184,13 +185,16 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
         content = <AllowlistsPage cluster={selected} />;
         break;
       case "settings":
-        content = (
-          <ManagedSettingsPage
-            cluster={selected}
-            area={route.area}
-            heading={route.heading}
-          />
-        );
+        content =
+          route.area === "clients" ? (
+            <ClientsPage cluster={selected} />
+          ) : (
+            <ManagedSettingsPage
+              cluster={selected}
+              area={route.area}
+              heading={route.heading}
+            />
+          );
         break;
     }
   }
