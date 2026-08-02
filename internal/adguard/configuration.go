@@ -679,7 +679,7 @@ func (r *ConfigurationReader) TestUpstreamDNS(ctx context.Context, request domai
 	}
 	results := make([]operations.ResolverResult, 0, len(input.UpstreamDNS))
 	for index, upstream := range input.UpstreamDNS {
-		value, ok := response[upstream]
+		value, ok := operationalUpstreamStatus(response, upstream)
 		if !ok {
 			return nil, domain.NewError(domain.ErrorNodeResponse, "the node upstream test response omitted a requested resolver")
 		}
@@ -690,6 +690,55 @@ func (r *ConfigurationReader) TestUpstreamDNS(ctx context.Context, request domai
 		results = append(results, result)
 	}
 	return results, nil
+}
+
+func operationalUpstreamStatus(response map[string]string, requested string) (status string, ok bool) {
+	if status, ok = response[requested]; ok {
+		return status, true
+	}
+	canonicalRequested := canonicalOperationalUpstream(requested)
+	for returned, returnedStatus := range response {
+		if canonicalOperationalUpstream(returned) == canonicalRequested {
+			return returnedStatus, true
+		}
+	}
+	return "", false
+}
+
+func canonicalOperationalUpstream(value string) string {
+	value = strings.TrimSpace(value)
+	parsed, err := url.Parse(value)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return value
+	}
+	parsed.Scheme = strings.ToLower(parsed.Scheme)
+	parsed.User = nil
+	hostname := strings.ToLower(parsed.Hostname())
+	port := parsed.Port()
+	if port == defaultUpstreamPort(parsed.Scheme) {
+		port = ""
+	}
+	if strings.Contains(hostname, ":") {
+		hostname = "[" + hostname + "]"
+	}
+	parsed.Host = hostname
+	if port != "" {
+		parsed.Host += ":" + port
+	}
+	return parsed.String()
+}
+
+func defaultUpstreamPort(scheme string) string {
+	switch scheme {
+	case "https", "h3":
+		return "443"
+	case "tls", "quic":
+		return "853"
+	case "tcp", "udp":
+		return "53"
+	default:
+		return ""
+	}
 }
 
 func (r *ConfigurationReader) ClearDNSCache(ctx context.Context, request domain.NodeProbeRequest) error {

@@ -284,7 +284,7 @@ func TestDNSOperationalCommandsMapSafeResultsAndExactPaths(t *testing.T) {
 				t.Fatalf("payload=%#v", payload)
 			}
 			response.Header().Set("Content-Type", "application/json")
-			_, _ = response.Write([]byte(`{"https://user:secret@dns.example/dns-query":"OK","192.0.2.53":"dial detail that must not escape","9.9.9.9":"OK","192.0.2.1":"OK"}`))
+			_, _ = response.Write([]byte(`{"https://user:xxxxx@dns.example:443/dns-query":"OK","192.0.2.53":"dial detail that must not escape","9.9.9.9":"OK","192.0.2.1":"OK"}`))
 		case "/control/cache_clear":
 			response.WriteHeader(http.StatusOK)
 		default:
@@ -311,6 +311,16 @@ func TestDNSOperationalCommandsMapSafeResultsAndExactPaths(t *testing.T) {
 	}
 	if !reflect.DeepEqual(requests, []string{"POST /control/test_upstream_dns", "POST /control/cache_clear"}) {
 		t.Fatalf("requests=%#v", requests)
+	}
+}
+
+func TestOperationalUpstreamStatusMatchesAdGuardCanonicalDoHAddress(t *testing.T) {
+	status, ok := operationalUpstreamStatus(
+		map[string]string{"https://dns10.quad9.net:443/dns-query": "OK"},
+		"https://dns10.quad9.net/dns-query",
+	)
+	if !ok || status != "OK" {
+		t.Fatalf("status=%q ok=%t", status, ok)
 	}
 }
 
