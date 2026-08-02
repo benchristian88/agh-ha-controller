@@ -52,6 +52,26 @@ func TestReadBlocklistsPreservesVolatileMetadataOutsideConfiguration(t *testing.
 	}
 }
 
+func TestReadAllowlistsUsesAllowlistSemanticsWithoutBlocklistContamination(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/control/filtering/status" {
+			http.NotFound(response, request)
+			return
+		}
+		_, _ = response.Write([]byte(`{"filters":[{"id":7,"enabled":true,"url":"https://filters.test/list.txt","name":"Block","rules_count":321},{"id":8,"enabled":true,"url":"https://legacy-allow.test/list.txt","name":"Legacy allow","rules_count":12,"whitelist":true}],"whitelist_filters":[{"id":9,"enabled":false,"url":"https://allow.test/list.txt","name":"Allow","rules_count":22,"last_updated":"2026-08-01T01:02:03Z"}]}`))
+	}))
+	defer server.Close()
+
+	adapter := NewConfigurationReader(NewProbe(2 * time.Second))
+	lists, err := adapter.ReadAllowlists(context.Background(), probeRequest(server.URL), "v0.107.78")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lists) != 2 || lists[0].ID != 8 || lists[1].ID != 9 || lists[1].RulesCount != 22 || lists[1].LastUpdated == nil {
+		t.Fatalf("allowlist metadata was not retained or categories crossed: %#v", lists)
+	}
+}
+
 func TestValidateListenerStatusRejectsIncompleteIdentity(t *testing.T) {
 	for name, status := range map[string]statusResponse{
 		"missing":         {},
@@ -119,6 +139,55 @@ func TestApplyConfigurationUsesSupportedEndpointsAndPreservesWhitelistFilters(t 
 		if payload["url"] == "https://example.test/allow.txt" {
 			t.Fatal("whitelist filter was mutated")
 		}
+	}
+}
+
+func TestAllowlistReconciliationUsesWhitelistFlagAndPreservesBlocklists(t *testing.T) {
+	type recordedRequest struct {
+		path string
+		body map[string]any
+	}
+	requests := []recordedRequest{}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if (request.URL.Path != "/control/filtering/set_url" && request.URL.Path != "/control/filtering/add_url") || request.Method != http.MethodPost {
+			http.NotFound(response, request)
+			return
+		}
+		var body map[string]any
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Errorf("decode set_url request: %v", err)
+			return
+		}
+		requests = append(requests, recordedRequest{path: request.URL.Path, body: body})
+		response.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	current := filterStatusResponse{
+		Filters: []filterListResponse{
+			{Name: "Block", URL: "https://filters.test/list.txt", Enabled: true},
+			{Name: "Legacy allow", URL: "https://allow.test/wanted.txt", Enabled: false, Whitelist: true},
+		},
+		WhitelistFilters: []filterListResponse{{Name: "Old allow", URL: "https://allow.test/old.txt", Enabled: true}},
+	}
+	adapter := NewConfigurationReader(NewProbe(2 * time.Second))
+	if err := adapter.reconcileFilterURLs(context.Background(), probeRequest(server.URL), current, []string{"https://allow.test/wanted.txt", "https://allow.test/new.txt"}, true); err != nil {
+		t.Fatal(err)
+	}
+	if len(requests) != 3 {
+		t.Fatalf("filter URL requests = %d, want enable, add, and disable: %#v", len(requests), requests)
+	}
+	foundAdd := false
+	for _, request := range requests {
+		if request.body["whitelist"] != true || request.body["url"] == "https://filters.test/list.txt" {
+			t.Fatalf("allowlist flag or category isolation failed: %#v", requests)
+		}
+		if request.path == "/control/filtering/add_url" && request.body["url"] == "https://allow.test/new.txt" {
+			foundAdd = true
+		}
+	}
+	if !foundAdd {
+		t.Fatalf("allowlist add_url request missing or incorrect: %#v", requests)
 	}
 }
 

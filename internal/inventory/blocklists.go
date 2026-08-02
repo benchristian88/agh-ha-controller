@@ -25,7 +25,7 @@ type FilterListMetadata struct {
 	Portable    bool       `json:"portable"`
 }
 
-type BlocklistNodePresentation struct {
+type FilterListNodePresentation struct {
 	NodeID    string               `json:"nodeId"`
 	NodeName  string               `json:"nodeName"`
 	Version   string               `json:"version,omitempty"`
@@ -35,20 +35,32 @@ type BlocklistNodePresentation struct {
 	Lists     []FilterListMetadata `json:"lists"`
 }
 
-type BlocklistPresentation struct {
-	Nodes       []BlocklistNodePresentation `json:"nodes"`
-	GeneratedAt time.Time                   `json:"generatedAt"`
-	Stale       bool                        `json:"stale"`
-	Partial     bool                        `json:"partial"`
+type FilterListPresentation struct {
+	Nodes       []FilterListNodePresentation `json:"nodes"`
+	GeneratedAt time.Time                    `json:"generatedAt"`
+	Stale       bool                         `json:"stale"`
+	Partial     bool                         `json:"partial"`
 }
 
-type blocklistCacheEntry struct {
+type BlocklistNodePresentation = FilterListNodePresentation
+type BlocklistPresentation = FilterListPresentation
+type AllowlistPresentation = FilterListPresentation
+
+type filterListCacheEntry struct {
 	key       string
 	lists     []FilterListMetadata
 	fetchedAt time.Time
 }
 
 func (s *Service) BlocklistPresentation(ctx context.Context, clusterID string) (BlocklistPresentation, error) {
+	return s.filterListPresentation(ctx, clusterID, false)
+}
+
+func (s *Service) AllowlistPresentation(ctx context.Context, clusterID string) (AllowlistPresentation, error) {
+	return s.filterListPresentation(ctx, clusterID, true)
+}
+
+func (s *Service) filterListPresentation(ctx context.Context, clusterID string, whitelist bool) (BlocklistPresentation, error) {
 	if !domain.ValidID(clusterID) {
 		return BlocklistPresentation{}, domain.Validation("clusterId", "must be a valid UUID")
 	}
@@ -80,7 +92,7 @@ func (s *Service) BlocklistPresentation(ctx context.Context, clusterID string) (
 		wait.Add(1)
 		go func() {
 			defer wait.Done()
-			result.Nodes[index] = s.blocklistPresentationForNode(ctx, node, profilesByNode[node.ID])
+			result.Nodes[index] = s.filterListPresentationForNode(ctx, node, profilesByNode[node.ID], whitelist)
 		}()
 	}
 	wait.Wait()
@@ -95,24 +107,36 @@ func (s *Service) BlocklistPresentation(ctx context.Context, clusterID string) (
 	return result, nil
 }
 
-func (s *Service) blocklistPresentationForNode(ctx context.Context, node domain.Node, profile CapabilityProfile) BlocklistNodePresentation {
+func (s *Service) filterListPresentationForNode(ctx context.Context, node domain.Node, profile CapabilityProfile, whitelist bool) BlocklistNodePresentation {
 	result := BlocklistNodePresentation{NodeID: node.ID, NodeName: node.Name, Version: node.Version, Status: "error", Lists: []FilterListMetadata{}}
-	reader, ok := s.reader.(BlocklistReader)
-	if !ok {
-		result.Status, result.ErrorCode = "unsupported", "CAPABILITY_UNAVAILABLE"
-		return result
+	var read func(context.Context, domain.NodeProbeRequest, string) ([]FilterListMetadata, error)
+	if whitelist {
+		reader, ok := s.reader.(AllowlistReader)
+		if !ok {
+			result.Status, result.ErrorCode = "unsupported", "CAPABILITY_UNAVAILABLE"
+			return result
+		}
+		read = reader.ReadAllowlists
+	} else {
+		reader, ok := s.reader.(BlocklistReader)
+		if !ok {
+			result.Status, result.ErrorCode = "unsupported", "CAPABILITY_UNAVAILABLE"
+			return result
+		}
+		read = reader.ReadBlocklists
 	}
 	key := fmt.Sprintf("%s|%s|%s|%d|%t", node.Version, profile.ProductVersion, profile.Compatibility, profile.SchemaVersion, profile.Features["filtering"])
+	cacheKey := fmt.Sprintf("%s|%t", node.ID, whitelist)
 	now := s.now().UTC()
-	s.blocklistMu.Lock()
-	cached, cachedOK := s.blocklists[node.ID]
-	if cachedOK && cached.key == key && now.Sub(cached.fetchedAt) < s.blocklistTTL {
-		s.blocklistMu.Unlock()
+	s.filterListMu.Lock()
+	cached, cachedOK := s.filterLists[cacheKey]
+	if cachedOK && cached.key == key && now.Sub(cached.fetchedAt) < s.filterListTTL {
+		s.filterListMu.Unlock()
 		result.Status, result.FetchedAt = "available", timePointer(cached.fetchedAt)
 		result.Lists = cloneFilterLists(cached.lists)
 		return result
 	}
-	s.blocklistMu.Unlock()
+	s.filterListMu.Unlock()
 
 	record, err := s.repository.NodeRecordByID(ctx, node.ID)
 	if err != nil {
@@ -125,7 +149,7 @@ func (s *Service) blocklistPresentationForNode(ctx context.Context, node domain.
 		return staleBlocklistResult(result, cached, cachedOK && cached.key == key)
 	}
 	request := domain.NodeProbeRequest{BaseURL: record.Node.BaseURL, CertificatePolicy: record.Node.CertificatePolicy, CustomCAPEM: record.Secrets.CustomCAPEM, Credentials: credentials}
-	lists, err := reader.ReadBlocklists(ctx, request, node.Version)
+	lists, err := read(ctx, request, node.Version)
 	if err != nil {
 		result.ErrorCode = errorCode(err)
 		if result.ErrorCode == string(domain.ErrorCapability) {
@@ -134,15 +158,15 @@ func (s *Service) blocklistPresentationForNode(ctx context.Context, node domain.
 		return staleBlocklistResult(result, cached, cachedOK && cached.key == key)
 	}
 	lists = canonicalFilterLists(lists)
-	entry := blocklistCacheEntry{key: key, lists: cloneFilterLists(lists), fetchedAt: now}
-	s.blocklistMu.Lock()
-	s.blocklists[node.ID] = entry
-	s.blocklistMu.Unlock()
+	entry := filterListCacheEntry{key: key, lists: cloneFilterLists(lists), fetchedAt: now}
+	s.filterListMu.Lock()
+	s.filterLists[cacheKey] = entry
+	s.filterListMu.Unlock()
 	result.Status, result.FetchedAt, result.Lists = "available", timePointer(now), lists
 	return result
 }
 
-func staleBlocklistResult(result BlocklistNodePresentation, cached blocklistCacheEntry, usable bool) BlocklistNodePresentation {
+func staleBlocklistResult(result BlocklistNodePresentation, cached filterListCacheEntry, usable bool) BlocklistNodePresentation {
 	if !usable {
 		return result
 	}

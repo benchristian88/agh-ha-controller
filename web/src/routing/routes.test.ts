@@ -44,4 +44,10 @@ describe("route migration", () => {
       kind: "blocklists",
     });
   });
+
+  it("resolves DNS Allowlists to its dedicated feature page", () => {
+    expect(resolveRoute("/filters/allowlists")).toEqual({
+      kind: "allowlists",
+    });
+  });
 });

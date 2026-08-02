@@ -71,28 +71,32 @@ type BlocklistReader interface {
 	ReadBlocklists(context.Context, domain.NodeProbeRequest, string) ([]FilterListMetadata, error)
 }
 
+type AllowlistReader interface {
+	ReadAllowlists(context.Context, domain.NodeProbeRequest, string) ([]FilterListMetadata, error)
+}
+
 type CredentialProtector interface {
 	Decrypt(string, domain.EncryptedCredentials) (domain.NodeCredentials, error)
 }
 
 type Service struct {
-	repository   Repository
-	credentials  CredentialProtector
-	reader       Reader
-	now          func() time.Time
-	catalogueTTL time.Duration
-	catalogueMu  sync.Mutex
-	catalogues   map[string]catalogueCacheEntry
-	blocklistTTL time.Duration
-	blocklistMu  sync.Mutex
-	blocklists   map[string]blocklistCacheEntry
+	repository    Repository
+	credentials   CredentialProtector
+	reader        Reader
+	now           func() time.Time
+	catalogueTTL  time.Duration
+	catalogueMu   sync.Mutex
+	catalogues    map[string]catalogueCacheEntry
+	filterListTTL time.Duration
+	filterListMu  sync.Mutex
+	filterLists   map[string]filterListCacheEntry
 }
 
 func NewService(repository Repository, credentials CredentialProtector, reader Reader) *Service {
 	return &Service{
 		repository: repository, credentials: credentials, reader: reader, now: time.Now,
 		catalogueTTL: 15 * time.Minute, catalogues: map[string]catalogueCacheEntry{},
-		blocklistTTL: 0, blocklists: map[string]blocklistCacheEntry{},
+		filterListTTL: 0, filterLists: map[string]filterListCacheEntry{},
 	}
 }
 

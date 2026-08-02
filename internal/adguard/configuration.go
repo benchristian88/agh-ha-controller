@@ -335,23 +335,36 @@ func (r *ConfigurationReader) ReadBlockedServicesCatalogue(ctx context.Context, 
 }
 
 func (r *ConfigurationReader) ReadBlocklists(ctx context.Context, request domain.NodeProbeRequest, version string) ([]inventory.FilterListMetadata, error) {
+	return r.readFilterLists(ctx, request, version, false)
+}
+
+func (r *ConfigurationReader) ReadAllowlists(ctx context.Context, request domain.NodeProbeRequest, version string) ([]inventory.FilterListMetadata, error) {
+	return r.readFilterLists(ctx, request, version, true)
+}
+
+func (r *ConfigurationReader) readFilterLists(ctx context.Context, request domain.NodeProbeRequest, version string, whitelist bool) ([]inventory.FilterListMetadata, error) {
 	if ConfigurationCompatibility(version) != domain.CompatibilitySupported {
-		return nil, domain.NewError(domain.ErrorCapability, "the node version is not supported for blocklist presentation")
+		return nil, domain.NewError(domain.ErrorCapability, "the node version is not supported for filter-list presentation")
 	}
 	var response filterStatusResponse
 	if err := r.get(ctx, request, "/control/filtering/status", &response); err != nil {
 		return nil, err
 	}
-	result := make([]inventory.FilterListMetadata, 0, len(response.Filters))
-	for _, filter := range response.Filters {
-		if filter.Whitelist {
+	filters := append([]filterListResponse(nil), response.Filters...)
+	for _, filter := range response.WhitelistFilters {
+		filter.Whitelist = true
+		filters = append(filters, filter)
+	}
+	result := make([]inventory.FilterListMetadata, 0, len(filters))
+	for _, filter := range filters {
+		if filter.Whitelist != whitelist {
 			continue
 		}
 		item := inventory.FilterListMetadata{ID: filter.ID, URL: filter.URL, Name: filter.Name, Enabled: filter.Enabled, RulesCount: filter.RulesCount}
 		if strings.TrimSpace(filter.LastUpdated) != "" {
 			updated, err := time.Parse(time.RFC3339, filter.LastUpdated)
 			if err != nil {
-				return nil, domain.NewError(domain.ErrorNodeResponse, "the node returned an invalid blocklist update time")
+				return nil, domain.NewError(domain.ErrorNodeResponse, "the node returned an invalid filter-list update time")
 			}
 			updated = updated.UTC()
 			item.LastUpdated = &updated

@@ -172,15 +172,7 @@ export function ManagedSettingsPage({
           )}
           {area === "dns" && <DNSForm draft={draft} setDraft={setDraft} />}
           {area === "filters" && (
-            <FiltersForm
-              draft={draft}
-              setDraft={setDraft}
-              nodes={nodes}
-              busy={busy}
-              setBusy={setBusy}
-              setError={setError}
-              setMessage={setMessage}
-            />
+            <FiltersForm draft={draft} setDraft={setDraft} />
           )}
           {area === "clients" && (
             <ClientsForm draft={draft} setDraft={setDraft} />
@@ -421,21 +413,7 @@ function DNSForm({ draft, setDraft }: DraftProps) {
   );
 }
 
-function FiltersForm({
-  draft,
-  setDraft,
-  nodes,
-  busy,
-  setBusy,
-  setError,
-  setMessage,
-}: DraftProps & {
-  nodes: Node[];
-  busy: string;
-  setBusy: (value: string) => void;
-  setError: (value: unknown) => void;
-  setMessage: (value: string) => void;
-}) {
+function FiltersForm({ draft, setDraft }: DraftProps) {
   const filtering = draft.document.shared.filtering;
   const update = (patch: Partial<typeof filtering>) =>
     setDraft({
@@ -448,49 +426,14 @@ function FiltersForm({
         },
       },
     });
-  async function refresh(whitelist: boolean) {
-    const targets = nodes.filter(
-      (node) => node.enabled && !node.maintenanceMode,
-    );
-    if (
-      !window.confirm(
-        `Refresh ${whitelist ? "allowlist" : "blocklist"} subscriptions on ${targets.length} node(s)?`,
-      )
-    )
-      return;
-    setBusy(whitelist ? "refresh-allow" : "refresh-block");
-    setMessage("");
-    try {
-      const results = await Promise.allSettled(
-        targets.map((node) => api.refreshFilters(node.id, whitelist)),
-      );
-      const failed = results
-        .map((result, index) =>
-          result.status === "rejected"
-            ? (targets[index]?.name ?? "Unknown node")
-            : "",
-        )
-        .filter(Boolean);
-      const succeeded = results.length - failed.length;
-      setMessage(
-        `Refresh succeeded on ${succeeded} of ${targets.length} node(s).`,
-      );
-      if (failed.length > 0) {
-        setError(
-          new Error(
-            `Refresh failed on: ${failed.join(", ")}. Each result was audited.`,
-          ),
-        );
-      } else {
-        setError(undefined);
-      }
-    } finally {
-      setBusy("");
-    }
-  }
   return (
     <div className="card form-stack">
       <h2>Filtering policy</h2>
+      <div className="notice notice--info">
+        DNS subscriptions are managed on the separate{" "}
+        <a href="/filters/blocklists">Blocklists</a> and{" "}
+        <a href="/filters/allowlists">Allowlists</a> pages.
+      </div>
       <div className="form-grid">
         <Check
           label="Filtering enabled"
@@ -502,18 +445,6 @@ function FiltersForm({
           value={filtering.updateIntervalHours}
           onChange={(value) => update({ updateIntervalHours: value })}
         />
-        <TextLines
-          label="Blocklist subscriptions"
-          value={filtering.filterUrls}
-          onChange={(value) => update({ filterUrls: value })}
-          rows={7}
-        />
-        <TextLines
-          label="Allowlist subscriptions"
-          value={filtering.whitelistUrls}
-          onChange={(value) => update({ whitelistUrls: value })}
-          rows={7}
-        />
       </div>
       <TextLines
         label="Custom filtering rules (ordered)"
@@ -521,24 +452,6 @@ function FiltersForm({
         onChange={(value) => update({ userRules: value })}
         rows={12}
       />
-      <div className="row-actions row-actions--start">
-        <button
-          className="button button--secondary"
-          type="button"
-          disabled={busy !== ""}
-          onClick={() => void refresh(false)}
-        >
-          Refresh blocklists
-        </button>
-        <button
-          className="button button--secondary"
-          type="button"
-          disabled={busy !== ""}
-          onClick={() => void refresh(true)}
-        >
-          Refresh allowlists
-        </button>
-      </div>
     </div>
   );
 }

@@ -13,6 +13,12 @@ composition under `web/src/features/blockedservices/`. The selector consumes
 controller presentation metadata and is structured for later Clients reuse;
 Clients are not migrated in Phase 4.
 
+Phase 5 establishes the shared `FilterListTable`, filter-list projection, URL
+editor, disable-oriented confirmation, per-node results, and refresh-command
+composition under `web/src/features/filterlists/`. DNS Blocklists and DNS
+Allowlists use that composition through separate route wrappers, desired-state
+fields, presentation reads, copy, and API flags.
+
 ## Shell
 
 - `AppHeader`

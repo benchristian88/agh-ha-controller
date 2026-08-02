@@ -1,4 +1,5 @@
 import type {
+  AllowlistPresentation,
   ApiErrorBody,
   AuditEvent,
   AuthResponse,
@@ -188,6 +189,10 @@ export const api = {
   blocklistPresentation: (clusterId: string) =>
     request<BlocklistPresentation>(
       `/api/v1/clusters/${clusterId}/blocklists/presentation`,
+    ),
+  allowlistPresentation: (clusterId: string) =>
+    request<AllowlistPresentation>(
+      `/api/v1/clusters/${clusterId}/allowlists/presentation`,
     ),
   compareConfigurations: (leftSnapshotId: string, rightSnapshotId: string) =>
     request<{ equal: boolean; differences: ConfigurationDifference[] }>(

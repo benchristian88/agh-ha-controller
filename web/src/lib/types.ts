@@ -225,7 +225,7 @@ export interface FilterListMetadata {
   lastUpdated?: string;
   portable: boolean;
 }
-export interface BlocklistPresentationNode {
+export interface FilterListPresentationNode {
   nodeId: string;
   nodeName: string;
   version?: string;
@@ -234,12 +234,14 @@ export interface BlocklistPresentationNode {
   errorCode?: string;
   lists: FilterListMetadata[];
 }
-export interface BlocklistPresentation {
-  nodes: BlocklistPresentationNode[];
+export interface FilterListPresentation {
+  nodes: FilterListPresentationNode[];
   generatedAt: string;
   stale: boolean;
   partial: boolean;
 }
+export type BlocklistPresentation = FilterListPresentation;
+export type AllowlistPresentation = FilterListPresentation;
 export interface QueryLogPolicy {
   enabled: boolean;
   intervalMillis: number;

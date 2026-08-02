@@ -8,6 +8,7 @@ export type RouteResolution =
   | { kind: "history" }
   | { kind: "blocked-services" }
   | { kind: "blocklists" }
+  | { kind: "allowlists" }
   | {
       kind: "settings";
       area: SettingsArea;
@@ -92,13 +93,6 @@ const settingsRoutes: Readonly<
       "Guarded node-specific DHCP configuration with a single active node.",
     ],
   },
-  "/filters/allowlists": {
-    area: "filters",
-    heading: [
-      "DNS allowlists",
-      "Cluster-wide allowlist subscriptions and audited refresh operations.",
-    ],
-  },
   "/filters/rewrites": {
     area: "rewrites",
     heading: [
@@ -156,6 +150,8 @@ export function resolveRoute(pathname: string): RouteResolution {
       return { kind: "history" };
     case "/filters/blocklists":
       return { kind: "blocklists" };
+    case "/filters/allowlists":
+      return { kind: "allowlists" };
     case "/filters/blocked-services":
       return { kind: "blocked-services" };
     case "/system/audit":

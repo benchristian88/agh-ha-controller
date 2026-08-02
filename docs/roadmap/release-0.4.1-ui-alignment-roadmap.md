@@ -98,14 +98,17 @@ This is the clearest example of transport-oriented UI that must become product-o
 
 ## Phase 5 — Filter subscriptions
 
-Phase 5A (DNS Blocklists presentation) was implemented on 1 August 2026.
+Phase 5A (DNS Blocklists presentation) was implemented on 1 August 2026 and
+Phase 5B (DNS Allowlists presentation) on 2 August 2026.
 Existing desired URL membership, add/enable/disable reconciliation, read-back
 verification, and drift behavior are unchanged. Node-reported names, IDs, rule
 counts, and timestamps are exposed through a read-only controller presentation
 DTO and remain outside configuration hashes. Refresh all retains the existing
 audited fleet operation. Selected-row refresh is visibly unavailable because
 the supported AdGuard Home request selects only blocklists versus allowlists,
-not URLs or filter IDs. Allowlists remain assigned to the later Phase 5 slice.
+not URLs or filter IDs. Both routes now use the shared filter-list table and
+dialog composition while preserving separate desired arrays, copy, controller
+presentation routes, API flags, and reconciliation semantics.
 
 ### Deliverables
 

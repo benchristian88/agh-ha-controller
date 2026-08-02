@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { EmptyState, ErrorState, Loading } from "./components/Feedback";
+import { AllowlistsPage } from "./features/allowlists/AllowlistsPage";
 import { AuditPage } from "./features/audit/AuditPage";
 import { LoginPage, SetupPage } from "./features/auth/AuthPages";
 import { BlockedServicesPage } from "./features/blockedservices/BlockedServicesPage";
@@ -178,6 +179,9 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
         break;
       case "blocklists":
         content = <BlocklistsPage cluster={selected} />;
+        break;
+      case "allowlists":
+        content = <AllowlistsPage cluster={selected} />;
         break;
       case "settings":
         content = (

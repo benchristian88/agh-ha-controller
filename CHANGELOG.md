@@ -8,6 +8,8 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Added
 
+- Release 0.4.1 Phase 5B dedicated DNS Allowlists page, shared Blocklist/Allowlist table and dialog composition, observed-only rule-count/freshness and per-node application metadata, safer removal confirmation, and audited refresh-all partial results using allowlist semantics.
+- Authenticated `GET /api/v1/clusters/{clusterId}/allowlists/presentation` endpoint with category-separated stale caching and safe node-attributed metadata.
 - Release 0.4.1 Phase 4 Blocked Services page with a controller-mediated, version-aware per-node catalogue; searchable grouped service selection; compatibility warnings; selected counts and group actions; shared schedule editing; and publication/deployment preflight for unsupported IDs.
 - Authenticated `GET /api/v1/clusters/{clusterId}/blocked-services/catalogue` observed-metadata endpoint with bounded per-version caching, stale/partial node results, and safe metadata redaction.
 - Canonical configuration schema v2 covering broader DNS behavior, blocklists and allowlists, persistent clients, DNS rewrites, blocked-service schedules, safety services, Safe Search, query-log policy, statistics policy, redacted TLS inventory, and node-specific DHCP configuration/static leases.
