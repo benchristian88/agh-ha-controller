@@ -32,15 +32,21 @@ func TestDHCPOperationResultPersistsAndDeduplicates(t *testing.T) {
 	now := time.Date(2026, time.August, 2, 2, 3, 4, 0, time.UTC)
 	if _, err := store.Pool().Exec(ctx, `
 		INSERT INTO users (id,email,display_name,password_hash,role,enabled,created_at,updated_at)
-		VALUES ($1,'operator@example.test','Operator','hash','administrator',true,$4,$4);
+		VALUES ($1,'operator@example.test','Operator','hash','administrator',true,$2,$2)`, userID, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Pool().Exec(ctx, `
 		INSERT INTO clusters (id,name,description,created_at,updated_at)
-		VALUES ($2,'Home','',$4,$4);
+		VALUES ($1,'Home','',$2,$2)`, clusterID, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Pool().Exec(ctx, `
 		INSERT INTO nodes
 			(id,cluster_id,name,base_url,encrypted_credentials,credential_nonce,
 			 credential_key_version,credential_algorithm,certificate_policy,enabled,
 			 created_at,updated_at)
-		VALUES ($3,$2,'Primary','http://node.test',$5,$6,1,'AES-256-GCM','insecure_http',true,$4,$4)`,
-		userID, clusterID, nodeID, now, []byte("ciphertext"), []byte("nonce")); err != nil {
+		VALUES ($1,$2,'Primary','http://node.test',$4,$5,1,'AES-256-GCM','insecure_http',true,$3,$3)`,
+		nodeID, clusterID, now, []byte("ciphertext"), []byte("nonce")); err != nil {
 		t.Fatal(err)
 	}
 	operation := inventory.DHCPOperation{
@@ -159,9 +165,12 @@ func TestDNSOperationsAreNodeAttributedIdempotentAndDoNotChangeDesiredState(t *t
 	now := time.Date(2026, time.August, 2, 5, 0, 0, 0, time.UTC)
 	if _, err := store.Pool().Exec(ctx, `
 		INSERT INTO users (id,email,display_name,password_hash,role,enabled,created_at,updated_at)
-		VALUES ($1,'dns-operator@example.test','DNS Operator','hash','administrator',true,$5,$5);
+		VALUES ($1,'dns-operator@example.test','DNS Operator','hash','administrator',true,$2,$2)`, userID, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Pool().Exec(ctx, `
 		INSERT INTO clusters (id,name,description,created_at,updated_at)
-		VALUES ($2,'DNS Operations','',$5,$5)`, userID, clusterID, nodeAID, nodeBID, now); err != nil {
+		VALUES ($1,'DNS Operations','',$2,$2)`, clusterID, now); err != nil {
 		t.Fatal(err)
 	}
 	for _, node := range []struct{ id, name, endpoint string }{{nodeAID, "Primary", nodeA.URL}, {nodeBID, "Secondary", nodeB.URL}} {
@@ -174,11 +183,15 @@ func TestDNSOperationsAreNodeAttributedIdempotentAndDoNotChangeDesiredState(t *t
 				(id,cluster_id,name,base_url,encrypted_credentials,credential_nonce,
 				 credential_key_version,credential_algorithm,certificate_policy,enabled,
 				 version,compatibility_status,created_at,updated_at)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'insecure_http',true,'v0.107.78','supported',$9,$9);
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'insecure_http',true,'v0.107.78','supported',$9,$9)`,
+			node.id, clusterID, node.name, node.endpoint, encrypted.Ciphertext, encrypted.Nonce, encrypted.KeyVersion, encrypted.Algorithm, now); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := store.Pool().Exec(ctx, `
 			INSERT INTO node_capability_profiles
 				(node_id,product_version,api_compatibility,schema_version,features_json,warnings_json,refreshed_at)
-			VALUES ($1,'v0.107.78','supported',2,'{"test_upstream_dns":true,"test_host_filtering":true,"test_host_filtering_context":true,"cache_clear":true,"querylog_clear":true,"stats_reset":true}','[]',$9)`,
-			node.id, clusterID, node.name, node.endpoint, encrypted.Ciphertext, encrypted.Nonce, encrypted.KeyVersion, encrypted.Algorithm, now); err != nil {
+			VALUES ($1,'v0.107.78','supported',2,'{"test_upstream_dns":true,"test_host_filtering":true,"test_host_filtering_context":true,"cache_clear":true,"querylog_clear":true,"stats_reset":true}','[]',$2)`,
+			node.id, now); err != nil {
 			t.Fatal(err)
 		}
 	}
