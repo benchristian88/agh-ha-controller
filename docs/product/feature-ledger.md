@@ -49,25 +49,59 @@ Operator validation completed on 30 July 2026 for Releases 0.2, 0.2.1, and 0.2.2
 
 | Feature | Status | Implementation and evidence | Remaining release validation |
 |---|---|---|---|
-| Authoritative desired draft | Implemented | Separate schema-v1 `DesiredDocument`, shared policy plus UUID-keyed node overrides, optimistic save/validation, migrated 0.2 imports; PostgreSQL workflow covers multi-node re-import followed by shared-state save | PostgreSQL upgrade test in an environment with `TEST_DATABASE_URL` |
-| Listener identity inventory | Implemented; 0.3.0 regression fixed | `/control/status` `dns_addresses`/`dns_port` mapping, invalid-observation failure, incomplete legacy-import rejection, supported-version contract fixtures, named UI recovery guidance | Reference-node refresh/re-import smoke test |
-| Immutable revisions | Implemented | Numbered per-cluster revisions, canonical hashes, summaries, base revision, list/detail/semantic comparison API and UI | Real PostgreSQL integration workflow |
-| Safe sequential deployment | Implemented | Durable deployment/tasks, full-target preflight, stop-on-first-failure, safe cancellation, restart interruption, per-node safe result | Stateful two-node integration test added; reference-node run pending |
-| AdGuard configuration writer | Implemented; schema-v1 narrow | Supported DNS/filtering HTTP endpoints, Basic auth/TLS reuse, blocklist reconciliation, whitelist preservation, safe error mapping; loopback contract passes | Real supported-version write check |
-| Read-back convergence | Implemented | Fresh observation after each write, semantic verification snapshot, applied revision/hash, active revision only after full success | Reference two-node verification |
-| Rollback | Implemented | Explicit confirmed deployment of a historical immutable revision with linkage and audit | Integration test added; real PostgreSQL execution pending |
-| Drift lifecycle | Implemented | Periodic fresh observation, fingerprint deduplication, structured values, detection/resolution audit, node convergence state | Integration test added; long-running soak pending |
-| Reconciliation policies | Implemented | Manual default, Alert no-mutation state, Enforce targeted durable restore with later retry after fresh observation | Enforce integration path added; reference-node exercise pending |
-| Maintenance mode | Implemented | Optimistic audited node state, mutation exclusion, visible convergence/drift maintenance state, UI action | Browser and reference-node exercise |
-| Release 0.3 UI/API | Implemented | Draft editor, validation, revisions, deploy/rollback, deployment timeline/cancel, drift restore/adopt/maintenance, policy control | Packaged browser accessibility and visual smoke test |
+| Authoritative desired draft | Implemented and validated | Separate schema-v1 `DesiredDocument`, shared policy plus UUID-keyed node overrides, optimistic save/validation, migrated 0.2 imports; PostgreSQL workflow covers multi-node re-import followed by shared-state save | Completed 30 July 2026 |
+| Listener identity inventory | Implemented and validated; 0.3.0 regression fixed | `/control/status` `dns_addresses`/`dns_port` mapping, invalid-observation failure, incomplete legacy-import rejection, supported-version contract fixtures, named UI recovery guidance | Completed 30 July 2026 |
+| Immutable revisions | Implemented and validated | Numbered per-cluster revisions, canonical hashes, summaries, base revision, list/detail/semantic comparison API and UI | Completed 30 July 2026 |
+| Safe sequential deployment | Implemented and validated | Durable deployment/tasks, full-target preflight, stop-on-first-failure, safe cancellation, restart interruption, per-node safe result | Completed 30 July 2026 |
+| AdGuard configuration writer | Implemented and validated; schema-v1 narrow | Supported DNS/filtering HTTP endpoints, Basic auth/TLS reuse, blocklist reconciliation, whitelist preservation, safe error mapping; loopback contract passes | Completed 30 July 2026 |
+| Read-back convergence | Implemented and validated | Fresh observation after each write, semantic verification snapshot, applied revision/hash, active revision only after full success | Completed 30 July 2026 |
+| Rollback | Implemented and validated | Explicit confirmed deployment of a historical immutable revision with linkage and audit | Completed 30 July 2026 |
+| Drift lifecycle | Implemented and validated | Periodic fresh observation, fingerprint deduplication, structured values, detection/resolution audit, node convergence state | Completed 30 July 2026 |
+| Reconciliation policies | Implemented and validated | Manual default, Alert no-mutation state, Enforce targeted durable restore with later retry after fresh observation | Completed 30 July 2026 |
+| Maintenance mode | Implemented and validated | Optimistic audited node state, mutation exclusion, visible convergence/drift maintenance state, UI action | Completed 30 July 2026 |
+| Release 0.3 UI/API | Implemented and validated | Draft editor, validation, revisions, deploy/rollback, deployment timeline/cancel, drift restore/adopt/maintenance, policy control | Completed 30 July 2026 |
 
-The full Go race suite (including the AdGuard HTTP writer contract), frontend type/lint/tests/build, Go vet/build, and production dependency audit pass locally. The Release 0.3 PostgreSQL integration test is present and compiles but is skipped without `TEST_DATABASE_URL`; PostgreSQL is unavailable in the current environment. The release gate therefore remains pending rather than being marked complete.
+The operator completed Release 0.3 functional, PostgreSQL, Docker, and systemd validation on 30 July 2026. Historical pending evidence is retained in the roadmap; the release and its patch lines are complete.
+
+## Release 0.4 broader AdGuard Home coverage
+
+| Feature | Status | Implementation and evidence | Remaining release validation |
+|---|---|---|---|
+| Canonical schema v2 | Implemented; automated checks pass | Broader shared policy, node DHCP overrides, redacted observations, deterministic canonicalisation/diff/validation, frozen-v1 projection | Upgrade/reference-node workflow |
+| Compatibility and capabilities | Implemented | v0.107.52 legacy v1; explicit v0.107.53–v0.107.78 v2 range; patch-level cache/timeout/filter/rewrite/ignore flags plus Ecosia/DHCP fleet preflight | Real supported-version matrix |
+| DNS, filtering, and refresh | Implemented | Full supported DNS payload; separate blocklist/allowlist reconciliation and dedicated routes using one shared desired/observed table/dialog composition; node metadata remains outside desired hashes; disable-oriented removal wording; audited per-node refresh with fleet partial results | Real list refresh/write-back |
+| Persistent clients and rewrites | Implemented | Set reconciliation; complete client safety/blocked-service schedule/upstream-cache preservation; searchable client and rewrite tables with focused dialogs; rewrite contract validation/type inference, capability warning, confirmed draft-only delete, and row convergence state; two-node fixture carries rewrites through verified deployment and direct-change drift restoration | Browser and real-node workflow; PostgreSQL-backed fixture requires `TEST_DATABASE_URL` |
+| Services and safety | Implemented | Blocked IDs/schedules, Safe Browsing, parental control, Safe Search engine policy | Real-node workflow |
+| Query-log/statistics policy | Implemented | Node-local enablement, retention, ignore/anonymization policy via supported PUT APIs | Real-node workflow; ingestion deliberately later |
+| TLS modelling | Implemented; mutation deferred | Public status/certificate metadata only; secret fields have no domain/API representation | Redaction scan against a real node |
+| DHCP management | Implemented; Phase 8B destructive operations complete | Inventory, dynamic observed leases, node-specific config/static leases, single-active validation, disable-before-enable ordering, idempotent reconciliation, controller-mediated interface discovery, audited non-mutating active-DHCP checks, and separate maintenance-guarded reset-leases/reset-configuration commands with durable per-node results, audit references, idempotency, and post-command observation | Controlled-network handoff/reset exercise and packaged retry of the reported disabled-node case |
+| Release 0.4 UI | Superseded by Release 0.4.1 presentation | The schema-v2 feature behavior remains implemented, but the sidebar-era presentation and broad route descriptions are historical | See Release 0.4.1 UI alignment below |
+| Migration and history compatibility | Implemented | `000004` permits v1/v2 without rewriting immutable data; historical execution projects observations; PostgreSQL integration tests compile | PostgreSQL 0.3-to-0.4 upgrade run (`TEST_DATABASE_URL` was unavailable locally) |
+
+Local Go race/vet/build and frontend type/test/lint/build checks passed on 30 July 2026; the production dependency audit reported zero vulnerabilities. Exact results and unavailable Docker/PostgreSQL environment gates are recorded in `docs/development/testing.md`. Release 0.4 remains implemented rather than complete until the remaining reference environment gates above pass.
+
+## Release 0.4.1 UI alignment and hardening
+
+| Feature | Status | Implementation and evidence | Remaining release validation |
+|---|---|---|---|
+| Canonical routing and compatibility | Implemented and locally validated | Exact canonical route table, preserved legacy redirects, trailing-slash normalization, explicit planned states, Not Found, active parent state, and route-focused Deployments/Drift | Packaged browser smoke |
+| Navigation and global context | Implemented and locally validated | Horizontal desktop groups, matching mobile drawer, cluster/scope/revision/health/deployment context, unavailable state, keyboard coverage, and 320–1440px captures | Packaged authenticated browser workflow |
+| Operator-facing feature presentation | Implemented | Configuration Control plus Blocked Services, subscriptions, clients, rewrites, DHCP, General, DNS, Custom Rules, and dedicated redacted Encryption pages use the shared primitives and retain Save Draft/Publish/Deploy separation | Supported real-node workflow |
+| Accessibility and visual baselines | Locally validated | Axe WCAG A/AA structural checks, keyboard/dialog focus regressions, contrast-checked semantic tokens, light/dark screenshots at 320, 768, 1199, 1200, and 1440px, plus mobile drawer | External assistive-technology/browser audit |
+| Regression and cleanup | Locally validated | 191 frontend tests, full uncached Go race suite, vet, native production build, zero production dependency vulnerabilities, no browser `/control/` calls; obsolete broad editor removed | PostgreSQL-backed workflow requires `TEST_DATABASE_URL` |
+| Release 0.4.1 packaging and upgrade | Partially validated | All source-build defaults agree on 0.4.1; controller/migrator/web build and installer syntax pass; append-only migrations unchanged | Docker/systemd clean install, 0.4 upgrade, restart persistence, and live log scan unavailable on this host |
+
+The complete Phase 10 evidence, route table, deletion inventory, and known
+issues are in
+`docs/development/release-0.4.1-phase-10-regression-report.md`. Statistics
+aggregation and combined Query Log ingestion remain Releases 0.5 and 0.6 and
+are not classified as implemented here.
 
 ## Deliberately deferred
 
 - Field-level drift ignore rules, selectable partial-deployment recovery, parallel/rolling strategies, scheduled maintenance windows, and intra-mutation automatic retries: later operational work.
-- Broader AdGuard Home clients, rewrites, service controls, TLS, DHCP, and whitelist authoring: Release 0.4 or later.
-- Statistics and query logs: Releases 0.5 and 0.6.
+- TLS certificate/key mutation: deferred pending controller-managed secret references; 0.4 provides redacted modelling only.
+- Statistics and query-log ingestion: Releases 0.5 and 0.6; their node-local settings are managed in 0.4.
 - Additional local-user management, password change/recovery, durable or distributed login throttling, OIDC, and RBAC: follow-on security scope.
 - Automated backup/restore tooling and an audit export: later operational releases; the supported recovery path remains manual.
 - Proxmox community installer, signed/prebuilt artifacts, and automated upgrade/rollback remain later release work.

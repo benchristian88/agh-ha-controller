@@ -1,7 +1,10 @@
 import type {
+  AllowlistPresentation,
   ApiErrorBody,
   AuditEvent,
   AuthResponse,
+  BlockedServicesCatalogue,
+  BlocklistPresentation,
   CapabilityProfile,
   CertificatePolicy,
   Cluster,
@@ -12,8 +15,13 @@ import type {
   Deployment,
   DeploymentPreview,
   DesiredConfigurationDocument,
+  DhcpActiveCheckResult,
+  DhcpInterfaces,
+  DhcpOperation,
+  DNSOperationalCommand,
   DriftEvent,
   Node,
+  OperationalTarget,
   ValidationIssue,
 } from "./types";
 
@@ -162,6 +170,131 @@ export const api = {
       method: "POST",
       body: "{}",
     }),
+  refreshFilters: (nodeId: string, whitelist: boolean) =>
+    request<{ nodeId: string; whitelist: boolean; status: "succeeded" }>(
+      `/api/v1/nodes/${nodeId}/filter-refresh`,
+      { method: "POST", body: JSON.stringify({ whitelist }) },
+    ),
+  testUpstreamDNS: (
+    clusterId: string,
+    target: OperationalTarget,
+    input: {
+      draftVersion: number;
+      upstreamDns: string[];
+      bootstrapDns: string[];
+      fallbackDns: string[];
+      privateReverseDns: string[];
+      upstreamMode: string;
+      usePrivateReverseResolvers: boolean;
+    },
+    idempotencyKey: string,
+  ) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/clusters/${clusterId}/operational-commands/test-upstream-dns`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ target, input }),
+      },
+    ),
+  clearDNSCache: (
+    clusterId: string,
+    target: OperationalTarget,
+    idempotencyKey: string,
+  ) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/clusters/${clusterId}/operational-commands/clear-dns-cache`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ target, confirmation: "CLEAR_DNS_CACHE" }),
+      },
+    ),
+  testHostFiltering: (
+    clusterId: string,
+    target: OperationalTarget,
+    input: { hostname: string; client?: string; queryType?: string },
+    idempotencyKey: string,
+  ) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/clusters/${clusterId}/operational-commands/test-host-filtering`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ target, input }),
+      },
+    ),
+  clearQueryLog: (
+    clusterId: string,
+    target: OperationalTarget,
+    idempotencyKey: string,
+  ) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/clusters/${clusterId}/operational-commands/clear-query-log`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ target, confirmation: "CLEAR_QUERY_LOG" }),
+      },
+    ),
+  resetStatistics: (
+    clusterId: string,
+    target: OperationalTarget,
+    idempotencyKey: string,
+  ) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/clusters/${clusterId}/operational-commands/reset-statistics`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ target, confirmation: "RESET_STATISTICS" }),
+      },
+    ),
+  dnsOperation: (operationId: string) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/operational-commands/${operationId}`,
+    ),
+  dnsOperations: (
+    clusterId: string,
+    command?: DNSOperationalCommand["command"],
+  ) =>
+    request<{ items: DNSOperationalCommand[] }>(
+      `/api/v1/clusters/${clusterId}/operational-commands?limit=10${command ? `&command=${command}` : ""}`,
+    ),
+  dhcpInterfaces: (nodeId: string) =>
+    request<DhcpInterfaces>(`/api/v1/nodes/${nodeId}/dhcp/interfaces`),
+  checkActiveDhcp: (nodeId: string, interfaceName: string) =>
+    request<DhcpActiveCheckResult>(
+      `/api/v1/nodes/${nodeId}/dhcp/active-check`,
+      {
+        method: "POST",
+        body: JSON.stringify({ interfaceName }),
+      },
+    ),
+  resetDhcpLeases: (
+    nodeId: string,
+    confirmation: string,
+    idempotencyKey: string,
+  ) =>
+    request<DhcpOperation>(`/api/v1/nodes/${nodeId}/dhcp/reset-leases`, {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ confirmation }),
+    }),
+  resetDhcpConfiguration: (
+    nodeId: string,
+    confirmation: string,
+    idempotencyKey: string,
+  ) =>
+    request<DhcpOperation>(`/api/v1/nodes/${nodeId}/dhcp/reset-configuration`, {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ confirmation }),
+    }),
+  dhcpOperations: (nodeId: string) =>
+    request<{ items: DhcpOperation[] }>(
+      `/api/v1/nodes/${nodeId}/dhcp/operations?limit=10`,
+    ),
   setNodeMaintenance: (node: Node, enabled: boolean) =>
     request<Node>(`/api/v1/nodes/${node.id}/maintenance`, {
       method: "POST",
@@ -172,10 +305,20 @@ export const api = {
       schemaVersion: number;
       snapshots: ConfigurationSnapshot[];
       capabilities: CapabilityProfile[];
-      // 0.2.0 returned null when a cluster had no draft. Keep accepting that
-      // response so the fixed UI can be deployed before the controller update.
-      draft?: ConfigurationDraft | null;
+      draft?: ConfigurationDraft;
     }>(`/api/v1/clusters/${clusterId}/configuration-inventory`),
+  blockedServicesCatalogue: (clusterId: string) =>
+    request<BlockedServicesCatalogue>(
+      `/api/v1/clusters/${clusterId}/blocked-services/catalogue`,
+    ),
+  blocklistPresentation: (clusterId: string) =>
+    request<BlocklistPresentation>(
+      `/api/v1/clusters/${clusterId}/blocklists/presentation`,
+    ),
+  allowlistPresentation: (clusterId: string) =>
+    request<AllowlistPresentation>(
+      `/api/v1/clusters/${clusterId}/allowlists/presentation`,
+    ),
   compareConfigurations: (leftSnapshotId: string, rightSnapshotId: string) =>
     request<{ equal: boolean; differences: ConfigurationDifference[] }>(
       `/api/v1/configuration-comparisons?leftSnapshotId=${encodeURIComponent(leftSnapshotId)}&rightSnapshotId=${encodeURIComponent(rightSnapshotId)}`,

@@ -94,7 +94,8 @@ func (e *Executor) execute(ctx context.Context, id string) error {
 		if err != nil || snapshot.Document == nil {
 			return e.failBeforeMutation(ctx, &deployment, "TARGET_OBSERVATION_FAILED", err)
 		}
-		if len(nodeSpecificDifferences(effective, *snapshot.Document)) != 0 {
+		projected := configuration.ProjectDocument(*snapshot.Document, revision.SchemaVersion)
+		if len(immutableNodeDifferences(effective, projected)) != 0 {
 			return e.failBeforeMutation(ctx, &deployment, "LISTENER_MUTATION_UNSUPPORTED", errors.New("node listener identity changed after preview"))
 		}
 		prepared = append(prepared, preparedNode{task: task, record: record, effective: effective})
@@ -140,7 +141,8 @@ func (e *Executor) execute(ctx context.Context, id string) error {
 		if err != nil || snapshot.Document == nil {
 			return e.failNode(ctx, &deployment, prepared, index, succeeded, "VERIFICATION_OBSERVATION_FAILED", err)
 		}
-		if differences := configuration.Diff(item.effective, *snapshot.Document); len(differences) != 0 {
+		projected := configuration.ProjectDocument(*snapshot.Document, revision.SchemaVersion)
+		if differences := managedDifferences(item.effective, projected); len(differences) != 0 {
 			return e.failNode(ctx, &deployment, prepared, index, succeeded, string(domain.ErrorVerification), fmt.Errorf("read-back produced %d semantic differences", len(differences)))
 		}
 		completed := e.now().UTC()

@@ -11,6 +11,7 @@
 - Configuration templates.
 - Export and import.
 - Compatibility matrix.
+- Schema-version fixture maintenance and upgrade tooling.
 - Node replacement workflow.
 
 ## User experience
@@ -41,6 +42,7 @@
 - RBAC.
 - API tokens.
 - Credential rotation.
+- TLS certificate/key secret references and rotation.
 - Certificate pinning.
 - Audit export.
 - Session management page.

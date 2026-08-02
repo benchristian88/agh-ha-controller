@@ -105,7 +105,7 @@ Follow-on improvements that did not block the accepted 0.1.1 release:
 
 ## Release 0.2 — Configuration inventory
 
-**Current status (29 July 2026): Implemented; production release validation pending.**
+**Current status (30 July 2026): Complete — configuration inventory and all patch-line fixes were operator-validated.**
 
 ### Outcomes
 
@@ -156,6 +156,8 @@ Production validation checklist subsequently completed by the operator on 30 Jul
 
 ## Release 0.3 — Authoritative configuration MVP
 
+**Current status (30 July 2026): Complete — PostgreSQL workflow, reference functionality, Docker, and systemd validation were completed by the operator.**
+
 ### Outcomes
 
 - Controller becomes the source of truth.
@@ -202,10 +204,10 @@ Implemented:
 - Durable deduplicated drift events support Manual, Alert, and Enforce policies; Enforce queues the same verified targeted deployment. Maintenance suppresses mutation.
 - The React UI provides desired-state editing, validation, revision actions, deployment progress/history, reconciliation policy, and drift restore/adopt/maintenance actions.
 
-Partially completed or validation pending:
+Historical validation items, completed by the operator on 30 July 2026:
 
-- The full Go race suite (including the AdGuard HTTP writer contract), frontend type/lint/tests/build, Go vet/build, and production dependency audit pass. A real-PostgreSQL two-node integration test now covers deploy, convergence, direct drift, Enforce restoration, and rollback, but this environment has no PostgreSQL executable/service, so that test is not yet recorded as executed.
-- Reference AdGuard Home write/read-back and packaged Docker/systemd 0.3 smoke validation remain release gates.
+- The PostgreSQL two-node integration workflow covering deploy, convergence, direct drift, Enforce restoration, and rollback.
+- Reference AdGuard Home write/read-back plus packaged Docker and systemd 0.3 smoke validation.
 
 Deliberately deferred without changing roadmap history:
 
@@ -213,9 +215,9 @@ Deliberately deferred without changing roadmap history:
 - Automatic retry inside a potentially partial filter mutation is withheld. Enforce can create a later fresh attempt after observation; richer retry/backoff and partial recovery remain follow-on work.
 - Parallel/rolling deployments, schedules, maintenance windows, and wider AdGuard Home settings remain in later releases.
 
-Do not mark Release 0.3 complete until the PostgreSQL integration workflow and reference-node/package smoke checks pass.
-
 ## Release 0.4 — Broader AdGuard Home coverage
+
+**Current status (30 July 2026): Implemented; reference-node, browser, migration-upgrade, and packaged-install release validation pending.**
 
 ### Outcomes
 
@@ -242,6 +244,76 @@ Do not mark Release 0.3 complete until the PostgreSQL integration workflow and r
 - Supported settings are documented.
 - Unsupported settings are visible.
 - Capability validation prevents unsafe deployment.
+
+### Implementation reconciliation — 30 July 2026
+
+Implemented:
+
+- Canonical schema v2 with deterministic shared DNS, allowlist/blocklist, clients, rewrites, blocked-service schedules, safety/Safe Search, query-log/statistics policy, redacted TLS inventory, and node-specific DHCP/static leases.
+- Migration `000004_release_0_4` permits v1 and v2 without rewriting immutable records. v0.107.52 remains on v1; the reviewed v0.107.53–v0.107.78 contract uses v2 with patch-level capabilities. Historical v1 verification, rollback, and drift reconciliation project current observations to v1.
+- Version-aware reads/writes through supported AdGuard HTTP endpoints, explicit feature flags, all-target capability validation, and managed-only semantic convergence.
+- Audited blocklist/allowlist refresh with visible fleet partial results.
+- At-most-one-active DHCP validation and disable-before-enable sequential handoff ordering.
+- AdGuard Home-style nested settings navigation with accessible responsive draft editors, schema-upgrade guidance, TLS redaction messaging, and DHCP role controls.
+- ADR-0025, adapter/domain/control-plane/inventory tests, expanded two-node fixture coverage, and updated architecture/API/database/security/operations/product documentation.
+
+Partially completed or validation pending:
+
+- The full Go race suite, vet, controller build, frontend type/test/lint/production build, shell syntax, production dependency audit, and diff check pass locally. The PostgreSQL migration/authoritative integration workflow compiled but requires `TEST_DATABASE_URL` and remains to be executed for this release in the reference environment; Compose validation was unavailable because this workspace has no Docker CLI.
+- Browser accessibility/visual workflows, real supported-version node write/read-back, DHCP handoff, Docker upgrade, and systemd upgrade remain 0.4 release gates.
+
+### Release 0.4.1 UI alignment — 2 August 2026
+
+- Phases 0–10 implement the approved horizontal navigation, matching mobile
+  drawer, global context, schema-v2 Configuration Control, shared primitives,
+  and selected operator-facing feature migrations without changing the
+  desired-state or deployment safety boundary.
+- Phase 10 removes the final superseded broad settings editor, gives Encryption
+  a dedicated redacted inventory page, focuses the canonical Deployments and
+  Drift routes correctly, moves remaining presentation colours to semantic
+  tokens, and aligns packaged defaults on version 0.4.1.
+- Local evidence passes: 191 frontend tests, Axe structural checks, exact
+  light/dark 320–1440px baselines, full uncached Go race, vet, native builds,
+  zero production dependency vulnerabilities, installer syntax, and diff
+  checks.
+- PostgreSQL, Docker/systemd clean install and 0.4 upgrade, restart persistence,
+  supported real-node write/read-back, controlled DHCP handoff/reset, and live
+  controller-outage DNS evidence remain external gates. Statistics aggregation
+  and combined Query Log ingestion remain Releases 0.5 and 0.6.
+
+Post-implementation correction on 31 July 2026:
+
+- Settings-editor row keys no longer depend on the secure-context-only browser UUID API. Rewrites, persistent clients, and DHCP static leases now render on explicit HTTP origins; the frontend regression suite, type check, lint, and production build pass. The broader browser accessibility/visual release gate remains pending.
+- The application sidebar is now the sole settings navigation, removing the repeated in-page menu, and larger DHCP node, client, and blocked-services schedule headings render inside their configuration cards while retaining accessible fieldset labels. The same frontend gates pass; the browser visual release gate remains pending.
+
+Post-implementation deployment correction on 2 August 2026:
+
+- Schema-v2 DHCP reconciliation no longer sends `/control/dhcp/set_config` when the node already matches the immutable revision, fixing the reported deployment failure on disabled, unconfigured DHCP nodes without weakening static-lease reconciliation or disable-before-enable ordering.
+- Per-node `NODE_APPLY_FAILED` details now identify the safe AdGuard method, operation path, and HTTP status in the deployment timeline while continuing to discard response bodies and payloads. Automated adapter and DOM regressions cover both behaviors. The real-node two-node deployment and controlled DHCP handoff remain release gates and are not marked complete by this correction.
+
+Release 0.4.1 Phase 8A on 2 August 2026:
+
+- `/settings/dhcp` now clearly separates HA status and each node's desired and
+  observed state. It provides controller-mediated interface discovery,
+  legacy-value preservation, audited non-mutating active-DHCP checks, cohesive
+  validated IPv4/IPv6 fields, friendly durations, observed active leases, and
+  focused static-lease add/edit/remove workflows.
+- Interface metadata and dynamic leases remain outside desired state and drift.
+  The one-active validation and disable-before-enable deployment ordering have
+  explicit regression coverage. No reset, RA, SLAAC, schema, or database
+  operation was added. A controlled real-network handoff remains a release
+  gate.
+
+Deliberately deferred without changing roadmap history:
+
+- TLS certificate/key mutation is excluded until controller-managed secret references are designed; TLS is redacted inventory only.
+- 0.4 manages node-local query-log/statistics policy but does not ingest events. Aggregated statistics remain 0.5 and combined query logs remain 0.6.
+- Field-level drift ignore, automatic recovery within a partially applied node mutation, parallel/rolling deployment, maintenance windows, and controller HA keep their later roadmap positions.
+
+New follow-on dependencies:
+
+- Maintain explicit schema-version fixtures when adding configuration fields or raising the minimum supported AdGuard Home version.
+- TLS mutation requires a secret-reference lifecycle and audit/export redaction design before any writer is added.
 
 ## Release 0.5 — Cluster statistics
 

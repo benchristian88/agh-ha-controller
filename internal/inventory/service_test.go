@@ -2,6 +2,7 @@ package inventory
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -10,10 +11,15 @@ import (
 )
 
 type fakeRepository struct {
-	snapshot Snapshot
-	node     domain.Node
-	draft    *Draft
-	imported bool
+	snapshot    Snapshot
+	node        domain.Node
+	nodes       []domain.Node
+	profiles    []CapabilityProfile
+	draft       *Draft
+	imported    bool
+	nodeRecord  domain.NodeRecord
+	nodeRecords map[string]domain.NodeRecord
+	audits      []domain.AuditEvent
 }
 
 func (f *fakeRepository) SnapshotByID(context.Context, string) (Snapshot, error) {
@@ -44,9 +50,14 @@ func (*fakeRepository) UpdateCluster(context.Context, domain.Cluster, int, domai
 func (*fakeRepository) CreateNode(context.Context, domain.NodeRecord, domain.AuditEvent) error {
 	return nil
 }
-func (*fakeRepository) ListNodes(context.Context, string) ([]domain.Node, error) { return nil, nil }
-func (*fakeRepository) NodeRecordByID(context.Context, string) (domain.NodeRecord, error) {
-	return domain.NodeRecord{}, nil
+func (f *fakeRepository) ListNodes(context.Context, string) ([]domain.Node, error) {
+	return f.nodes, nil
+}
+func (f *fakeRepository) NodeRecordByID(_ context.Context, id string) (domain.NodeRecord, error) {
+	if record, ok := f.nodeRecords[id]; ok {
+		return record, nil
+	}
+	return f.nodeRecord, nil
 }
 func (*fakeRepository) UpdateNode(context.Context, domain.NodeRecord, int, domain.AuditEvent) error {
 	return nil
@@ -67,8 +78,15 @@ func (*fakeRepository) SaveObservation(context.Context, Snapshot, CapabilityProf
 	return nil
 }
 func (*fakeRepository) LatestSnapshots(context.Context, string) ([]Snapshot, error) { return nil, nil }
-func (*fakeRepository) CapabilityProfiles(context.Context, string) ([]CapabilityProfile, error) {
-	return nil, nil
+func (f *fakeRepository) CapabilityProfiles(context.Context, string) ([]CapabilityProfile, error) {
+	return f.profiles, nil
+}
+func (f *fakeRepository) RecordAuditEvent(ctx context.Context, event domain.AuditEvent) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	f.audits = append(f.audits, event)
+	return nil
 }
 
 type unusedCredentials struct{}
@@ -81,6 +99,21 @@ type unusedReader struct{}
 
 func (unusedReader) ReadConfiguration(context.Context, domain.NodeProbeRequest, string) (configuration.Document, CapabilityProfile, error) {
 	return configuration.Document{}, CapabilityProfile{}, nil
+}
+
+type refreshReader struct {
+	unusedReader
+	whitelist bool
+	cancel    context.CancelFunc
+}
+
+func (r *refreshReader) RefreshFilters(_ context.Context, _ domain.NodeProbeRequest, whitelist bool) error {
+	r.whitelist = whitelist
+	if r.cancel != nil {
+		r.cancel()
+		return context.Canceled
+	}
+	return nil
 }
 
 func TestImportRequiresConfirmationAndCreatesOnlyDraft(t *testing.T) {
@@ -98,8 +131,25 @@ func TestImportRequiresConfirmationAndCreatesOnlyDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !repo.imported || draft.Version != 1 || draft.SourceSnapshotID != snapshotID || draft.Document.NodeOverrides[nodeID].DNSPort != 53 {
+	if !repo.imported || draft.Version != 1 || draft.SchemaVersion != configuration.LegacySchemaVersion || draft.SourceSnapshotID != snapshotID || draft.Document.NodeOverrides[nodeID].DNSPort != 53 {
 		t.Fatalf("unexpected draft: %#v", draft)
+	}
+}
+
+func TestImportDoesNotDowngradeSchemaV2Draft(t *testing.T) {
+	clusterID := "11111111-1111-4111-8111-111111111111"
+	nodeID := "22222222-2222-4222-8222-222222222222"
+	snapshotID := "33333333-3333-4333-8333-333333333333"
+	legacy := configuration.Document{SchemaVersion: configuration.LegacySchemaVersion, NodeSpecific: configuration.NodeSpecific{BindHosts: []string{"192.0.2.10"}, DNSPort: 53}}
+	current := &Draft{Version: 3, Document: configuration.DesiredDocument{SchemaVersion: configuration.SchemaVersion, NodeOverrides: map[string]configuration.NodeSpecific{}}}
+	repo := &fakeRepository{snapshot: Snapshot{ID: snapshotID, NodeID: nodeID, Document: &legacy, CollectionStatus: "succeeded"}, node: domain.Node{ID: nodeID, ClusterID: clusterID}, draft: current}
+	service := NewService(repo, unusedCredentials{}, unusedReader{})
+	actor := domain.Actor{UserID: "44444444-4444-4444-8444-444444444444", RequestID: "55555555-5555-4555-8555-555555555555"}
+	if _, err := service.Import(context.Background(), actor, clusterID, snapshotID, 3, true); err == nil {
+		t.Fatal("legacy observation downgraded a schema-v2 draft")
+	}
+	if repo.imported {
+		t.Fatal("schema downgrade changed the draft")
 	}
 }
 
@@ -117,5 +167,34 @@ func TestImportRejectsSnapshotWithoutListenerIdentity(t *testing.T) {
 	}
 	if repo.imported {
 		t.Fatal("invalid snapshot changed the draft")
+	}
+}
+
+func TestRefreshFiltersAuditsRequestedAndSucceeded(t *testing.T) {
+	const nodeID = "22222222-2222-4222-8222-222222222222"
+	repo := &fakeRepository{nodeRecord: domain.NodeRecord{Node: domain.Node{ID: nodeID, Enabled: true, BaseURL: "http://node.test", CertificatePolicy: domain.CertificateInsecureHTTP}}}
+	reader := &refreshReader{}
+	service := NewService(repo, unusedCredentials{}, reader)
+	actor := domain.Actor{UserID: "44444444-4444-4444-8444-444444444444", RequestID: "55555555-5555-4555-8555-555555555555"}
+	if err := service.RefreshFilters(context.Background(), actor, nodeID, true); err != nil {
+		t.Fatal(err)
+	}
+	if !reader.whitelist || len(repo.audits) != 2 || repo.audits[0].Action != "filters.refresh_requested" || repo.audits[1].Action != "filters.refresh_succeeded" {
+		t.Fatalf("refresh result reader=%#v audits=%#v", reader, repo.audits)
+	}
+}
+
+func TestRefreshFiltersAuditsFailureAfterRequestCancellation(t *testing.T) {
+	const nodeID = "22222222-2222-4222-8222-222222222222"
+	repo := &fakeRepository{nodeRecord: domain.NodeRecord{Node: domain.Node{ID: nodeID, Enabled: true, BaseURL: "http://node.test", CertificatePolicy: domain.CertificateInsecureHTTP}}}
+	ctx, cancel := context.WithCancel(context.Background())
+	reader := &refreshReader{cancel: cancel}
+	service := NewService(repo, unusedCredentials{}, reader)
+	actor := domain.Actor{UserID: "44444444-4444-4444-8444-444444444444", RequestID: "55555555-5555-4555-8555-555555555555"}
+	if err := service.RefreshFilters(ctx, actor, nodeID, false); !errors.Is(err, context.Canceled) {
+		t.Fatalf("RefreshFilters() error = %v, want context cancellation", err)
+	}
+	if len(repo.audits) != 2 || repo.audits[1].Action != "filters.refresh_failed" {
+		t.Fatalf("terminal failure audit missing: %#v", repo.audits)
 	}
 }

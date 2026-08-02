@@ -1957,6 +1957,10 @@ Schema v1 writes shared DNS resolver and filtering blocklist/rule fields through
 - TLS modelling;
 - DHCP inventory and limited single-active-node management.
 
+### Implemented boundary
+
+Schema v2 extends the existing desired/observed/revision pipeline; it is not a separate settings store. v0.107.52 stays on frozen schema v1, while the reviewed v0.107.53–v0.107.78 contract exposes v2 with patch-level capabilities. Shared state includes the broader DNS, filter, client, rewrite, service/safety, query-log, and statistics policy surface. DHCP configuration/static leases are node overrides with single-active validation and disable-before-enable deployment ordering. TLS and dynamic DHCP leases are observed-only, and TLS secret material has no domain representation. See ADR-0025 and the feature ledger for final compatibility and validation status.
+
 ## 91. Release 0.5 — Cluster statistics
 
 - statistics polling;
@@ -4146,6 +4150,18 @@ This is the first release that demonstrates the complete core value proposition.
 - Supported settings are documented.
 - Unsupported settings are visible.
 - Capability validation prevents unsafe deployment.
+
+### Implemented design
+
+- `Document` and `DesiredDocument` schema v2 reuse immutable observations, optimistic drafts, immutable revisions, effective node overrides, durable sequential deployments, and drift events.
+- Supported v2 nodes are AdGuard Home v0.107.53–v0.107.78; newer contracts remain unknown until reviewed. v0.107.52 keeps schema-v1 inventory so 0.3 revisions remain deployable and reconcilable. Migration `000004_release_0_4` permits both without rewriting history.
+- Shared policy covers broader DNS, blocklists/allowlists/rules, persistent clients, rewrites, blocked-service schedules, safety/Safe Search, and node-local query-log/statistics settings.
+- DHCP configuration and static leases are node-specific managed values; dynamic leases are observed. At most one node may be enabled, and handoff deploys disabled nodes before the selected active node.
+- TLS status is public redacted inventory only. Certificate chains, private keys, and certificate/key paths are discarded at the adapter boundary; TLS mutation is deferred pending secret references.
+- Every v2 target must advertise every required feature before deployment. Verification and drift compare managed fields only after projecting observations to the revision schema.
+- Seven nested `/settings/*` routes edit the one cluster draft. Filter refresh is separate, explicit, authenticated, and audited per node with partial fleet results.
+
+Release 0.4 does not ingest statistics or query events into the controller. Those historical 0.5 and 0.6 milestones remain unchanged.
 
 ## Release 0.5 — Cluster statistics
 

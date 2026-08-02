@@ -1,6 +1,11 @@
 package domain
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var ErrNoWork = errors.New("no queued work")
 
 type ErrorKind string
 

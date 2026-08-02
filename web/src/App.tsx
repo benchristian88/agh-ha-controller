@@ -1,14 +1,27 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { EmptyState, ErrorState, Loading } from "./components/Feedback";
+import { AllowlistsPage } from "./features/allowlists/AllowlistsPage";
 import { AuditPage } from "./features/audit/AuditPage";
 import { LoginPage, SetupPage } from "./features/auth/AuthPages";
+import { BlockedServicesPage } from "./features/blockedservices/BlockedServicesPage";
+import { BlocklistsPage } from "./features/blocklists/BlocklistsPage";
+import { ClientsPage } from "./features/clients/ClientsPage";
 import { ClusterCreate } from "./features/clusters/ClusterCreate";
 import { ConfigurationPage } from "./features/configuration/ConfigurationPage";
 import { ControlPlanePage } from "./features/controlplane/ControlPlanePage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { DHCPPage } from "./features/dhcp/DHCPPage";
+import { DNSSettingsPage } from "./features/dns/DNSSettingsPage";
+import { EncryptionPage } from "./features/encryption/EncryptionPage";
+import { CustomRulesPage } from "./features/filters/CustomRulesPage";
+import { GeneralSettingsPage } from "./features/general/GeneralSettingsPage";
 import { NodesPage } from "./features/nodes/NodesPage";
+import { RewritesPage } from "./features/rewrites/RewritesPage";
 import { ApiError, api } from "./lib/api";
 import type { Cluster, User } from "./lib/types";
+import { NotFoundPage, PlannedPage } from "./routing/RouteStatePages";
+import { resolveRoute } from "./routing/routes";
+import { ApplicationShell } from "./shell/ApplicationShell";
 
 type BootState =
   | { kind: "loading" }
@@ -130,11 +143,18 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
   const selected =
     clusters?.find((cluster) => cluster.id === selectedID) ?? clusters?.[0];
   const path = window.location.pathname;
+  const route = resolveRoute(path);
   let content: ReactNode;
-  if (clusters === undefined && error === undefined)
+  if (route.kind === "redirect") content = <RouteRedirect to={route.to} />;
+  else if (route.kind === "not-found")
+    content = <NotFoundPage pathname={path} />;
+  else if (route.kind === "planned")
+    content = <PlannedPage title={route.title} release={route.release} />;
+  else if (clusters === undefined && error === undefined)
     content = <Loading label="Loading clusters…" />;
   else if (clusters === undefined && error !== undefined)
     content = <ErrorState error={error} retry={() => void loadClusters()} />;
+  else if (route.kind === "audit") content = <AuditPage />;
   else if (selected === undefined)
     content = (
       <EmptyState title="Create your first cluster">
@@ -145,104 +165,72 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
         <ClusterCreate onCreated={(cluster) => void loadClusters(cluster.id)} />
       </EmptyState>
     );
-  else if (path === "/ha/nodes") content = <NodesPage cluster={selected} />;
-  else if (path === "/ha/configuration")
-    content = <ConfigurationPage cluster={selected} />;
-  else if (path === "/ha/deployments")
-    content = <ControlPlanePage cluster={selected} />;
-  else if (path === "/system/audit") content = <AuditPage />;
-  else content = <DashboardPage cluster={selected} />;
+  else {
+    switch (route.kind) {
+      case "dashboard":
+        content = <DashboardPage cluster={selected} />;
+        break;
+      case "nodes":
+        content = <NodesPage cluster={selected} />;
+        break;
+      case "configuration":
+      case "history":
+        content = <ConfigurationPage cluster={selected} />;
+        break;
+      case "control-plane":
+        content = <ControlPlanePage cluster={selected} focus={route.focus} />;
+        break;
+      case "blocked-services":
+        content = <BlockedServicesPage cluster={selected} />;
+        break;
+      case "blocklists":
+        content = <BlocklistsPage cluster={selected} />;
+        break;
+      case "allowlists":
+        content = <AllowlistsPage cluster={selected} />;
+        break;
+      case "settings":
+        content =
+          route.area === "clients" ? (
+            <ClientsPage cluster={selected} />
+          ) : route.area === "dns" ? (
+            <DNSSettingsPage cluster={selected} />
+          ) : route.area === "privacy" ? (
+            <GeneralSettingsPage cluster={selected} />
+          ) : route.area === "rewrites" ? (
+            <RewritesPage cluster={selected} />
+          ) : route.area === "dhcp" ? (
+            <DHCPPage cluster={selected} />
+          ) : route.area === "filters" ? (
+            <CustomRulesPage cluster={selected} />
+          ) : route.area === "infrastructure" ? (
+            <EncryptionPage cluster={selected} />
+          ) : (
+            <NotFoundPage pathname={path} />
+          );
+        break;
+    }
+  }
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <a className="brand" href="/">
-          <span className="brand-mark">A</span>
-          <span>
-            <strong>AGH HA</strong>
-            <small>Controller</small>
-          </span>
-        </a>
-        <nav aria-label="Primary navigation">
-          <p className="nav-label">Overview</p>
-          <NavLink href="/" current={path === "/"}>
-            Dashboard
-          </NavLink>
-          <p className="nav-label">HA management</p>
-          <NavLink href="/ha/nodes" current={path === "/ha/nodes"}>
-            Nodes
-          </NavLink>
-          <NavLink
-            href="/ha/configuration"
-            current={path === "/ha/configuration"}
-          >
-            Configuration
-          </NavLink>
-          <NavLink href="/ha/deployments" current={path === "/ha/deployments"}>
-            Deployments &amp; drift
-          </NavLink>
-          <p className="nav-label">System</p>
-          <NavLink href="/system/audit" current={path === "/system/audit"}>
-            Audit log
-          </NavLink>
-        </nav>
-        <div className="sidebar-note">
-          <strong>DNS independent</strong>
-          <span>Nodes keep serving when this controller is offline.</span>
-        </div>
-      </aside>
-      <div className="app-main">
-        <header className="topbar">
-          <label className="cluster-select">
-            <span>Cluster</span>
-            <select
-              value={selected?.id ?? ""}
-              onChange={(event) => setSelectedID(event.target.value)}
-              disabled={(clusters?.length ?? 0) === 0}
-            >
-              {(clusters ?? []).map((cluster) => (
-                <option key={cluster.id} value={cluster.id}>
-                  {cluster.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="user-menu">
-            <span>
-              <strong>{user.displayName}</strong>
-              <small>{user.email}</small>
-            </span>
-            <button
-              type="button"
-              className="button button--quiet"
-              onClick={() => void logout()}
-            >
-              Sign out
-            </button>
-          </div>
-        </header>
-        <main className="content">{content}</main>
-      </div>
-    </div>
+    <ApplicationShell
+      user={user}
+      clusters={clusters ?? []}
+      selected={selected}
+      pathname={path}
+      onSelectCluster={setSelectedID}
+      onLogout={() => void logout()}
+    >
+      {content}
+    </ApplicationShell>
   );
 }
 
-function NavLink({
-  href,
-  current,
-  children,
-}: {
-  href: string;
-  current: boolean;
-  children: string;
-}) {
-  return (
-    <a
-      href={href}
-      className={current ? "nav-link nav-link--current" : "nav-link"}
-      aria-current={current ? "page" : undefined}
-    >
-      {children}
-    </a>
-  );
+function RouteRedirect({ to }: { to: string }) {
+  useEffect(() => {
+    window.location.replace(
+      `${to}${window.location.search}${window.location.hash}`,
+    );
+  }, [to]);
+  return <Loading label="Redirecting to the current page…" />;
 }

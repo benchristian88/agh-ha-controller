@@ -81,7 +81,8 @@ func (r *Reconciler) evaluateNode(ctx context.Context, cluster domain.Cluster, r
 		_ = r.repository.UpdateNodeConvergence(ctx, node.ID, "observation_failed", r.now().UTC())
 		return err
 	}
-	differences := configuration.Diff(effective, *snapshot.Document)
+	projected := configuration.ProjectDocument(*snapshot.Document, revision.SchemaVersion)
+	differences := managedDifferences(effective, projected)
 	requestID, err := domain.NewID()
 	if err != nil {
 		return err

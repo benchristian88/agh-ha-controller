@@ -4,7 +4,65 @@ All notable changes to AGH HA Controller will be documented in this file.
 
 The project intends to follow Semantic Versioning once the first public release is made.
 
-## Unreleased
+## 0.4.1 - Unreleased
+
+### Added
+
+- Release 0.4.1 Phase 10 exact route/redirect and Deployments/Drift focus
+  regressions, dedicated redacted Encryption coverage, Axe WCAG structural
+  checks, and light/dark visual baselines at 320, 768, 1199, 1200, and 1440
+  pixels plus the active mobile drawer hierarchy.
+- Release 0.4.1 Phase 9C-3 audited destructive Query Log clearing and Statistics reset with typed confirmation, narrow selected-node defaults, explicit compatible-fleet scope, durable per-node results, post-command observation, safe errors, idempotency, and unchanged desired policy/revisions.
+- Release 0.4.1 Phase 9C-2 audited host-filtering tests from Custom Filter Rules with hostname, optional client/query type, explicit selected-node/fleet scope, version-aware capability exclusions, encrypted queued input, bounded node-attributed rule results, partial success, and idempotency without desired-state mutation.
+- Release 0.4.1 Phase 9C-1 durable audited DNS operational commands: current-draft upstream tests, confirmed selected-node/fleet cache clearing, encrypted queued input, per-node/per-resolver results, idempotency, restart-safe non-replay, and post-clear observation.
+- Release 0.4.1 Phase 8B node-scoped reset-leases and reset-DHCP-configuration operational commands with maintenance/deployment and configuration-reset reconciliation-policy guards, typed confirmation, durable per-node results, per-user idempotency, redacted requested/terminal audits, and immediate post-command observation.
+- Authenticated CSRF-protected DHCP reset and durable-result controller routes plus migration `000005_release_0_4_1_dhcp_operations`; there is no fleet reset route and destructive commands never mutate desired state.
+- Release 0.4.1 Phase 7 DNS Rewrites searchable table and add/edit dialogs with contract-bounded domain/answer validation, inferred A/AAAA/CNAME/passthrough presentation, duplicate prevention, confirmed draft-only deletion, capability-aware enablement, and draft/revision/convergence context.
+- Release 0.4.1 Phase 5B dedicated DNS Allowlists page, shared Blocklist/Allowlist table and dialog composition, observed-only rule-count/freshness and per-node application metadata, safer removal confirmation, and audited refresh-all partial results using allowlist semantics.
+- Authenticated `GET /api/v1/clusters/{clusterId}/allowlists/presentation` endpoint with category-separated stale caching and safe node-attributed metadata.
+- Release 0.4.1 Phase 4 Blocked Services page with a controller-mediated, version-aware per-node catalogue; searchable grouped service selection; compatibility warnings; selected counts and group actions; shared schedule editing; and publication/deployment preflight for unsupported IDs.
+- Authenticated `GET /api/v1/clusters/{clusterId}/blocked-services/catalogue` observed-metadata endpoint with bounded per-version caching, stale/partial node results, and safe metadata redaction.
+- Canonical configuration schema v2 covering broader DNS behavior, blocklists and allowlists, persistent clients, DNS rewrites, blocked-service schedules, safety services, Safe Search, query-log policy, statistics policy, redacted TLS inventory, and node-specific DHCP configuration/static leases.
+- Version-aware schema projection so AdGuard Home v0.107.52 and immutable schema-v1 revisions remain observable and deployable while schema v2 supports the current v0.107.53–v0.107.78 contract.
+- Patch-level capability handling for upstream timeout, cache enablement, rewrite enablement, ignored-list activation, and v0.107.78 filter intervals; newer unreviewed contracts are reported as unknown.
+- Capability-gated, sequential deployment of schema-v2 settings with managed-field read-back verification and safe single-active-node DHCP handoff ordering.
+- Audited per-node blocklist and allowlist refresh API and partial-result UI workflow.
+- AdGuard Home-style nested settings navigation and responsive forms for DNS, filters, clients, rewrites, services and safety, log/statistics policy, TLS inventory, and DHCP.
+- Migration `000004_release_0_4` and ADR-0025.
+
+### Changed
+
+- Complete Phase 10 route, accessibility, visual, packaging, cleanup, and documentation hardening; preserve all compatibility redirects and desired-state safety boundaries.
+- Replace the superseded broad settings component with a dedicated redacted Encryption inventory page and move all remaining presentation colours to semantic tokens.
+- Default controller, image, installer, and web version is 0.4.1.
+- Replace the Release 0.4 inline DNS rewrite editor at `/filters/rewrites` while preserving the schema-v2 desired-state representation, controller-only browser boundary, and separate Save Draft, Publish, and Deploy lifecycle.
+- Move Safe Browsing, parental control, and Safe Search presentation to Settings > General; `/filters/blocked-services` now contains only the blocked-service catalogue and inactivity schedule while preserving the existing desired-state fields.
+- Release 0.3, including Docker and systemd installation and functional validation, is recorded as complete.
+- Use the primary application sidebar as the sole settings navigation and place larger DHCP node, client, and blocked-services schedule headings inside their corresponding configuration cards.
+
+### Fixed
+
+- Make `/ha/drift` focus the drift section and `/ha/deployments` focus the
+  deployment section while retaining the shared control-plane implementation.
+- Raise light-theme semantic foreground contrast to WCAG AA token pairs and
+  remove sidebar-era/raw presentation colour aliases.
+- Prevent the rewrites, persistent-clients, and DHCP static-lease editors from crashing on non-secure HTTP origins by using stable local row keys instead of the secure-context-only browser UUID API.
+- Avoid redundant `/control/dhcp/set_config` writes when a node's schema-v2 DHCP configuration already matches the immutable revision. This prevents disabled, unconfigured DHCP nodes from rejecting an otherwise successful deployment after DNS settings have been applied, while static leases continue to reconcile.
+- Include the safe AdGuard Home HTTP method, operation path, and status in `NODE_APPLY_FAILED` task details and show that existing per-node diagnostic on the Deployments page without retaining node response bodies.
+
+### Deferred
+
+- TLS certificate/key mutation remains excluded until controller-managed secret references exist.
+- Central statistics ingestion and combined query-log ingestion remain Releases 0.5 and 0.6.
+- Field-level drift ignore, parallel deployment, automatic partial recovery, and controller high availability retain their later roadmap positions.
+
+### Removed
+
+- Superseded broad `ManagedSettingsPage` DNS/filter editors and redundant
+  placeholder files from populated frontend directories. Compatibility
+  redirects remain intact.
+
+## 0.3.2 - 2026-07-30
 
 ### Fixed
 

@@ -32,3 +32,25 @@ func TestCredentialCipherRoundTripAndNodeBinding(t *testing.T) {
 		t.Fatal("Decrypt() accepted an envelope bound to another node")
 	}
 }
+
+func TestCredentialCipherEncryptsOperationalPayloadWithResourceBinding(t *testing.T) {
+	cipher, err := NewCredentialCipher([]byte("01234567890123456789012345678901"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := []byte(`{"upstreamDns":["https://user:secret@dns.example/dns-query"]}`)
+	envelope, err := cipher.EncryptPayload("operation-a", payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(envelope.Ciphertext) == string(payload) {
+		t.Fatal("operational payload was stored as plaintext")
+	}
+	decoded, err := cipher.DecryptPayload("operation-a", envelope)
+	if err != nil || string(decoded) != string(payload) {
+		t.Fatalf("decoded=%q err=%v", decoded, err)
+	}
+	if _, err := cipher.DecryptPayload("operation-b", envelope); err == nil {
+		t.Fatal("operational payload decrypted under another resource scope")
+	}
+}

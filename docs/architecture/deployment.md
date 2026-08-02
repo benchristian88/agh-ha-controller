@@ -20,6 +20,12 @@ LXC 103: agh-ha-controller
 
 PostgreSQL may be separated later.
 
+Release 0.4 does not add another runtime service. The same combined controller/worker process applies schema-v2 settings and performs explicit filter refresh. During a DHCP role handoff, the sequential deployment order places every desired-disabled DHCP node before the desired-enabled node. Stop-on-failure can therefore leave DHCP disabled for safe recovery but does not intentionally overlap two controller-managed DHCP servers.
+
+Within each schema-v2 node task, the adapter applies filtering, lists, rules, clients, rewrites, services and safety, query-log/statistics policy, DNS, and then node-specific DHCP before starting read-back verification. DHCP reconciliation first reads `/control/dhcp/status` and does not call `/control/dhcp/set_config` when every managed DHCP configuration field already matches; static leases are reconciled independently. A real configuration difference still uses the supported writer and must pass the normal immutable-revision read-back check.
+
+An AdGuard mutation rejection records `NODE_APPLY_FAILED` with a safe diagnostic containing only the HTTP method, fixed controller-owned operation path, and response status. The node response body, request payload, credentials, and endpoint authority are discarded. The diagnostic is persisted on the existing `deployment_nodes.error_message` field and displayed under the failed node in the deployment timeline; this does not change the API or database schema.
+
 ## Network requirements
 
 Controller to node:

@@ -11,6 +11,7 @@ import type {
   Node,
   ValidationIssue,
 } from "../../lib/types";
+import { buildDraftSummary } from "./draftSummary";
 
 export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
   const [nodes, setNodes] = useState<Node[]>();
@@ -44,7 +45,7 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
       setNodes(nodeResult.items);
       setSnapshots(inventory.snapshots);
       setCapabilities(inventory.capabilities);
-      setDraft(normaliseDraft(inventory.draft));
+      setDraft(inventory.draft);
       setRevisions(revisionResult.items);
       setError(undefined);
     } catch (caught) {
@@ -63,24 +64,6 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
     } catch (caught) {
       setError(caught);
       await load();
-    } finally {
-      setBusy("");
-    }
-  }
-  async function saveDraft() {
-    if (!draft) return;
-    setBusy("save-draft");
-    try {
-      const result = await api.updateConfigurationDraft(
-        cluster.id,
-        draft.version,
-        draft.document,
-      );
-      setDraft(result.draft);
-      setIssues(result.issues);
-      setError(undefined);
-    } catch (caught) {
-      setError(caught);
     } finally {
       setBusy("");
     }
@@ -201,15 +184,31 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
     return <Loading label="Loading configuration inventory…" />;
   if (nodes === undefined)
     return <ErrorState error={error} retry={() => void load()} />;
+  const activeRevision = revisions.find(
+    (revision) => revision.active || revision.id === cluster.activeRevisionId,
+  );
+  const schemaV2Draft = draft?.document.schemaVersion === 2 ? draft : undefined;
+  const activeSchemaV2Document =
+    activeRevision?.document.schemaVersion === 2
+      ? activeRevision.document
+      : undefined;
+  const draftSections = schemaV2Draft
+    ? buildDraftSummary(
+        schemaV2Draft.document,
+        activeSchemaV2Document,
+        nodeNames,
+      )
+    : [];
   return (
     <>
       <header className="page-header">
         <div>
           <p className="eyebrow">Authoritative configuration</p>
-          <h1>Draft, publish, and deploy</h1>
+          <h1>Configuration Control</h1>
           <p className="muted">
-            Schema v1 manages shared DNS and filtering through immutable
-            revisions. Node listener identities remain explicit overrides.
+            Review the complete cluster draft, validate it, publish an immutable
+            revision, and control safe deployment. Author routine settings on
+            their canonical pages.
           </p>
         </div>
       </header>
@@ -224,154 +223,79 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
           not change a node; publishing creates an immutable revision.
         </div>
       )}
-      {draft && (
+      {draft !== undefined && draft.document.schemaVersion !== 2 && (
+        <section className="section-block">
+          <div className="notice notice--error">
+            <strong>Unsupported draft format</strong>
+            <p>
+              Configuration Control requires a schema-v2 draft collected from
+              AdGuard Home 0.107.78. Refresh a node observation below and import
+              it to replace this draft before validating or publishing.
+            </p>
+          </div>
+        </section>
+      )}
+      {schemaV2Draft && (
         <section className="section-block">
           <div className="section-heading">
-            <h2>Shared desired state</h2>
-            <small>Optimistic draft version {draft.version}</small>
+            <h2>Draft and change summary</h2>
+            <small>
+              Schema {schemaV2Draft.document.schemaVersion} · optimistic draft
+              version {schemaV2Draft.version}
+            </small>
           </div>
-          <div className="card form-stack">
-            <label className="checkbox">
-              Upstream DNS
-              <textarea
-                rows={4}
-                value={draft.document.shared.dns.upstreamDns.join("\n")}
-                onChange={(event) =>
-                  setDraft(
-                    updateLines(draft, "upstreamDns", event.target.value),
-                  )
-                }
-              />
-            </label>
-            <label>
-              Bootstrap DNS
-              <textarea
-                rows={3}
-                value={draft.document.shared.dns.bootstrapDns.join("\n")}
-                onChange={(event) =>
-                  setDraft(
-                    updateLines(draft, "bootstrapDns", event.target.value),
-                  )
-                }
-              />
-            </label>
-            <label>
-              Fallback DNS
-              <textarea
-                rows={3}
-                value={draft.document.shared.dns.fallbackDns.join("\n")}
-                onChange={(event) =>
-                  setDraft(
-                    updateLines(draft, "fallbackDns", event.target.value),
-                  )
-                }
-              />
-            </label>
-            <label>
-              Private reverse DNS
-              <textarea
-                rows={3}
-                value={draft.document.shared.dns.privateReverseDns.join("\n")}
-                onChange={(event) =>
-                  setDraft(
-                    updateLines(draft, "privateReverseDns", event.target.value),
-                  )
-                }
-              />
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={draft.document.shared.filtering.enabled}
-                onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    document: {
-                      ...draft.document,
-                      shared: {
-                        ...draft.document.shared,
-                        filtering: {
-                          ...draft.document.shared.filtering,
-                          enabled: event.target.checked,
-                        },
-                      },
-                    },
-                  })
-                }
-              />{" "}
-              Filtering enabled
-            </label>
-            <label>
-              Filter update interval (hours)
-              <input
-                type="number"
-                value={draft.document.shared.filtering.updateIntervalHours}
-                onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    document: {
-                      ...draft.document,
-                      shared: {
-                        ...draft.document.shared,
-                        filtering: {
-                          ...draft.document.shared.filtering,
-                          updateIntervalHours: Number(event.target.value),
-                        },
-                      },
-                    },
-                  })
-                }
-              />
-            </label>
-            <label>
-              Filter subscription URLs
-              <textarea
-                rows={4}
-                value={draft.document.shared.filtering.filterUrls.join("\n")}
-                onChange={(event) =>
-                  setDraft(
-                    updateFilteringLines(
-                      draft,
-                      "filterUrls",
-                      event.target.value,
-                    ),
-                  )
-                }
-              />
-            </label>
-            <label>
-              Custom filtering rules
-              <textarea
-                rows={5}
-                value={draft.document.shared.filtering.userRules.join("\n")}
-                onChange={(event) =>
-                  setDraft(
-                    updateFilteringLines(
-                      draft,
-                      "userRules",
-                      event.target.value,
-                    ),
-                  )
-                }
-              />
-            </label>
+          <p className="muted">
+            {activeRevision
+              ? `Change markers compare this draft with active revision #${activeRevision.revisionNumber}.`
+              : "No active revision exists yet; every section is marked unpublished."}
+          </p>
+          <div className="configuration-summary-grid">
+            {draftSections.map((section) => (
+              <details className="card configuration-summary" key={section.id}>
+                <summary>
+                  <span>
+                    <strong>{section.title}</strong>
+                    <small>{section.description}</small>
+                  </span>
+                  <span
+                    className={`change-state change-state--${section.change}`}
+                  >
+                    {section.change === "changed"
+                      ? "Changed"
+                      : section.change === "unchanged"
+                        ? "Matches active"
+                        : "Unpublished"}
+                  </span>
+                </summary>
+                <dl>
+                  {section.items.map((item) => (
+                    <div key={`${section.id}-${item.label}`}>
+                      <dt>{item.label}</dt>
+                      <dd>{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <a className="summary-link" href={section.href}>
+                  {section.id === "unsupported"
+                    ? "Review observations"
+                    : `Open ${section.title}`}
+                </a>
+              </details>
+            ))}
+          </div>
+          <div className="card form-stack configuration-actions">
             <div className="row-actions row-actions--start">
               <button
                 className="button"
                 type="button"
                 disabled={busy !== ""}
-                onClick={() => void saveDraft()}
-              >
-                {busy === "save-draft" ? "Saving…" : "Save draft"}
-              </button>
-              <button
-                className="button button--secondary"
-                type="button"
-                disabled={busy !== ""}
                 onClick={() => void validateDraft()}
               >
-                Validate
+                {busy === "validate-draft" ? "Validating…" : "Validate draft"}
               </button>
+              <a className="button button--secondary" href="/settings/dns">
+                Continue authoring
+              </a>
             </div>
             {issues.length > 0 && (
               <div className="notice notice--warning">
@@ -523,10 +447,10 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
           </>
         )}
       </section>
-      <section className="section-block">
+      <section className="section-block" id="observations">
         <div className="section-heading">
           <h2>Nodes and capabilities</h2>
-          <small>DNS and filtering are supported in schema v1</small>
+          <small>Schema-v2 capability profiles and observations</small>
         </div>
         {nodes.length === 0 ? (
           <EmptyState title="No nodes">
@@ -697,12 +621,6 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
   );
 }
 
-export function normaliseDraft(
-  draft: ConfigurationDraft | null | undefined,
-): ConfigurationDraft | undefined {
-  return draft ?? undefined;
-}
-
 export function formatValidationIssue(
   issue: ValidationIssue,
   nodeNames: ReadonlyMap<string, string>,
@@ -732,55 +650,4 @@ export function formatValidationIssue(
 function formatValue(value: unknown): string {
   const text = JSON.stringify(value);
   return text === undefined ? "—" : text;
-}
-
-type DNSListField =
-  | "upstreamDns"
-  | "bootstrapDns"
-  | "fallbackDns"
-  | "privateReverseDns";
-type FilteringListField = "filterUrls" | "userRules";
-
-function nonEmptyLines(value: string): string[] {
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-function updateLines(
-  draft: ConfigurationDraft,
-  field: DNSListField,
-  value: string,
-): ConfigurationDraft {
-  return {
-    ...draft,
-    document: {
-      ...draft.document,
-      shared: {
-        ...draft.document.shared,
-        dns: { ...draft.document.shared.dns, [field]: nonEmptyLines(value) },
-      },
-    },
-  };
-}
-
-function updateFilteringLines(
-  draft: ConfigurationDraft,
-  field: FilteringListField,
-  value: string,
-): ConfigurationDraft {
-  return {
-    ...draft,
-    document: {
-      ...draft.document,
-      shared: {
-        ...draft.document.shared,
-        filtering: {
-          ...draft.document.shared.filtering,
-          [field]: nonEmptyLines(value),
-        },
-      },
-    },
-  };
 }

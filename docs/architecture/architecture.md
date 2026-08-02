@@ -28,13 +28,15 @@ DNS clients communicate directly with AdGuard Home nodes. The controller is neve
 
 The implemented foundation is one Go process containing the API, static frontend server, immediate/interval health poller, and expired-session cleanup. It uses PostgreSQL for users, sessions, clusters, nodes, health results, and audit events. The React build is installed as a directory and served by the Go process on the API origin.
 
-The process only calls AdGuard Home's read-only `/control/status` endpoint in 0.1. It contains no DNS listener, DNS proxy, configuration reader, or configuration writer. Configuration, reconciliation, telemetry, and forwarder components described below remain staged work for their roadmap releases.
+In 0.1 the process only called AdGuard Home's read-only `/control/status` endpoint. It has never contained a DNS listener or proxy. Configuration and reconciliation arrived in later releases; telemetry ingestion and the forwarder remain staged work.
 
 Release 0.1.1 packages this same process through two git-based paths: the reference Debian/systemd installer and a production Docker Compose stack with PostgreSQL. Packaging does not change the process, database, same-origin frontend, or DNS-independence boundaries.
 
 Release 0.2 adds a read-only configuration-inventory service inside the same process. It reads supported AdGuard Home administration endpoints, translates raw payloads into canonical schema v1, stores immutable observation attempts and current capability profiles, and provides semantic comparison and an explicitly confirmed non-authoritative draft import. It does not add a node writer, deployment engine, active revision, drift enforcement, or DNS path.
 
 Release 0.3 keeps the same combined process and adds `internal/controlplane`, durable PostgreSQL revisions/deployments/per-node tasks/drift events, a sequential deployment executor, and a periodic drift evaluator. Desired documents are distinct from observed documents. All targets are capability/listener validated and freshly observed before the first supported HTTP API write; each node is read back before the next begins. Complete success selects the active revision. Manual, Alert, and Enforce reconciliation and maintenance state do not change the DNS-independence boundary. ADR-0024 defines failure, cancellation, restart, rollback, and unsupported-listener behavior.
+
+Release 0.4 adds schema-v2 fields through the existing configuration, inventory, control-plane, and adapter boundaries rather than a parallel settings store. Shared desired state now covers broader DNS, filter/allowlist, client, rewrite, service/safety, query-log, and statistics policy. DHCP configuration/static leases remain node overrides; dynamic leases and redacted TLS status remain observations. Schema v1 is immutable and is projected from current observations for historical rollback and reconciliation. v0.107.52 remains on schema v1; schema v2 supports the explicitly version-gated v0.107.53–v0.107.78 contract. Audited filter refresh is an explicit operation outside revision deployment. ADR-0025 defines compatibility, TLS redaction, managed-field comparison, and DHCP handoff behavior.
 
 ### 3.1 Controller API
 

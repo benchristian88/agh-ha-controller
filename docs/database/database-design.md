@@ -34,6 +34,8 @@ Migration `000002_release_0_2` adds `node_capability_profiles`, `observed_snapsh
 
 Migration `000003_release_0_3` makes drafts authoritative workspaces and adds immutable `configuration_revisions`, `deployments`, ordered `deployment_nodes`, and `drift_events`. Cluster rows hold `reconciliation_policy` and the active-revision relationship. Node rows hold maintenance, applied revision/hash, convergence, and last reconciliation state. Historical deployment, revision, snapshot, and drift relationships use restrictive foreign keys.
 
+Migration `000004_release_0_4` widens the existing schema-version checks on capability profiles, observations, drafts, and revisions from exactly 1 to 1 or 2. It adds no parallel settings tables and does not rewrite immutable JSON or hashes. The development down migration refuses to restore the schema-v1-only checks while any schema-v2 record exists.
+
 Release 0.1 mutable cluster and node records use integer optimistic versions. Node health updates do not increment the operator-facing `record_version`, so polling cannot create false edit conflicts.
 
 ### users

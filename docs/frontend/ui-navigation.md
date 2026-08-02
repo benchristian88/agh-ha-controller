@@ -4,64 +4,95 @@
 
 ```text
 /
-  dashboard
-
-/query-log
 /statistics
 
+/settings/general
 /settings/dns
-/settings/filters
+/settings/encryption
 /settings/clients
-/settings/rewrites
-/settings/services
-/settings/safety
+/settings/dhcp
+
+/filters/blocklists
+/filters/allowlists
+/filters/rewrites
+/filters/blocked-services
+/filters/custom-rules
+
+/query-log
 
 /ha/nodes
 /ha/configuration
-/ha/revisions
 /ha/deployments
 /ha/drift
-/ha/forwarders
+/ha/history
+
+/setup-guide
 
 /system/users
 /system/audit
 /system/settings
+/system/backups
 /system/about
 ```
 
-## Implemented routes through Release 0.3
+## Release 0.4.1 Phases 0–2 implementation
 
-The implemented shell currently exposes:
+Every path above resolves explicitly. Statistics and Query Log identify their
+owning future release, and Setup Guide plus unimplemented administration pages
+show an explicit planned state. Unknown paths render Not Found and never render
+Dashboard.
 
-```text
-/
-  setup or login when unauthenticated
-  cluster health dashboard when authenticated
+The horizontal desktop header and mobile drawer share the Settings, Filters,
+and HA Controller hierarchy from `navigation-and-shell.md`. The context row
+uses existing controller reads for cluster, selected-node scope, active
+revision, node health, and active deployment. A context-read failure is shown
+as unavailable and does not block the feature page.
 
-/ha/nodes
-/ha/configuration
-/ha/deployments
-/system/audit
-```
+Phase 10 confirms that every selected feature route uses its migrated
+operator-facing presentation. Encryption is now a dedicated redacted,
+observed-only inventory page rather than the final branch of the superseded
+broad settings component. Deployments and Drift share one control-plane
+implementation but each canonical URL focuses its corresponding section.
+Change History shares Configuration Control, where immutable history and
+comparison remain available. Statistics and Query Log remain explicit planned
+states owned by Releases 0.5 and 0.6.
 
-`/ha/configuration` combines desired draft authoring, observations/import, immutable revision history, comparison, preview, deploy, and rollback. `/ha/deployments` combines deployment timeline/detail, reconciliation policy, and drift actions. Cluster selection remains global application state. The more granular planned revision/deployment/drift detail URLs remain future navigation refinements and are not rendered as placeholders.
+## Route migrations
+
+The browser retains the query string and fragment during these redirects.
+
+| Previous route | Canonical route |
+|---|---|
+| `/settings/filters` | `/filters/blocklists` |
+| `/settings/rewrites` | `/filters/rewrites` |
+| `/settings/services` | `/filters/blocked-services` |
+| `/settings/privacy` | `/settings/general` |
+| `/settings/infrastructure` | `/settings/encryption` |
+| `/ha/revisions` | `/ha/history` |
+| Any canonical path with a trailing slash | The same path without the trailing slash |
+
+## Configuration Control
+
+`/ha/configuration` is lifecycle control, not a duplicate settings editor. It
+contains the complete read-only schema-v2 draft/change summary, validation,
+observation and import, publication, immutable revision history and comparison,
+deployment preview/deploy, and rollback.
 
 ## Route principles
 
-- URLs should be stable and bookmarkable.
-- Cluster scope should be represented in application state and optionally URL query parameters.
-- Node-specific views should use node UUIDs.
-- Revision, deployment, and drift resources should have detail routes.
-- Sensitive values must never be placed in URLs.
+- URLs are stable and bookmarkable.
+- Cluster and selected-node scope remain application context; secrets never
+  appear in URLs.
+- Active submenu children highlight their parent.
+- Detail routes may add UUIDs in later releases.
+- Unknown routes fail visibly.
 
 ## Breadcrumbs
 
-Use breadcrumbs on detail pages, not on top-level pages.
-
-Examples:
+Use breadcrumbs on future detail pages, not top-level pages.
 
 ```text
 Nodes / AGH Node A
-Change history / Revision 42
+Change History / Revision 42
 Deployments / Deployment 8f...
 ```

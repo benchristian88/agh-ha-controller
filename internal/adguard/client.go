@@ -165,3 +165,45 @@ func VersionCompatibility(version string) domain.Compatibility {
 	}
 	return domain.CompatibilityUnsupported
 }
+
+func ConfigurationCompatibility(version string) domain.Compatibility {
+	major, minor, patch, ok := configurationVersion(version)
+	if !ok {
+		return domain.CompatibilityUnknown
+	}
+	if major == 0 && minor == 107 && patch >= 52 && patch <= 78 {
+		return domain.CompatibilitySupported
+	}
+	if major == 0 && (minor < 107 || (minor == 107 && patch < 52)) {
+		return domain.CompatibilityUnsupported
+	}
+	return domain.CompatibilityUnknown
+}
+
+func configurationVersion(version string) (major, minor, patch int, ok bool) {
+	value := strings.TrimPrefix(strings.TrimSpace(version), "v")
+	parts := strings.Split(value, ".")
+	if len(parts) < 3 {
+		return 0, 0, 0, false
+	}
+	parsedMajor, majorErr := strconv.Atoi(parts[0])
+	parsedMinor, minorErr := strconv.Atoi(parts[1])
+	parsedPatch, patchErr := strconv.Atoi(parts[2])
+	if majorErr != nil || minorErr != nil || patchErr != nil {
+		return 0, 0, 0, false
+	}
+	return parsedMajor, parsedMinor, parsedPatch, true
+}
+
+func supportsEcosia(version string) bool {
+	return supportsConfigurationPatch(version, 53)
+}
+
+func supportsSchemaV2(version string) bool {
+	return supportsEcosia(version)
+}
+
+func supportsConfigurationPatch(version string, minimum int) bool {
+	major, minor, patch, ok := configurationVersion(version)
+	return ok && major == 0 && minor == 107 && patch >= minimum && patch <= 78
+}

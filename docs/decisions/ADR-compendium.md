@@ -1217,3 +1217,15 @@ Freeze canonical schema version 1 around read-only DNS and filtering inventory. 
 **Related release:** 0.3
 
 Separate authoritative `DesiredDocument` revisions from per-node observations. Deploy immutable revisions through durable sequential tasks, validate every target before mutation, stop on first failure, verify by semantic read-back, activate only after complete success, and represent rollback as another deployment. Reconciliation uses durable deduplicated drift events and cluster `manual`, `alert`, or `enforce` policy; maintenance always suppresses mutation. Schema-v1 writes only supported DNS/filtering HTTP API fields. Listener differences fail preflight, whitelist filters remain unmanaged, and the controller never edits AdGuard Home files. Full rationale and deferrals are recorded in standalone ADR-0024.
+
+---
+
+# ADR-0025: Version broader configuration and guard DHCP handoffs
+
+**Status:** Accepted
+
+**Date:** 2026-07-30
+
+**Related release:** 0.4
+
+Introduce canonical schema v2 without rewriting immutable schema-v1 records. AdGuard Home v0.107.52 retains schema-v1 inventory and historical reconciliation; schema v2 supports the explicitly reviewed v0.107.53–v0.107.78 range and treats newer contracts as unknown. Project observations to the revision schema and compare only managed fields for convergence. Shared state gains broader DNS, filters/allowlists, clients, rewrites, service/safety, query-log, and statistics policy. DHCP configuration/static leases are node overrides with at most one enabled node and disable-before-enable deployment ordering; dynamic leases and redacted TLS status are observed-only. TLS secrets are never decoded or stored, and TLS mutation remains deferred. Filter refresh is explicit and audited. Full rationale and consequences are recorded in standalone ADR-0025.

@@ -17,6 +17,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/controlplane"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
+	"github.com/benchristian88/agh-ha-controller/internal/operations"
 )
 
 const (
@@ -24,6 +25,7 @@ const (
 	csrfCookieName    = "aghha_csrf"
 	requestIDHeader   = "X-Request-ID"
 	csrfHeader        = "X-CSRF-Token"
+	idempotencyHeader = "Idempotency-Key"
 )
 
 type AuditReader interface {
@@ -34,10 +36,52 @@ type HealthChecker interface {
 	Ping(context.Context) error
 }
 
+type BlockedServicesCatalogueReader interface {
+	BlockedServicesCatalogue(context.Context, string) (inventory.BlockedServicesCatalogue, error)
+}
+
+type BlocklistPresentationReader interface {
+	BlocklistPresentation(context.Context, string) (inventory.BlocklistPresentation, error)
+}
+
+type AllowlistPresentationReader interface {
+	AllowlistPresentation(context.Context, string) (inventory.AllowlistPresentation, error)
+}
+
+type DHCPInterfacesReader interface {
+	DHCPInterfaces(context.Context, string) (inventory.DHCPInterfaces, error)
+}
+
+type DHCPActiveChecker interface {
+	FindActiveDHCP(context.Context, domain.Actor, string, string) (inventory.DHCPActiveCheckResult, error)
+}
+
+type DHCPOperationService interface {
+	RunDHCPOperation(context.Context, domain.Actor, string, inventory.DHCPOperationCommand, string, string) (inventory.DHCPOperation, error)
+	ListDHCPOperations(context.Context, string, int) ([]inventory.DHCPOperation, error)
+}
+
+type DNSOperationService interface {
+	StartUpstreamTest(context.Context, domain.Actor, string, operations.Target, operations.UpstreamInput, string) (operations.Operation, error)
+	StartHostFilterTest(context.Context, domain.Actor, string, operations.Target, operations.HostFilterInput, string) (operations.Operation, error)
+	StartCacheClear(context.Context, domain.Actor, string, operations.Target, string, string) (operations.Operation, error)
+	StartQueryLogClear(context.Context, domain.Actor, string, operations.Target, string, string) (operations.Operation, error)
+	StartStatisticsReset(context.Context, domain.Actor, string, operations.Target, string, string) (operations.Operation, error)
+	Operation(context.Context, string) (operations.Operation, error)
+	List(context.Context, string, operations.Command, int) ([]operations.Operation, error)
+}
+
 type Server struct {
 	auth           *auth.Service
 	management     *domain.ManagementService
 	inventory      *inventory.Service
+	catalogue      BlockedServicesCatalogueReader
+	blocklists     BlocklistPresentationReader
+	allowlists     AllowlistPresentationReader
+	dhcpInterfaces DHCPInterfacesReader
+	dhcpChecker    DHCPActiveChecker
+	dhcpOperations DHCPOperationService
+	dnsOperations  DNSOperationService
 	controlplane   *controlplane.Service
 	audit          AuditReader
 	health         HealthChecker
@@ -49,13 +93,15 @@ type Server struct {
 	mux            *http.ServeMux
 }
 
+func (s *Server) SetDNSOperations(service DNSOperationService) { s.dnsOperations = service }
+
 func NewServer(authService *auth.Service, management *domain.ManagementService, inventoryService *inventory.Service, audit AuditReader, health HealthChecker, logger *slog.Logger, secureCookies bool, publicBaseURL string, healthInterval time.Duration, webDist string, controlplanes ...*controlplane.Service) *Server {
 	var controlplaneService *controlplane.Service
 	if len(controlplanes) > 0 {
 		controlplaneService = controlplanes[0]
 	}
 	server := &Server{
-		auth: authService, management: management, inventory: inventoryService, audit: audit, health: health,
+		auth: authService, management: management, inventory: inventoryService, catalogue: inventoryService, blocklists: inventoryService, allowlists: inventoryService, dhcpInterfaces: inventoryService, dhcpChecker: inventoryService, dhcpOperations: inventoryService, audit: audit, health: health,
 		controlplane: controlplaneService,
 		logger:       logger, secureCookies: secureCookies, publicBaseURL: publicBaseURL, healthInterval: healthInterval,
 		webDist: webDist, mux: http.NewServeMux(),
@@ -88,7 +134,23 @@ func (s *Server) routes() {
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/test-connection", s.authenticated(true, http.HandlerFunc(s.handleTestNode)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/maintenance", s.authenticated(true, http.HandlerFunc(s.handleNodeMaintenance)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/observations", s.authenticated(true, http.HandlerFunc(s.handleObserveNode)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/filter-refresh", s.authenticated(true, http.HandlerFunc(s.handleFilterRefresh)))
+	s.mux.Handle("GET /api/v1/nodes/{nodeId}/dhcp/interfaces", s.authenticated(false, http.HandlerFunc(s.handleDHCPInterfaces)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/dhcp/active-check", s.authenticated(true, http.HandlerFunc(s.handleDHCPActiveCheck)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/dhcp/reset-leases", s.authenticated(true, http.HandlerFunc(s.handleDHCPResetLeases)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/dhcp/reset-configuration", s.authenticated(true, http.HandlerFunc(s.handleDHCPResetConfiguration)))
+	s.mux.Handle("GET /api/v1/nodes/{nodeId}/dhcp/operations", s.authenticated(false, http.HandlerFunc(s.handleListDHCPOperations)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/test-upstream-dns", s.authenticated(true, http.HandlerFunc(s.handleTestUpstreamDNS)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/test-host-filtering", s.authenticated(true, http.HandlerFunc(s.handleTestHostFiltering)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/clear-dns-cache", s.authenticated(true, http.HandlerFunc(s.handleClearDNSCache)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/clear-query-log", s.authenticated(true, http.HandlerFunc(s.handleClearQueryLog)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/reset-statistics", s.authenticated(true, http.HandlerFunc(s.handleResetStatistics)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/operational-commands", s.authenticated(false, http.HandlerFunc(s.handleListDNSOperations)))
+	s.mux.Handle("GET /api/v1/operational-commands/{operationId}", s.authenticated(false, http.HandlerFunc(s.handleGetDNSOperation)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/configuration-inventory", s.authenticated(false, http.HandlerFunc(s.handleConfigurationInventory)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/blocklists/presentation", s.authenticated(false, http.HandlerFunc(s.handleBlocklistPresentation)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/allowlists/presentation", s.authenticated(false, http.HandlerFunc(s.handleAllowlistPresentation)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/blocked-services/catalogue", s.authenticated(false, http.HandlerFunc(s.handleBlockedServicesCatalogue)))
 	s.mux.Handle("GET /api/v1/configuration-comparisons", s.authenticated(false, http.HandlerFunc(s.handleConfigurationComparison)))
 	s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-draft/import", s.authenticated(true, http.HandlerFunc(s.handleImportConfiguration)))
 	if s.controlplane != nil {
