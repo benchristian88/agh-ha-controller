@@ -37,6 +37,12 @@ Phase 8A adds the shared `LeaseTable` and composes it with `Dialog`,
 per-node sections for discovered interfaces, audited active-server checks,
 network fields, observed active leases, and draft-managed static leases.
 
+Phase 9A composes `PageContainer`, `PageHeader`, `SettingsGroup`, `SettingRow`,
+`DurationField`, `DomainListField`, `ScopeIndicator`, `CapabilityWarning`,
+feedback, and `UnsavedChangesNotice` under `web/src/features/general/`.
+`DurationField` now optionally supports exact custom-unit multipliers so
+millisecond schema values can use friendly units without conversion loss.
+
 ## Shell
 
 - `AppHeader`

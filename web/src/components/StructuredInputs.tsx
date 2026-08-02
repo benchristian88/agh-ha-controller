@@ -165,6 +165,11 @@ export interface DurationPreset {
   value: number;
 }
 
+export interface DurationCustomUnit {
+  label: string;
+  multiplier: number;
+}
+
 export function DurationField({
   label,
   value,
@@ -175,23 +180,41 @@ export function DurationField({
   max,
   disabled = false,
   help,
+  customUnits,
+  integer = false,
+  invalidMessage,
 }: {
   label: string;
   value: number;
-  unit: "seconds" | "minutes" | "hours" | "days";
+  unit: "milliseconds" | "seconds" | "minutes" | "hours" | "days";
   presets: readonly DurationPreset[];
   onChange: (value: number) => void;
   min?: number;
   max?: number;
   disabled?: boolean;
   help?: ReactNode;
+  customUnits?: readonly DurationCustomUnit[];
+  integer?: boolean;
+  invalidMessage?: string;
 }) {
   const id = useId();
-  const presetValue = presets.some((preset) => preset.value === value)
-    ? String(value)
-    : "custom";
+  const [customUnit, setCustomUnit] = useState(
+    () =>
+      customUnits?.find(
+        (candidate) =>
+          candidate.multiplier > 0 && value % candidate.multiplier === 0,
+      ) ?? customUnits?.at(-1),
+  );
+  const [customSelected, setCustomSelected] = useState(false);
+  const presetValue =
+    !customSelected && presets.some((preset) => preset.value === value)
+      ? String(value)
+      : "custom";
+  const customMultiplier = customUnit?.multiplier ?? 1;
+  const customValue = value / customMultiplier;
   const invalid =
     !Number.isFinite(value) ||
+    (integer && !Number.isInteger(value)) ||
     value < min ||
     (max !== undefined && value > max);
   return (
@@ -201,7 +224,8 @@ export function DurationField({
       help={help}
       error={
         invalid
-          ? `Enter a value from ${min}${max === undefined ? " or greater" : ` to ${max}`}.`
+          ? (invalidMessage ??
+            `Enter a value from ${min}${max === undefined ? " or greater" : ` to ${max}`}.`)
           : undefined
       }
     >
@@ -211,8 +235,12 @@ export function DurationField({
           value={presetValue}
           disabled={disabled}
           onChange={(event) => {
-            if (event.target.value !== "custom")
-              onChange(Number(event.target.value));
+            if (event.target.value === "custom") {
+              setCustomSelected(true);
+              return;
+            }
+            setCustomSelected(false);
+            onChange(Number(event.target.value));
           }}
         >
           {presets.map((preset) => (
@@ -230,20 +258,45 @@ export function DurationField({
             <input
               id={`${id}-custom`}
               type="number"
-              value={Number.isFinite(value) ? value : ""}
-              min={min}
-              max={max}
+              value={Number.isFinite(customValue) ? customValue : ""}
+              min={min / customMultiplier}
+              max={max === undefined ? undefined : max / customMultiplier}
               disabled={disabled}
               aria-invalid={invalid}
               onChange={(event) =>
                 onChange(
                   event.target.value === ""
                     ? Number.NaN
-                    : Number(event.target.value),
+                    : Number(event.target.value) * customMultiplier,
                 )
               }
             />
-            <span>{unit}</span>
+            {customUnits === undefined ? (
+              <span>{unit}</span>
+            ) : (
+              <select
+                aria-label={`Custom ${label.toLowerCase()} unit`}
+                value={customMultiplier}
+                disabled={disabled}
+                onChange={(event) => {
+                  const multiplier = Number(event.target.value);
+                  setCustomUnit(
+                    customUnits.find(
+                      (candidate) => candidate.multiplier === multiplier,
+                    ),
+                  );
+                }}
+              >
+                {customUnits.map((candidate) => (
+                  <option
+                    key={`${candidate.label}-${candidate.multiplier}`}
+                    value={candidate.multiplier}
+                  >
+                    {candidate.label}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         )}
       </div>

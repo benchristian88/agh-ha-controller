@@ -11,6 +11,7 @@ import { ConfigurationPage } from "./features/configuration/ConfigurationPage";
 import { ControlPlanePage } from "./features/controlplane/ControlPlanePage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { DHCPPage } from "./features/dhcp/DHCPPage";
+import { GeneralSettingsPage } from "./features/general/GeneralSettingsPage";
 import { NodesPage } from "./features/nodes/NodesPage";
 import { RewritesPage } from "./features/rewrites/RewritesPage";
 import { ManagedSettingsPage } from "./features/settings/ManagedSettingsPage";
@@ -190,6 +191,8 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
         content =
           route.area === "clients" ? (
             <ClientsPage cluster={selected} />
+          ) : route.area === "privacy" ? (
+            <GeneralSettingsPage cluster={selected} />
           ) : route.area === "rewrites" ? (
             <RewritesPage cluster={selected} />
           ) : route.area === "dhcp" ? (

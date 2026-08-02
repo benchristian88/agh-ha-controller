@@ -49,11 +49,11 @@ revision, node health, and active deployment. A context-read failure is shown
 as unavailable and does not block the feature page.
 
 Phase 2 established canonical URLs without redesigning Release 0.4 feature
-controls. Phase 4 now supersedes the Blocked Services item below; the remaining
-items retain their Phase 2 presentation until their assigned migration phase:
+controls. Later migration phases supersede the corresponding items below:
 
-- General renders safety services, Safe Search, and the existing query-log and
-  statistics policy form;
+- General renders the Phase 9A protection/filtering, safety, Safe Search,
+  node-local Query Log policy, and node-local Statistics policy groups with
+  friendly lossless durations and structured ignored domains;
 - Encryption and DHCP each render the existing combined infrastructure form;
 - DNS Blocklists renders the dedicated searchable desired/observed table,
   add/edit dialogs, accurate disable-oriented removal confirmation, per-node

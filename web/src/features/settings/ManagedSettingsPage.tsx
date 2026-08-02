@@ -7,7 +7,6 @@ import type {
   ConfigurationDraft,
   ConfigurationSnapshot,
   Node,
-  SafeSearchConfiguration,
   ValidationIssue,
 } from "../../lib/types";
 
@@ -172,12 +171,6 @@ export function ManagedSettingsPage({
           {area === "dns" && <DNSForm draft={draft} setDraft={setDraft} />}
           {area === "filters" && (
             <FiltersForm draft={draft} setDraft={setDraft} />
-          )}
-          {area === "privacy" && (
-            <>
-              <SafetyForm draft={draft} setDraft={setDraft} />
-              <PrivacyForm draft={draft} setDraft={setDraft} />
-            </>
           )}
           {area === "infrastructure" && (
             <InfrastructureForm nodes={nodes} snapshots={snapshots} />
@@ -352,11 +345,6 @@ function DNSForm({ draft, setDraft }: DraftProps) {
       </div>
       <div className="toggle-grid">
         <Check
-          label="Protection enabled"
-          checked={dns.protectionEnabled ?? false}
-          onChange={(value) => update({ protectionEnabled: value })}
-        />
-        <Check
           label="DNSSEC enabled"
           checked={dns.dnssecEnabled ?? false}
           onChange={(value) => update({ dnssecEnabled: value })}
@@ -422,183 +410,12 @@ function FiltersForm({ draft, setDraft }: DraftProps) {
         <a href="/filters/blocklists">Blocklists</a> and{" "}
         <a href="/filters/allowlists">Allowlists</a> pages.
       </div>
-      <div className="form-grid">
-        <Check
-          label="Filtering enabled"
-          checked={filtering.enabled}
-          onChange={(value) => update({ enabled: value })}
-        />
-        <NumberField
-          label="Automatic update interval (hours)"
-          value={filtering.updateIntervalHours}
-          onChange={(value) => update({ updateIntervalHours: value })}
-        />
-      </div>
       <TextLines
         label="Custom filtering rules (ordered)"
         value={filtering.userRules}
         onChange={(value) => update({ userRules: value })}
         rows={12}
       />
-    </div>
-  );
-}
-
-const emptySafeSearch = (): SafeSearchConfiguration => ({
-  enabled: false,
-  bing: true,
-  duckDuckGo: true,
-  ecosia: true,
-  google: true,
-  pixabay: true,
-  yandex: true,
-  youTube: true,
-});
-
-function SafetyForm({ draft, setDraft }: DraftProps) {
-  const services = draft.document.shared.services;
-  const update = (patch: Partial<typeof services>) =>
-    setDraft({
-      ...draft,
-      document: {
-        ...draft.document,
-        shared: {
-          ...draft.document.shared,
-          services: { ...services, ...patch },
-        },
-      },
-    });
-  const safe = services.safeSearch ?? emptySafeSearch();
-  return (
-    <div className="card form-stack">
-      <h2>Safety services</h2>
-      <p className="muted">
-        Safe Browsing, parental controls, and search-provider enforcement are
-        cluster-wide desired settings. Blocked Services are managed separately
-        under Filters.
-      </p>
-      <div className="toggle-grid">
-        <Check
-          label="Safe Browsing"
-          checked={services.safeBrowsing}
-          onChange={(value) => update({ safeBrowsing: value })}
-        />
-        <Check
-          label="Parental controls"
-          checked={services.parentalControl}
-          onChange={(value) => update({ parentalControl: value })}
-        />
-        <Check
-          label="Safe Search"
-          checked={safe.enabled}
-          onChange={(value) =>
-            update({ safeSearch: { ...safe, enabled: value } })
-          }
-        />
-        {(
-          [
-            "bing",
-            "duckDuckGo",
-            "ecosia",
-            "google",
-            "pixabay",
-            "yandex",
-            "youTube",
-          ] as const
-        ).map((engine) => (
-          <Check
-            key={engine}
-            label={`Safe Search: ${engine}`}
-            checked={safe[engine]}
-            onChange={(value) =>
-              update({ safeSearch: { ...safe, [engine]: value } })
-            }
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function PrivacyForm({ draft, setDraft }: DraftProps) {
-  const shared = draft.document.shared;
-  const setQuery = (patch: Partial<typeof shared.queryLog>) =>
-    setDraft({
-      ...draft,
-      document: {
-        ...draft.document,
-        shared: { ...shared, queryLog: { ...shared.queryLog, ...patch } },
-      },
-    });
-  const setStats = (patch: Partial<typeof shared.statistics>) =>
-    setDraft({
-      ...draft,
-      document: {
-        ...draft.document,
-        shared: { ...shared, statistics: { ...shared.statistics, ...patch } },
-      },
-    });
-  return (
-    <div className="form-stack">
-      <div className="notice notice--info">
-        These settings control storage inside each AdGuard Home node. Release
-        0.4 does not copy query history or statistics into the controller.
-      </div>
-      <section className="card form-stack">
-        <h2>Query log</h2>
-        <div className="form-grid">
-          <Check
-            label="Query log enabled"
-            checked={shared.queryLog.enabled}
-            onChange={(value) => setQuery({ enabled: value })}
-          />
-          <DurationDaysField
-            label="Retention/rotation interval (days)"
-            valueMillis={shared.queryLog.intervalMillis}
-            onChange={(value) => setQuery({ intervalMillis: value })}
-          />
-          <Check
-            label="Anonymize client IP"
-            checked={shared.queryLog.anonymizeClientIp}
-            onChange={(value) => setQuery({ anonymizeClientIp: value })}
-          />
-          <Check
-            label="Apply ignored-host list"
-            checked={shared.queryLog.ignoredEnabled}
-            onChange={(value) => setQuery({ ignoredEnabled: value })}
-          />
-          <TextLines
-            label="Ignored host names"
-            value={shared.queryLog.ignored}
-            onChange={(value) => setQuery({ ignored: value })}
-          />
-          <Check
-            label="Apply ignored-host list"
-            checked={shared.statistics.ignoredEnabled}
-            onChange={(value) => setStats({ ignoredEnabled: value })}
-          />
-        </div>
-      </section>
-      <section className="card form-stack">
-        <h2>Statistics</h2>
-        <div className="form-grid">
-          <Check
-            label="Statistics enabled"
-            checked={shared.statistics.enabled}
-            onChange={(value) => setStats({ enabled: value })}
-          />
-          <DurationDaysField
-            label="Retention interval (days)"
-            valueMillis={shared.statistics.intervalMillis}
-            onChange={(value) => setStats({ intervalMillis: value })}
-          />
-          <TextLines
-            label="Ignored host names"
-            value={shared.statistics.ignored}
-            onChange={(value) => setStats({ ignored: value })}
-          />
-        </div>
-      </section>
     </div>
   );
 }
@@ -667,25 +484,6 @@ function InfrastructureForm({
         </div>
       </section>
     </div>
-  );
-}
-
-function DurationDaysField({
-  label,
-  valueMillis,
-  onChange,
-}: {
-  label: string;
-  valueMillis: number;
-  onChange: (valueMillis: number) => void;
-}) {
-  return (
-    <NumberField
-      label={label}
-      value={valueMillis / 86_400_000}
-      step={0.25}
-      onChange={(days) => onChange(Math.round(days * 86_400_000))}
-    />
   );
 }
 

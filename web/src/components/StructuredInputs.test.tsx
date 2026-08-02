@@ -45,6 +45,8 @@ describe("structured input validation", () => {
     );
     await user.selectOptions(screen.getByLabelText("Lease duration"), "168");
     expect(changed).toHaveBeenLastCalledWith(168);
+    await user.selectOptions(screen.getByLabelText("Lease duration"), "custom");
+    expect(screen.getByLabelText("Custom lease duration")).not.toBeNull();
     rerender(
       <DurationField
         label="Lease duration"

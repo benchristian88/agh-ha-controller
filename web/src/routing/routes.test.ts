@@ -15,6 +15,17 @@ describe("canonical route safety", () => {
 });
 
 describe("route migration", () => {
+  it("resolves General Settings canonically and redirects its broad legacy route", () => {
+    expect(resolveRoute("/settings/general")).toMatchObject({
+      kind: "settings",
+      area: "privacy",
+    });
+    expect(resolveRoute("/settings/privacy")).toEqual({
+      kind: "redirect",
+      to: "/settings/general",
+    });
+  });
+
   it("redirects every legacy bookmark to its approved canonical route", () => {
     for (const [from, to] of Object.entries(LEGACY_REDIRECTS)) {
       expect(resolveRoute(from)).toEqual({ kind: "redirect", to });
