@@ -3,6 +3,8 @@ package adguard
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -28,6 +30,46 @@ func TestVersionFixturesSuppressVolatileFields(t *testing.T) {
 	}
 	if differences := configuration.Diff(documents[0], documents[1]); len(differences) != 0 {
 		t.Fatalf("equivalent fixtures differ: %#v", differences)
+	}
+}
+
+func TestReadBlocklistsPreservesVolatileMetadataOutsideConfiguration(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/control/filtering/status" {
+			http.NotFound(response, request)
+			return
+		}
+		_, _ = response.Write([]byte(`{"enabled":true,"filters":[{"id":7,"enabled":true,"url":"https://filters.test/list.txt","name":"Primary list","rules_count":321,"last_updated":"2026-08-01T01:02:03Z"},{"id":8,"enabled":false,"url":"/opt/adguard/local.txt","name":"Local list","rules_count":4}]}`))
+	}))
+	defer server.Close()
+
+	adapter := NewConfigurationReader(NewProbe(2 * time.Second))
+	lists, err := adapter.ReadBlocklists(context.Background(), probeRequest(server.URL), "v0.107.78")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lists) != 2 || lists[0].ID != 7 || lists[0].RulesCount != 321 || lists[0].LastUpdated == nil || lists[1].Enabled {
+		t.Fatalf("metadata was not retained: %#v", lists)
+	}
+}
+
+func TestReadAllowlistsUsesAllowlistSemanticsWithoutBlocklistContamination(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/control/filtering/status" {
+			http.NotFound(response, request)
+			return
+		}
+		_, _ = response.Write([]byte(`{"filters":[{"id":7,"enabled":true,"url":"https://filters.test/list.txt","name":"Block","rules_count":321},{"id":8,"enabled":true,"url":"https://legacy-allow.test/list.txt","name":"Legacy allow","rules_count":12,"whitelist":true}],"whitelist_filters":[{"id":9,"enabled":false,"url":"https://allow.test/list.txt","name":"Allow","rules_count":22,"last_updated":"2026-08-01T01:02:03Z"}]}`))
+	}))
+	defer server.Close()
+
+	adapter := NewConfigurationReader(NewProbe(2 * time.Second))
+	lists, err := adapter.ReadAllowlists(context.Background(), probeRequest(server.URL), "v0.107.78")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lists) != 2 || lists[0].ID != 8 || lists[1].ID != 9 || lists[1].RulesCount != 22 || lists[1].LastUpdated == nil {
+		t.Fatalf("allowlist metadata was not retained or categories crossed: %#v", lists)
 	}
 }
 
@@ -98,6 +140,55 @@ func TestApplyConfigurationUsesSupportedEndpointsAndPreservesWhitelistFilters(t 
 		if payload["url"] == "https://example.test/allow.txt" {
 			t.Fatal("whitelist filter was mutated")
 		}
+	}
+}
+
+func TestAllowlistReconciliationUsesWhitelistFlagAndPreservesBlocklists(t *testing.T) {
+	type recordedRequest struct {
+		path string
+		body map[string]any
+	}
+	requests := []recordedRequest{}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if (request.URL.Path != "/control/filtering/set_url" && request.URL.Path != "/control/filtering/add_url") || request.Method != http.MethodPost {
+			http.NotFound(response, request)
+			return
+		}
+		var body map[string]any
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Errorf("decode set_url request: %v", err)
+			return
+		}
+		requests = append(requests, recordedRequest{path: request.URL.Path, body: body})
+		response.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	current := filterStatusResponse{
+		Filters: []filterListResponse{
+			{Name: "Block", URL: "https://filters.test/list.txt", Enabled: true},
+			{Name: "Legacy allow", URL: "https://allow.test/wanted.txt", Enabled: false, Whitelist: true},
+		},
+		WhitelistFilters: []filterListResponse{{Name: "Old allow", URL: "https://allow.test/old.txt", Enabled: true}},
+	}
+	adapter := NewConfigurationReader(NewProbe(2 * time.Second))
+	if err := adapter.reconcileFilterURLs(context.Background(), probeRequest(server.URL), current, []string{"https://allow.test/wanted.txt", "https://allow.test/new.txt"}, true); err != nil {
+		t.Fatal(err)
+	}
+	if len(requests) != 3 {
+		t.Fatalf("filter URL requests = %d, want enable, add, and disable: %#v", len(requests), requests)
+	}
+	foundAdd := false
+	for _, request := range requests {
+		if request.body["whitelist"] != true || request.body["url"] == "https://filters.test/list.txt" {
+			t.Fatalf("allowlist flag or category isolation failed: %#v", requests)
+		}
+		if request.path == "/control/filtering/add_url" && request.body["url"] == "https://allow.test/new.txt" {
+			foundAdd = true
+		}
+	}
+	if !foundAdd {
+		t.Fatalf("allowlist add_url request missing or incorrect: %#v", requests)
 	}
 }
 
@@ -201,7 +292,7 @@ func TestApplyConfigurationV2UsesDocumentedMethods(t *testing.T) {
 		response.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
-	desired := configuration.Document{SchemaVersion: configuration.SchemaVersion, Shared: configuration.Shared{Filtering: configuration.Filtering{UpdateInterval: 24}, Services: configuration.Services{BlockedSchedule: configuration.Schedule{TimeZone: "Local", Days: map[string]configuration.DayRange{}}}}, NodeSpecific: configuration.NodeSpecific{DHCP: &configuration.DHCPConfig{}}}
+	desired := configuration.Document{SchemaVersion: configuration.SchemaVersion, Shared: configuration.Shared{Filtering: configuration.Filtering{UpdateInterval: 24}, Services: configuration.Services{BlockedSchedule: configuration.Schedule{TimeZone: "Local", Days: map[string]configuration.DayRange{}}}}, NodeSpecific: configuration.NodeSpecific{DHCP: &configuration.DHCPConfig{Enabled: true, InterfaceName: "eth0", IPv4: configuration.DHCPIPv4{Gateway: "192.0.2.1", SubnetMask: "255.255.255.0", RangeStart: "192.0.2.100", RangeEnd: "192.0.2.200", LeaseDuration: 3600}}}}
 	adapter := NewConfigurationReader(NewProbe(2 * time.Second))
 	if err := adapter.ApplyConfiguration(context.Background(), probeRequest(server.URL), desired); err != nil {
 		t.Fatal(err)
@@ -218,6 +309,53 @@ func TestApplyConfigurationV2UsesDocumentedMethods(t *testing.T) {
 		if methods[path] != method {
 			t.Errorf("%s method = %q, want %q", path, methods[path], method)
 		}
+	}
+}
+
+func TestReconcileDHCPSkipsConfigurationWriteWhenAlreadyConverged(t *testing.T) {
+	requests := []string{}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests = append(requests, request.Method+" "+request.URL.Path)
+		if request.Method == http.MethodGet && request.URL.Path == "/control/dhcp/status" {
+			_, _ = response.Write([]byte(`{"enabled":false,"interface_name":"","v4":{"gateway_ip":"","subnet_mask":"","range_start":"","range_end":"","lease_duration":0},"v6":{"range_start":"","lease_duration":0},"static_leases":[]}`))
+			return
+		}
+		if request.Method == http.MethodPost && request.URL.Path == "/control/dhcp/add_static_lease" {
+			response.WriteHeader(http.StatusOK)
+			return
+		}
+		http.Error(response, "unexpected mutation", http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	adapter := NewConfigurationReader(NewProbe(time.Second))
+	desired := configuration.DHCPConfig{StaticLeases: []configuration.DHCPStaticLease{{MAC: "00:11:22:33:44:55", IP: "192.0.2.10", Hostname: "printer"}}}
+	if err := adapter.reconcileDHCP(context.Background(), probeRequest(server.URL), desired); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"GET /control/dhcp/status", "POST /control/dhcp/add_static_lease"}
+	if len(requests) != len(want) || requests[0] != want[0] || requests[1] != want[1] {
+		t.Fatalf("requests = %#v, want %#v without set_config", requests, want)
+	}
+}
+
+func TestMutationFailureIncludesSafeOperationAndStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		http.Error(response, "rejected payload containing secret-value", http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	adapter := NewConfigurationReader(NewProbe(time.Second))
+	err := adapter.post(context.Background(), probeRequest(server.URL), "/control/dhcp/set_config", map[string]any{"enabled": false})
+	var domainError *domain.Error
+	if !errors.As(err, &domainError) || domainError.Kind != domain.ErrorNodeApply {
+		t.Fatalf("error = %#v, want NODE_APPLY_FAILED", err)
+	}
+	if !strings.Contains(domainError.Message, "POST /control/dhcp/set_config") || !strings.Contains(domainError.Message, "HTTP 400") {
+		t.Fatalf("safe operation detail missing from %q", domainError.Message)
+	}
+	if strings.Contains(domainError.Message, "secret-value") {
+		t.Fatalf("node response body leaked into error: %q", domainError.Message)
 	}
 }
 
@@ -245,6 +383,199 @@ func TestOptionalDHCPReadRejectsMalformedSuccessfulResponse(t *testing.T) {
 	adapter := NewConfigurationReader(NewProbe(2 * time.Second))
 	if supported, err := adapter.getOptional(context.Background(), probeRequest(server.URL), "/control/dhcp/status", &dhcpStatusResponse{}); err == nil || supported {
 		t.Fatalf("malformed optional response supported=%t err=%v", supported, err)
+	}
+}
+
+func TestReadDHCPInterfacesMapsExactAdGuardShape(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet || request.URL.Path != "/control/dhcp/interfaces" {
+			http.NotFound(response, request)
+			return
+		}
+		_, _ = response.Write([]byte(`{"eth0":{"name":"eth0","hardware_address":"00:11:22:33:44:55","ipv4_addresses":["192.0.2.2"],"ipv6_addresses":["2001:db8::2"],"gateway_ip":"192.0.2.1","flags":"up|broadcast|multicast"}}`))
+	}))
+	defer server.Close()
+
+	adapter := NewConfigurationReader(NewProbe(time.Second))
+	interfaces, err := adapter.ReadDHCPInterfaces(context.Background(), probeRequest(server.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(interfaces) != 1 || interfaces[0].Name != "eth0" || interfaces[0].GatewayIP != "192.0.2.1" || len(interfaces[0].Flags) != 3 || interfaces[0].IPv6Addresses[0] != "2001:db8::2" {
+		t.Fatalf("interfaces = %#v", interfaces)
+	}
+}
+
+func TestReadDHCPInterfacesReportsUnavailableEndpoint(t *testing.T) {
+	for _, status := range []int{http.StatusNotFound, http.StatusInternalServerError, http.StatusNotImplemented} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { response.WriteHeader(status) }))
+			defer server.Close()
+			adapter := NewConfigurationReader(NewProbe(time.Second))
+			_, err := adapter.ReadDHCPInterfaces(context.Background(), probeRequest(server.URL))
+			var domainError *domain.Error
+			if !errors.As(err, &domainError) || domainError.Kind != domain.ErrorCapability {
+				t.Fatalf("error = %#v, want capability error", err)
+			}
+		})
+	}
+}
+
+func TestFindActiveDHCPUsesJSONRequestAndSanitisesNodeErrors(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPost || request.URL.Path != "/control/dhcp/find_active_dhcp" {
+			http.NotFound(response, request)
+			return
+		}
+		var input map[string]string
+		if err := json.NewDecoder(request.Body).Decode(&input); err != nil || input["interface"] != "eth0" {
+			http.Error(response, "bad request", http.StatusBadRequest)
+			return
+		}
+		_, _ = response.Write([]byte(`{"v4":{"other_server":{"found":"error","error":"private implementation detail"},"static_ip":{"static":"no","ip":"192.0.2.2"}},"v6":{"other_server":{"found":"yes"}}}`))
+	}))
+	defer server.Close()
+
+	adapter := NewConfigurationReader(NewProbe(time.Second))
+	result, err := adapter.FindActiveDHCP(context.Background(), probeRequest(server.URL), "eth0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IPv4OtherServer.Status != "error" || strings.Contains(result.IPv4OtherServer.Message, "private") || result.IPv4StaticIP.IP != "192.0.2.2" || result.IPv6OtherServer.Status != "yes" {
+		t.Fatalf("result = %#v", result)
+	}
+}
+
+func TestFindActiveDHCPTimeoutIsNodeUnreachable(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		time.Sleep(50 * time.Millisecond)
+		_, _ = response.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+	adapter := NewConfigurationReader(NewProbe(5 * time.Millisecond))
+	_, err := adapter.FindActiveDHCP(context.Background(), probeRequest(server.URL), "eth0")
+	var domainError *domain.Error
+	if !errors.As(err, &domainError) || domainError.Kind != domain.ErrorNodeUnreachable {
+		t.Fatalf("error = %#v, want node unreachable", err)
+	}
+}
+
+func TestDHCPResetOperationsUseExactNoBodyEndpoints(t *testing.T) {
+	paths := []string{}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPost {
+			t.Errorf("method = %s, want POST", request.Method)
+		}
+		body, err := io.ReadAll(request.Body)
+		if err != nil {
+			t.Error(err)
+		}
+		if len(body) != 0 || request.Header.Get("Content-Type") != "" {
+			t.Errorf("reset request unexpectedly had body=%q content-type=%q", body, request.Header.Get("Content-Type"))
+		}
+		paths = append(paths, request.URL.Path)
+		response.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	adapter := NewConfigurationReader(NewProbe(time.Second))
+	request := probeRequest(server.URL)
+	if err := adapter.ResetDHCPLeases(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	if err := adapter.ResetDHCPConfiguration(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	if len(paths) != 2 || paths[0] != "/control/dhcp/reset_leases" || paths[1] != "/control/dhcp/reset" {
+		t.Fatalf("paths = %#v", paths)
+	}
+}
+
+func TestDHCPResetFailureAndTimeoutAreSanitised(t *testing.T) {
+	t.Run("upstream body", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+			http.Error(response, "credential=secret private response", http.StatusInternalServerError)
+		}))
+		defer server.Close()
+		adapter := NewConfigurationReader(NewProbe(time.Second))
+		err := adapter.ResetDHCPConfiguration(context.Background(), probeRequest(server.URL))
+		var domainError *domain.Error
+		if !errors.As(err, &domainError) || domainError.Kind != domain.ErrorNodeApply || strings.Contains(err.Error(), "credential") || strings.Contains(err.Error(), "secret") {
+			t.Fatalf("unsafe error = %#v", err)
+		}
+	})
+	t.Run("timeout", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+			time.Sleep(50 * time.Millisecond)
+			response.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+		adapter := NewConfigurationReader(NewProbe(5 * time.Millisecond))
+		err := adapter.ResetDHCPLeases(context.Background(), probeRequest(server.URL))
+		var domainError *domain.Error
+		if !errors.As(err, &domainError) || domainError.Kind != domain.ErrorNodeUnreachable {
+			t.Fatalf("error = %#v, want node unreachable", err)
+		}
+	})
+}
+
+func TestReadBlockedServicesCatalogueSupportsUngroupedAndGroupedContracts(t *testing.T) {
+	tests := []struct {
+		name, version, body string
+		wantGroups          int
+		wantGroupID         string
+	}{
+		{
+			name: "frozen schema catalogue", version: "v0.107.52",
+			body: `{"blocked_services":[{"id":"youtube","name":"YouTube","rules":["||youtube.com^"],"icon_svg":"PHN2Zy8+"}]}`,
+		},
+		{
+			name: "pre-group catalogue", version: "v0.107.61",
+			body: `{"blocked_services":[{"id":"youtube","name":"YouTube","rules":["||youtube.com^"],"icon_svg":"PHN2Zy8+"}]}`,
+		},
+		{
+			name: "grouped catalogue", version: "v0.107.78",
+			body:       `{"blocked_services":[{"id":"youtube","name":"YouTube","rules":["||youtube.com^"],"icon_svg":"PHN2Zy8+","group_id":"streaming"}],"groups":[{"id":"streaming"}]}`,
+			wantGroups: 1, wantGroupID: "streaming",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var method, path string
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				method, path = request.Method, request.URL.Path
+				response.Header().Set("Content-Type", "application/json")
+				_, _ = response.Write([]byte(test.body))
+			}))
+			defer server.Close()
+
+			reader := NewConfigurationReader(NewProbe(time.Second))
+			catalogue, err := reader.ReadBlockedServicesCatalogue(context.Background(), probeRequest(server.URL), test.version)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if method != http.MethodGet || path != "/control/blocked_services/all" {
+				t.Fatalf("unexpected request %s %s", method, path)
+			}
+			if len(catalogue.Services) != 1 || catalogue.Services[0].ID != "youtube" || catalogue.Services[0].Name != "YouTube" || catalogue.Services[0].GroupID != test.wantGroupID || len(catalogue.Groups) != test.wantGroups {
+				t.Fatalf("unexpected catalogue: %#v", catalogue)
+			}
+		})
+	}
+}
+
+func TestReadBlockedServicesCatalogueRejectsInvalidMetadataAndUnsupportedVersion(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"blocked_services":[{"id":"","name":"Missing ID"}]}`))
+	}))
+	defer server.Close()
+	reader := NewConfigurationReader(NewProbe(time.Second))
+	request := probeRequest(server.URL)
+	if _, err := reader.ReadBlockedServicesCatalogue(context.Background(), request, "v0.107.78"); err == nil {
+		t.Fatal("invalid catalogue metadata was accepted")
+	}
+	if _, err := reader.ReadBlockedServicesCatalogue(context.Background(), request, "v0.108.0"); err == nil {
+		t.Fatal("unsupported version was accepted")
 	}
 }
 

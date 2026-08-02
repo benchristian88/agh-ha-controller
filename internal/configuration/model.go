@@ -561,8 +561,7 @@ func ValidateDesired(document DesiredDocument, nodeIDs []string) []ValidationIss
 		issues = append(issues, ValidationIssue{Field: "shared.filtering.updateIntervalHours", Message: "must be between 0 and 8760"})
 	}
 	for index, rawURL := range document.Shared.Filtering.FilterURLs {
-		parsed, err := url.Parse(rawURL)
-		if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		if !validHTTPURL(rawURL) {
 			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("shared.filtering.filterUrls[%d]", index), Message: "must be an absolute HTTP or HTTPS URL"})
 		}
 	}
@@ -597,7 +596,7 @@ func ValidateDesired(document DesiredDocument, nodeIDs []string) []ValidationIss
 
 func validHTTPURL(rawURL string) bool {
 	parsed, err := url.Parse(rawURL)
-	return err == nil && parsed.Host != "" && (parsed.Scheme == "http" || parsed.Scheme == "https")
+	return err == nil && parsed.Host != "" && parsed.User == nil && (parsed.Scheme == "http" || parsed.Scheme == "https")
 }
 
 func validateV2Shared(shared Shared) []ValidationIssue {
@@ -758,8 +757,18 @@ func validateDHCP(prefix string, config DHCPConfig) []ValidationIssue {
 	for index, lease := range config.StaticLeases {
 		mac, macErr := net.ParseMAC(strings.TrimSpace(lease.MAC))
 		ip, ipErr := netip.ParseAddr(strings.TrimSpace(lease.IP))
-		if macErr != nil || ipErr != nil || strings.TrimSpace(lease.Hostname) == "" {
-			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("%s.staticLeases[%d]", prefix, index), Message: "MAC, valid IP, and hostname are required"})
+		hostname := strings.TrimSpace(lease.Hostname)
+		hostnameValid := validDHCPHostname(hostname)
+		if macErr != nil {
+			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("%s.staticLeases[%d].mac", prefix, index), Message: "must be a valid six-byte MAC address"})
+		}
+		if ipErr != nil {
+			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("%s.staticLeases[%d].ip", prefix, index), Message: "must be a valid IP address"})
+		}
+		if !hostnameValid {
+			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("%s.staticLeases[%d].hostname", prefix, index), Message: "must contain valid hostname labels"})
+		}
+		if macErr != nil || ipErr != nil || !hostnameValid {
 			continue
 		}
 		macKey, ipKey := mac.String(), ip.String()
@@ -769,6 +778,23 @@ func validateDHCP(prefix string, config DHCPConfig) []ValidationIssue {
 		seenMACs[macKey], seenIPs[ipKey] = true, true
 	}
 	return issues
+}
+
+func validDHCPHostname(value string) bool {
+	if len(value) == 0 || len(value) > 253 {
+		return false
+	}
+	for _, label := range strings.Split(value, ".") {
+		if len(label) == 0 || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, character := range label {
+			if (character < 'a' || character > 'z') && (character < 'A' || character > 'Z') && (character < '0' || character > '9') && character != '-' {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func validAddress(value string) bool {

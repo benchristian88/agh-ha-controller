@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/benchristian88/agh-ha-controller/internal/configuration"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
@@ -54,22 +55,23 @@ type dnsInfoResponse struct {
 	UpstreamTimeout    *int     `json:"upstream_timeout"`
 }
 
+type filterListResponse struct {
+	ID          int64  `json:"id"`
+	Enabled     bool   `json:"enabled"`
+	URL         string `json:"url"`
+	Name        string `json:"name"`
+	RulesCount  int64  `json:"rules_count"`
+	LastUpdated string `json:"last_updated"`
+	Whitelist   bool   `json:"whitelist"`
+}
+
 type filterStatusResponse struct {
-	FilteringEnabled *bool `json:"filtering_enabled"`
-	Enabled          *bool `json:"enabled"`
-	Interval         int   `json:"interval"`
-	Filters          []struct {
-		Enabled   bool   `json:"enabled"`
-		URL       string `json:"url"`
-		Name      string `json:"name"`
-		Whitelist bool   `json:"whitelist"`
-	} `json:"filters"`
-	UserRules        []string `json:"user_rules"`
-	WhitelistFilters []struct {
-		Enabled bool   `json:"enabled"`
-		URL     string `json:"url"`
-		Name    string `json:"name"`
-	} `json:"whitelist_filters"`
+	FilteringEnabled *bool                `json:"filtering_enabled"`
+	Enabled          *bool                `json:"enabled"`
+	Interval         int                  `json:"interval"`
+	Filters          []filterListResponse `json:"filters"`
+	UserRules        []string             `json:"user_rules"`
+	WhitelistFilters []filterListResponse `json:"whitelist_filters"`
 }
 
 type clientsResponse struct {
@@ -134,6 +136,16 @@ type blockedServicesResponse struct {
 	Schedule scheduleResponse `json:"schedule"`
 	IDs      []string         `json:"ids"`
 }
+type blockedServicesCatalogueResponse struct {
+	BlockedServices []struct {
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		GroupID string `json:"group_id"`
+	} `json:"blocked_services"`
+	Groups []struct {
+		ID string `json:"id"`
+	} `json:"groups"`
+}
 type policyResponse struct {
 	Enabled           bool     `json:"enabled"`
 	IntervalMillis    int64    `json:"interval"`
@@ -184,6 +196,35 @@ type dhcpStatusResponse struct {
 	V6            dhcpV6Response      `json:"v6"`
 	Leases        []dhcpLeaseResponse `json:"leases"`
 	StaticLeases  []dhcpLeaseResponse `json:"static_leases"`
+}
+
+type dhcpInterfaceResponse struct {
+	Name            string   `json:"name"`
+	HardwareAddress string   `json:"hardware_address"`
+	IPv4Addresses   []string `json:"ipv4_addresses"`
+	IPv6Addresses   []string `json:"ipv6_addresses"`
+	GatewayIP       string   `json:"gateway_ip"`
+	Flags           string   `json:"flags"`
+}
+
+type dhcpCheckResponseValue struct {
+	Status string `json:"found"`
+	Error  string `json:"error"`
+}
+
+type dhcpStaticIPResponse struct {
+	Status string `json:"static"`
+	IP     string `json:"ip"`
+}
+
+type dhcpActiveCheckResponse struct {
+	V4 struct {
+		OtherServer dhcpCheckResponseValue `json:"other_server"`
+		StaticIP    dhcpStaticIPResponse   `json:"static_ip"`
+	} `json:"v4"`
+	V6 struct {
+		OtherServer dhcpCheckResponseValue `json:"other_server"`
+	} `json:"v6"`
 }
 
 func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request domain.NodeProbeRequest, version string) (configuration.Document, inventory.CapabilityProfile, error) {
@@ -287,6 +328,154 @@ func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request dom
 	document := configurationDocument(version, status, dns, filtering)
 	populateBroaderDocument(&document, clients, rewriteSettings, rewrites, blocked, safeBrowsing, parental, safeSearch, queryLog, statistics, tls, dhcp, dhcpSupported)
 	return configuration.Canonicalise(document), profile, nil
+}
+
+func (r *ConfigurationReader) ReadBlockedServicesCatalogue(ctx context.Context, request domain.NodeProbeRequest, version string) (inventory.NodeBlockedServicesCatalogue, error) {
+	if ConfigurationCompatibility(version) != domain.CompatibilitySupported {
+		return inventory.NodeBlockedServicesCatalogue{}, domain.NewError(domain.ErrorCapability, "the node version is not supported for blocked-services catalogue inventory")
+	}
+	var response blockedServicesCatalogueResponse
+	if err := r.get(ctx, request, "/control/blocked_services/all", &response); err != nil {
+		return inventory.NodeBlockedServicesCatalogue{}, err
+	}
+	result := inventory.NodeBlockedServicesCatalogue{
+		Services: make([]inventory.BlockedServiceMetadata, 0, len(response.BlockedServices)),
+		Groups:   make([]inventory.BlockedServiceGroup, 0, len(response.Groups)),
+	}
+	seen := map[string]bool{}
+	for _, service := range response.BlockedServices {
+		service.ID, service.Name, service.GroupID = strings.TrimSpace(service.ID), strings.TrimSpace(service.Name), strings.TrimSpace(service.GroupID)
+		if service.ID == "" || service.Name == "" || len(service.ID) > 200 || len(service.Name) > 500 || len(service.GroupID) > 200 || seen[service.ID] {
+			return inventory.NodeBlockedServicesCatalogue{}, domain.NewError(domain.ErrorNodeResponse, "the node returned invalid blocked-services catalogue metadata")
+		}
+		seen[service.ID] = true
+		result.Services = append(result.Services, inventory.BlockedServiceMetadata{ID: service.ID, Name: service.Name, GroupID: service.GroupID})
+	}
+	seenGroups := map[string]bool{}
+	for _, group := range response.Groups {
+		id := strings.TrimSpace(group.ID)
+		if id == "" || len(id) > 200 || seenGroups[id] {
+			return inventory.NodeBlockedServicesCatalogue{}, domain.NewError(domain.ErrorNodeResponse, "the node returned invalid blocked-services group metadata")
+		}
+		seenGroups[id] = true
+		result.Groups = append(result.Groups, inventory.BlockedServiceGroup{ID: id})
+	}
+	return result, nil
+}
+
+func (r *ConfigurationReader) ReadDHCPInterfaces(ctx context.Context, request domain.NodeProbeRequest) ([]inventory.DHCPInterface, error) {
+	var response map[string]dhcpInterfaceResponse
+	supported, err := r.getOptional(ctx, request, "/control/dhcp/interfaces", &response)
+	if err != nil {
+		return nil, err
+	}
+	if !supported {
+		return nil, domain.NewError(domain.ErrorCapability, "DHCP interface discovery is not supported by this node")
+	}
+	interfaces := make([]inventory.DHCPInterface, 0, len(response))
+	for key, item := range response {
+		name := strings.TrimSpace(item.Name)
+		if name == "" {
+			name = strings.TrimSpace(key)
+		}
+		if name == "" || len(name) > 128 {
+			return nil, domain.NewError(domain.ErrorNodeResponse, "the node returned invalid DHCP interface metadata")
+		}
+		flags := []string{}
+		for _, flag := range strings.Split(item.Flags, "|") {
+			if flag = strings.TrimSpace(flag); flag != "" {
+				flags = append(flags, flag)
+			}
+		}
+		interfaces = append(interfaces, inventory.DHCPInterface{
+			Name: name, HardwareAddress: strings.TrimSpace(item.HardwareAddress),
+			IPv4Addresses: item.IPv4Addresses, IPv6Addresses: item.IPv6Addresses,
+			GatewayIP: strings.TrimSpace(item.GatewayIP), Flags: flags,
+		})
+	}
+	return interfaces, nil
+}
+
+func (r *ConfigurationReader) FindActiveDHCP(ctx context.Context, request domain.NodeProbeRequest, interfaceName string) (inventory.DHCPActiveCheck, error) {
+	var response dhcpActiveCheckResponse
+	if err := r.postResource(ctx, request, "/control/dhcp/find_active_dhcp", map[string]any{"interface": interfaceName}, &response); err != nil {
+		return inventory.DHCPActiveCheck{}, err
+	}
+	v4, err := dhcpCheckValue(response.V4.OtherServer.Status)
+	if err != nil {
+		return inventory.DHCPActiveCheck{}, err
+	}
+	v6, err := dhcpCheckValue(response.V6.OtherServer.Status)
+	if err != nil {
+		return inventory.DHCPActiveCheck{}, err
+	}
+	staticStatus := strings.TrimSpace(response.V4.StaticIP.Status)
+	if staticStatus == "" {
+		staticStatus = "unavailable"
+	}
+	if staticStatus != "yes" && staticStatus != "no" && staticStatus != "error" && staticStatus != "unavailable" {
+		return inventory.DHCPActiveCheck{}, domain.NewError(domain.ErrorNodeResponse, "the node returned an invalid static-IP check result")
+	}
+	return inventory.DHCPActiveCheck{
+		IPv4OtherServer: v4,
+		IPv4StaticIP:    inventory.DHCPStaticIPCheck{Status: staticStatus, IP: strings.TrimSpace(response.V4.StaticIP.IP)},
+		IPv6OtherServer: v6,
+	}, nil
+}
+
+func dhcpCheckValue(status string) (inventory.DHCPCheckValue, error) {
+	status = strings.TrimSpace(status)
+	if status == "" {
+		return inventory.DHCPCheckValue{Status: "unavailable"}, nil
+	}
+	if status != "yes" && status != "no" && status != "error" {
+		return inventory.DHCPCheckValue{}, domain.NewError(domain.ErrorNodeResponse, "the node returned an invalid active DHCP check result")
+	}
+	value := inventory.DHCPCheckValue{Status: status}
+	if status == "error" {
+		value.Message = "The node could not determine whether another DHCP server is active."
+	}
+	return value, nil
+}
+
+func (r *ConfigurationReader) ReadBlocklists(ctx context.Context, request domain.NodeProbeRequest, version string) ([]inventory.FilterListMetadata, error) {
+	return r.readFilterLists(ctx, request, version, false)
+}
+
+func (r *ConfigurationReader) ReadAllowlists(ctx context.Context, request domain.NodeProbeRequest, version string) ([]inventory.FilterListMetadata, error) {
+	return r.readFilterLists(ctx, request, version, true)
+}
+
+func (r *ConfigurationReader) readFilterLists(ctx context.Context, request domain.NodeProbeRequest, version string, whitelist bool) ([]inventory.FilterListMetadata, error) {
+	if ConfigurationCompatibility(version) != domain.CompatibilitySupported {
+		return nil, domain.NewError(domain.ErrorCapability, "the node version is not supported for filter-list presentation")
+	}
+	var response filterStatusResponse
+	if err := r.get(ctx, request, "/control/filtering/status", &response); err != nil {
+		return nil, err
+	}
+	filters := append([]filterListResponse(nil), response.Filters...)
+	for _, filter := range response.WhitelistFilters {
+		filter.Whitelist = true
+		filters = append(filters, filter)
+	}
+	result := make([]inventory.FilterListMetadata, 0, len(filters))
+	for _, filter := range filters {
+		if filter.Whitelist != whitelist {
+			continue
+		}
+		item := inventory.FilterListMetadata{ID: filter.ID, URL: filter.URL, Name: filter.Name, Enabled: filter.Enabled, RulesCount: filter.RulesCount}
+		if strings.TrimSpace(filter.LastUpdated) != "" {
+			updated, err := time.Parse(time.RFC3339, filter.LastUpdated)
+			if err != nil {
+				return nil, domain.NewError(domain.ErrorNodeResponse, "the node returned an invalid filter-list update time")
+			}
+			updated = updated.UTC()
+			item.LastUpdated = &updated
+		}
+		result = append(result, item)
+	}
+	return result, nil
 }
 
 func validateListenerStatus(status statusResponse) error {
@@ -476,16 +665,20 @@ func (r *ConfigurationReader) RefreshFilters(ctx context.Context, request domain
 	return r.post(ctx, request, "/control/filtering/refresh", map[string]any{"whitelist": whitelist})
 }
 
+func (r *ConfigurationReader) ResetDHCPLeases(ctx context.Context, request domain.NodeProbeRequest) error {
+	return r.post(ctx, request, "/control/dhcp/reset_leases", nil)
+}
+
+func (r *ConfigurationReader) ResetDHCPConfiguration(ctx context.Context, request domain.NodeProbeRequest) error {
+	return r.post(ctx, request, "/control/dhcp/reset", nil)
+}
+
 func (r *ConfigurationReader) reconcileFilterURLs(ctx context.Context, request domain.NodeProbeRequest, current filterStatusResponse, desired []string, whitelist bool) error {
 	targets := make(map[string]struct{}, len(desired))
 	currentItems := current.Filters
 	for _, item := range current.WhitelistFilters {
-		currentItems = append(currentItems, struct {
-			Enabled   bool   `json:"enabled"`
-			URL       string `json:"url"`
-			Name      string `json:"name"`
-			Whitelist bool   `json:"whitelist"`
-		}{Enabled: item.Enabled, URL: item.URL, Name: item.Name, Whitelist: true})
+		item.Whitelist = true
+		currentItems = append(currentItems, item)
 	}
 	for _, target := range desired {
 		targets[strings.ToLower(target)] = struct{}{}
@@ -644,9 +837,11 @@ func (r *ConfigurationReader) reconcileDHCP(ctx context.Context, request domain.
 	if err := r.get(ctx, request, "/control/dhcp/status", &current); err != nil {
 		return err
 	}
-	payload := map[string]any{"enabled": desired.Enabled, "interface_name": desired.InterfaceName, "v4": map[string]any{"gateway_ip": desired.IPv4.Gateway, "subnet_mask": desired.IPv4.SubnetMask, "range_start": desired.IPv4.RangeStart, "range_end": desired.IPv4.RangeEnd, "lease_duration": desired.IPv4.LeaseDuration}, "v6": map[string]any{"range_start": desired.IPv6.RangeStart, "lease_duration": desired.IPv6.LeaseDuration}}
-	if err := r.post(ctx, request, "/control/dhcp/set_config", payload); err != nil {
-		return err
+	if !dhcpConfigurationMatches(current, desired) {
+		payload := map[string]any{"enabled": desired.Enabled, "interface_name": desired.InterfaceName, "v4": map[string]any{"gateway_ip": desired.IPv4.Gateway, "subnet_mask": desired.IPv4.SubnetMask, "range_start": desired.IPv4.RangeStart, "range_end": desired.IPv4.RangeEnd, "lease_duration": desired.IPv4.LeaseDuration}, "v6": map[string]any{"range_start": desired.IPv6.RangeStart, "lease_duration": desired.IPv6.LeaseDuration}}
+		if err := r.post(ctx, request, "/control/dhcp/set_config", payload); err != nil {
+			return err
+		}
 	}
 	byMAC, targets := map[string]dhcpLeaseResponse{}, map[string]bool{}
 	for _, lease := range current.StaticLeases {
@@ -677,12 +872,75 @@ func (r *ConfigurationReader) reconcileDHCP(ctx context.Context, request domain.
 	return nil
 }
 
+func dhcpConfigurationMatches(current dhcpStatusResponse, desired configuration.DHCPConfig) bool {
+	return current.Enabled == desired.Enabled &&
+		current.InterfaceName == desired.InterfaceName &&
+		current.V4.Gateway == desired.IPv4.Gateway &&
+		current.V4.SubnetMask == desired.IPv4.SubnetMask &&
+		current.V4.RangeStart == desired.IPv4.RangeStart &&
+		current.V4.RangeEnd == desired.IPv4.RangeEnd &&
+		current.V4.LeaseDuration == desired.IPv4.LeaseDuration &&
+		current.V6.RangeStart == desired.IPv6.RangeStart &&
+		current.V6.LeaseDuration == desired.IPv6.LeaseDuration
+}
+
 func (r *ConfigurationReader) post(ctx context.Context, request domain.NodeProbeRequest, path string, payload any) error {
 	return r.send(ctx, request, http.MethodPost, path, payload)
 }
 
 func (r *ConfigurationReader) put(ctx context.Context, request domain.NodeProbeRequest, path string, payload any) error {
 	return r.send(ctx, request, http.MethodPut, path, payload)
+}
+
+func (r *ConfigurationReader) postResource(ctx context.Context, request domain.NodeProbeRequest, path string, payload, target any) error {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("encode AdGuard Home read-only request: %w", err)
+	}
+	transport, err := r.probe.transport(request.CertificatePolicy, request.CustomCAPEM)
+	if err != nil {
+		return err
+	}
+	defer transport.CloseIdleConnections()
+	endpoint, err := configurationEndpoint(request.BaseURL, path)
+	if err != nil {
+		return domain.NewError(domain.ErrorNodeResponse, "the node URL is invalid")
+	}
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create AdGuard Home read-only request: %w", err)
+	}
+	httpRequest.SetBasicAuth(request.Credentials.Username, request.Credentials.Password)
+	httpRequest.Header.Set("Accept", "application/json")
+	httpRequest.Header.Set("Content-Type", "application/json")
+	client := &http.Client{Transport: transport, Timeout: r.probe.timeout, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
+	response, err := client.Do(httpRequest)
+	if err != nil {
+		return classifyNetworkError(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
+		return domain.NewError(domain.ErrorNodeAuth, "the node rejected its stored credentials")
+	}
+	if response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusNotImplemented {
+		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, maxConfigurationBody))
+		return domain.NewError(domain.ErrorCapability, "active DHCP detection is not supported by this node")
+	}
+	if response.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, maxConfigurationBody))
+		return domain.NewError(domain.ErrorNodeResponse, "the node active DHCP endpoint returned an unexpected status")
+	}
+	responseBody, err := io.ReadAll(io.LimitReader(response.Body, maxConfigurationBody+1))
+	if err != nil {
+		return domain.NewError(domain.ErrorNodeResponse, "the node active DHCP response could not be read")
+	}
+	if len(responseBody) > maxConfigurationBody {
+		return domain.NewError(domain.ErrorNodeResponse, "the node active DHCP response was too large")
+	}
+	if err := json.Unmarshal(responseBody, target); err != nil {
+		return domain.NewError(domain.ErrorNodeResponse, "the node returned invalid active DHCP JSON")
+	}
+	return nil
 }
 
 func (r *ConfigurationReader) send(ctx context.Context, request domain.NodeProbeRequest, method, path string, payload any) error {
@@ -723,7 +981,7 @@ func (r *ConfigurationReader) send(ctx context.Context, request domain.NodeProbe
 		return domain.NewError(domain.ErrorNodeAuth, "the node rejected its stored credentials")
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return domain.NewError(domain.ErrorNodeApply, "the node rejected a configuration change")
+		return domain.NewError(domain.ErrorNodeApply, fmt.Sprintf("AdGuard Home rejected %s %s with HTTP %d", method, path, response.StatusCode))
 	}
 	return nil
 }

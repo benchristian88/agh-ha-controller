@@ -6,28 +6,17 @@ import type {
   Cluster,
   ConfigurationDraft,
   ConfigurationSnapshot,
-  DhcpConfiguration,
-  DhcpStaticLease,
   Node,
-  PersistentClient,
-  Rewrite,
-  SafeSearchConfiguration,
-  Schedule,
   ValidationIssue,
 } from "../../lib/types";
-import {
-  createEditorRowKey,
-  formatTimeOfDay,
-  parseTimeOfDay,
-} from "./settings";
 
 export type SettingsArea =
   | "dns"
   | "filters"
   | "clients"
   | "rewrites"
-  | "services"
   | "privacy"
+  | "dhcp"
   | "infrastructure";
 
 const titles: Record<SettingsArea, [string, string]> = {
@@ -47,26 +36,28 @@ const titles: Record<SettingsArea, [string, string]> = {
     "DNS rewrites",
     "Cluster-wide domain answers managed as an unordered set.",
   ],
-  services: [
-    "Services and safety",
-    "Blocked services, Safe Browsing, parental controls, and Safe Search.",
-  ],
   privacy: [
-    "Logs and statistics",
-    "Node-local query-log and statistics collection policy. No data is ingested by the controller in 0.4.",
+    "General settings",
+    "Safety services, Safe Search, query-log, and statistics policy managed across the cluster.",
   ],
   infrastructure: [
-    "TLS and DHCP",
-    "Redacted TLS inventory and guarded single-active-node DHCP configuration.",
+    "Encryption",
+    "Redacted, node-attributed TLS inventory. Certificate secrets remain outside desired state.",
+  ],
+  dhcp: [
+    "DHCP",
+    "Guarded node-specific DHCP configuration with a single active node.",
   ],
 };
 
 export function ManagedSettingsPage({
   cluster,
   area,
+  heading,
 }: {
   cluster: Cluster;
   area: SettingsArea;
+  heading?: readonly [title: string, description: string];
 }) {
   const [draft, setDraft] = useState<ConfigurationDraft>();
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -108,7 +99,7 @@ export function ManagedSettingsPage({
       setDraft(result.draft);
       setIssues(result.issues);
       setMessage(
-        "Draft saved. Publish and deploy it from Configuration when you are ready.",
+        "Draft saved. Publish and deploy it from Configuration Control when you are ready.",
       );
     } catch (caught) {
       setError(caught);
@@ -122,7 +113,7 @@ export function ManagedSettingsPage({
   if (draft === undefined && nodes.length === 0 && error === undefined)
     return <Loading label="Loading managed settings…" />;
 
-  const [title, description] = titles[area];
+  const [title, description] = heading ?? titles[area];
   return (
     <>
       <header className="page-header">
@@ -146,17 +137,16 @@ export function ManagedSettingsPage({
       {!draft ? (
         <EmptyState title="Import a node configuration first">
           <p>
-            Open Configuration, refresh a node, and import its observation to
-            create the cluster draft.
+            Open Configuration Control, refresh a node, and import its
+            observation to create the cluster draft.
           </p>
         </EmptyState>
       ) : draft.document.schemaVersion !== 2 ? (
-        <div className="notice notice--warning">
-          <strong>Schema upgrade required</strong>
+        <div className="notice notice--error">
+          <strong>Unsupported draft format</strong>
           <p>
-            This draft is the immutable 0.3 schema-v1 shape. Refresh and import
-            a current node observation from Configuration before editing 0.4
-            features.
+            Refresh an AdGuard Home 0.107.78 node observation in Configuration
+            Control and import it before editing managed settings.
           </p>
         </div>
       ) : (
@@ -180,35 +170,10 @@ export function ManagedSettingsPage({
           )}
           {area === "dns" && <DNSForm draft={draft} setDraft={setDraft} />}
           {area === "filters" && (
-            <FiltersForm
-              draft={draft}
-              setDraft={setDraft}
-              nodes={nodes}
-              busy={busy}
-              setBusy={setBusy}
-              setError={setError}
-              setMessage={setMessage}
-            />
-          )}
-          {area === "clients" && (
-            <ClientsForm draft={draft} setDraft={setDraft} />
-          )}
-          {area === "rewrites" && (
-            <RewritesForm draft={draft} setDraft={setDraft} />
-          )}
-          {area === "services" && (
-            <ServicesForm draft={draft} setDraft={setDraft} />
-          )}
-          {area === "privacy" && (
-            <PrivacyForm draft={draft} setDraft={setDraft} />
+            <FiltersForm draft={draft} setDraft={setDraft} />
           )}
           {area === "infrastructure" && (
-            <InfrastructureForm
-              draft={draft}
-              setDraft={setDraft}
-              nodes={nodes}
-              snapshots={snapshots}
-            />
+            <InfrastructureForm nodes={nodes} snapshots={snapshots} />
           )}
           {issues.length > 0 && (
             <div className="notice notice--warning">
@@ -380,11 +345,6 @@ function DNSForm({ draft, setDraft }: DraftProps) {
       </div>
       <div className="toggle-grid">
         <Check
-          label="Protection enabled"
-          checked={dns.protectionEnabled ?? false}
-          onChange={(value) => update({ protectionEnabled: value })}
-        />
-        <Check
           label="DNSSEC enabled"
           checked={dns.dnssecEnabled ?? false}
           onChange={(value) => update({ dnssecEnabled: value })}
@@ -429,21 +389,7 @@ function DNSForm({ draft, setDraft }: DraftProps) {
   );
 }
 
-function FiltersForm({
-  draft,
-  setDraft,
-  nodes,
-  busy,
-  setBusy,
-  setError,
-  setMessage,
-}: DraftProps & {
-  nodes: Node[];
-  busy: string;
-  setBusy: (value: string) => void;
-  setError: (value: unknown) => void;
-  setMessage: (value: string) => void;
-}) {
+function FiltersForm({ draft, setDraft }: DraftProps) {
   const filtering = draft.document.shared.filtering;
   const update = (patch: Partial<typeof filtering>) =>
     setDraft({
@@ -456,72 +402,13 @@ function FiltersForm({
         },
       },
     });
-  async function refresh(whitelist: boolean) {
-    const targets = nodes.filter(
-      (node) => node.enabled && !node.maintenanceMode,
-    );
-    if (
-      !window.confirm(
-        `Refresh ${whitelist ? "allowlist" : "blocklist"} subscriptions on ${targets.length} node(s)?`,
-      )
-    )
-      return;
-    setBusy(whitelist ? "refresh-allow" : "refresh-block");
-    setMessage("");
-    try {
-      const results = await Promise.allSettled(
-        targets.map((node) => api.refreshFilters(node.id, whitelist)),
-      );
-      const failed = results
-        .map((result, index) =>
-          result.status === "rejected"
-            ? (targets[index]?.name ?? "Unknown node")
-            : "",
-        )
-        .filter(Boolean);
-      const succeeded = results.length - failed.length;
-      setMessage(
-        `Refresh succeeded on ${succeeded} of ${targets.length} node(s).`,
-      );
-      if (failed.length > 0) {
-        setError(
-          new Error(
-            `Refresh failed on: ${failed.join(", ")}. Each result was audited.`,
-          ),
-        );
-      } else {
-        setError(undefined);
-      }
-    } finally {
-      setBusy("");
-    }
-  }
   return (
     <div className="card form-stack">
       <h2>Filtering policy</h2>
-      <div className="form-grid">
-        <Check
-          label="Filtering enabled"
-          checked={filtering.enabled}
-          onChange={(value) => update({ enabled: value })}
-        />
-        <NumberField
-          label="Automatic update interval (hours)"
-          value={filtering.updateIntervalHours}
-          onChange={(value) => update({ updateIntervalHours: value })}
-        />
-        <TextLines
-          label="Blocklist subscriptions"
-          value={filtering.filterUrls}
-          onChange={(value) => update({ filterUrls: value })}
-          rows={7}
-        />
-        <TextLines
-          label="Allowlist subscriptions"
-          value={filtering.whitelistUrls}
-          onChange={(value) => update({ whitelistUrls: value })}
-          rows={7}
-        />
+      <div className="notice notice--info">
+        DNS subscriptions are managed on the separate{" "}
+        <a href="/filters/blocklists">Blocklists</a> and{" "}
+        <a href="/filters/allowlists">Allowlists</a> pages.
       </div>
       <TextLines
         label="Custom filtering rules (ordered)"
@@ -529,545 +416,21 @@ function FiltersForm({
         onChange={(value) => update({ userRules: value })}
         rows={12}
       />
-      <div className="row-actions row-actions--start">
-        <button
-          className="button button--secondary"
-          type="button"
-          disabled={busy !== ""}
-          onClick={() => void refresh(false)}
-        >
-          Refresh blocklists
-        </button>
-        <button
-          className="button button--secondary"
-          type="button"
-          disabled={busy !== ""}
-          onClick={() => void refresh(true)}
-        >
-          Refresh allowlists
-        </button>
-      </div>
-    </div>
-  );
-}
-
-const emptySafeSearch = (): SafeSearchConfiguration => ({
-  enabled: false,
-  bing: true,
-  duckDuckGo: true,
-  ecosia: true,
-  google: true,
-  pixabay: true,
-  yandex: true,
-  youTube: true,
-});
-function emptyClient(): PersistentClient {
-  return {
-    name: "",
-    ids: [],
-    useGlobalSettings: true,
-    filteringEnabled: true,
-    parentalEnabled: false,
-    safeBrowsingEnabled: false,
-    safeSearch: emptySafeSearch(),
-    useGlobalBlockedServices: true,
-    blockedServices: [],
-    blockedServicesSchedule: { timeZone: "Local", days: {} },
-    upstreams: [],
-    upstreamsCacheEnabled: false,
-    upstreamsCacheSize: 0,
-    tags: [],
-    ignoreQueryLog: false,
-    ignoreStatistics: false,
-  };
-}
-
-function ClientsForm({ draft, setDraft }: DraftProps) {
-  const clients = draft.document.shared.clients ?? [];
-  const [clientKeys, setClientKeys] = useState(() =>
-    clients.map(() => createEditorRowKey("client")),
-  );
-  const setClients = (value: PersistentClient[]) =>
-    setDraft({
-      ...draft,
-      document: {
-        ...draft.document,
-        shared: { ...draft.document.shared, clients: value },
-      },
-    });
-  const addClient = () => {
-    setClientKeys([...clientKeys, createEditorRowKey("client")]);
-    setClients([...clients, emptyClient()]);
-  };
-  const removeClient = (index: number) => {
-    setClientKeys(clientKeys.filter((_, itemIndex) => itemIndex !== index));
-    setClients(clients.filter((_, itemIndex) => itemIndex !== index));
-  };
-  return (
-    <div className="form-stack">
-      <div className="section-heading">
-        <h2>Managed clients</h2>
-        <button
-          type="button"
-          className="button button--secondary"
-          onClick={addClient}
-        >
-          Add client
-        </button>
-      </div>
-      {clients.length === 0 ? (
-        <EmptyState title="No persistent clients">
-          <p>
-            Add a client to manage its identity and policy across every node.
-          </p>
-        </EmptyState>
-      ) : (
-        clients.map((client, index) => {
-          const update = (patch: Partial<PersistentClient>) =>
-            setClients(
-              clients.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, ...patch } : item,
-              ),
-            );
-          return (
-            <fieldset className="card" key={clientKeys[index]}>
-              <legend className="visually-hidden">
-                Client {index + 1} settings
-              </legend>
-              <h3 className="form-card__title">Client {index + 1}</h3>
-              <div className="form-grid">
-                <label>
-                  Name
-                  <input
-                    value={client.name}
-                    onChange={(event) => update({ name: event.target.value })}
-                  />
-                </label>
-                <TextLines
-                  label="Identifiers (IP, CIDR, MAC, or ClientID)"
-                  value={client.ids}
-                  onChange={(value) => update({ ids: value })}
-                />
-                <TextLines
-                  label="Client-specific upstreams (ordered)"
-                  value={client.upstreams}
-                  onChange={(value) => update({ upstreams: value })}
-                />
-                <TextLines
-                  label="Tags"
-                  value={client.tags}
-                  onChange={(value) => update({ tags: value })}
-                />
-                <TextLines
-                  label="Blocked services"
-                  value={client.blockedServices}
-                  onChange={(value) => update({ blockedServices: value })}
-                />
-                <NumberField
-                  label="Per-client upstream cache size"
-                  value={client.upstreamsCacheSize}
-                  onChange={(value) => update({ upstreamsCacheSize: value })}
-                />
-              </div>
-              <div className="toggle-grid">
-                <Check
-                  label="Use global filtering settings"
-                  checked={client.useGlobalSettings}
-                  onChange={(value) => update({ useGlobalSettings: value })}
-                />
-                <Check
-                  label="Filtering"
-                  checked={client.filteringEnabled}
-                  onChange={(value) => update({ filteringEnabled: value })}
-                />
-                <Check
-                  label="Safe Browsing"
-                  checked={client.safeBrowsingEnabled}
-                  onChange={(value) => update({ safeBrowsingEnabled: value })}
-                />
-                <Check
-                  label="Parental controls"
-                  checked={client.parentalEnabled}
-                  onChange={(value) => update({ parentalEnabled: value })}
-                />
-                <Check
-                  label="Use global blocked services"
-                  checked={client.useGlobalBlockedServices}
-                  onChange={(value) =>
-                    update({ useGlobalBlockedServices: value })
-                  }
-                />
-                <Check
-                  label="Cache client-specific upstream responses"
-                  checked={client.upstreamsCacheEnabled}
-                  onChange={(value) => update({ upstreamsCacheEnabled: value })}
-                />
-                <Check
-                  label="Client Safe Search"
-                  checked={client.safeSearch.enabled}
-                  onChange={(value) =>
-                    update({
-                      safeSearch: { ...client.safeSearch, enabled: value },
-                    })
-                  }
-                />
-                {!client.useGlobalSettings &&
-                  client.safeSearch.enabled &&
-                  (
-                    [
-                      "bing",
-                      "duckDuckGo",
-                      "ecosia",
-                      "google",
-                      "pixabay",
-                      "yandex",
-                      "youTube",
-                    ] as const
-                  ).map((engine) => (
-                    <Check
-                      key={engine}
-                      label={`Client Safe Search: ${engine}`}
-                      checked={client.safeSearch[engine]}
-                      onChange={(value) =>
-                        update({
-                          safeSearch: { ...client.safeSearch, [engine]: value },
-                        })
-                      }
-                    />
-                  ))}
-                <Check
-                  label="Exclude from query log"
-                  checked={client.ignoreQueryLog}
-                  onChange={(value) => update({ ignoreQueryLog: value })}
-                />
-                <Check
-                  label="Exclude from statistics"
-                  checked={client.ignoreStatistics}
-                  onChange={(value) => update({ ignoreStatistics: value })}
-                />
-              </div>
-              {!client.useGlobalBlockedServices && (
-                <ScheduleEditor
-                  value={client.blockedServicesSchedule}
-                  onChange={(value) =>
-                    update({ blockedServicesSchedule: value })
-                  }
-                  label="Client blocked-services schedule"
-                />
-              )}
-              <button
-                type="button"
-                className="button button--danger"
-                onClick={() => removeClient(index)}
-              >
-                Remove client
-              </button>
-            </fieldset>
-          );
-        })
-      )}
-    </div>
-  );
-}
-
-function RewritesForm({ draft, setDraft }: DraftProps) {
-  const rewrites = draft.document.shared.rewrites ?? [];
-  const [rewriteKeys, setRewriteKeys] = useState(() =>
-    rewrites.map(() => createEditorRowKey("rewrite")),
-  );
-  const setRewrites = (value: Rewrite[]) =>
-    setDraft({
-      ...draft,
-      document: {
-        ...draft.document,
-        shared: { ...draft.document.shared, rewrites: value },
-      },
-    });
-  const addRewrite = () => {
-    setRewriteKeys([...rewriteKeys, createEditorRowKey("rewrite")]);
-    setRewrites([...rewrites, { domain: "", answer: "", enabled: true }]);
-  };
-  const removeRewrite = (index: number) => {
-    setRewriteKeys(rewriteKeys.filter((_, itemIndex) => itemIndex !== index));
-    setRewrites(rewrites.filter((_, itemIndex) => itemIndex !== index));
-  };
-  return (
-    <div className="card form-stack">
-      <div className="section-heading">
-        <h2>Rewrite entries</h2>
-        <button
-          type="button"
-          className="button button--secondary"
-          onClick={addRewrite}
-        >
-          Add rewrite
-        </button>
-      </div>
-      <Check
-        label="DNS rewrites enabled globally"
-        checked={draft.document.shared.rewritesEnabled}
-        onChange={(value) =>
-          setDraft({
-            ...draft,
-            document: {
-              ...draft.document,
-              shared: {
-                ...draft.document.shared,
-                rewritesEnabled: value,
-              },
-            },
-          })
-        }
-      />
-      {rewrites.map((rewrite, index) => (
-        <div className="form-grid repeat-row" key={rewriteKeys[index]}>
-          <label>
-            Domain
-            <input
-              value={rewrite.domain}
-              onChange={(event) =>
-                setRewrites(
-                  rewrites.map((item, i) =>
-                    i === index
-                      ? { ...item, domain: event.target.value }
-                      : item,
-                  ),
-                )
-              }
-            />
-          </label>
-          <label>
-            Answer
-            <input
-              value={rewrite.answer}
-              onChange={(event) =>
-                setRewrites(
-                  rewrites.map((item, i) =>
-                    i === index
-                      ? { ...item, answer: event.target.value }
-                      : item,
-                  ),
-                )
-              }
-            />
-          </label>
-          <Check
-            label="Rewrite enabled"
-            checked={rewrite.enabled}
-            onChange={(value) =>
-              setRewrites(
-                rewrites.map((item, i) =>
-                  i === index ? { ...item, enabled: value } : item,
-                ),
-              )
-            }
-          />
-          <button
-            type="button"
-            className="button button--danger"
-            onClick={() => removeRewrite(index)}
-          >
-            Remove
-          </button>
-        </div>
-      ))}
-      {rewrites.length === 0 && (
-        <p className="muted">No rewrites are managed.</p>
-      )}
-    </div>
-  );
-}
-
-function ServicesForm({ draft, setDraft }: DraftProps) {
-  const services = draft.document.shared.services;
-  const update = (patch: Partial<typeof services>) =>
-    setDraft({
-      ...draft,
-      document: {
-        ...draft.document,
-        shared: {
-          ...draft.document.shared,
-          services: { ...services, ...patch },
-        },
-      },
-    });
-  const safe = services.safeSearch ?? emptySafeSearch();
-  return (
-    <div className="card form-stack">
-      <h2>Global protection services</h2>
-      <TextLines
-        label="Blocked service identifiers"
-        value={services.blockedServiceIds}
-        onChange={(value) => update({ blockedServiceIds: value })}
-        rows={8}
-      />
-      <ScheduleEditor
-        value={services.blockedSchedule}
-        onChange={(value) => update({ blockedSchedule: value })}
-        label="Global blocked-services schedule"
-      />
-      <div className="toggle-grid">
-        <Check
-          label="Safe Browsing"
-          checked={services.safeBrowsing}
-          onChange={(value) => update({ safeBrowsing: value })}
-        />
-        <Check
-          label="Parental controls"
-          checked={services.parentalControl}
-          onChange={(value) => update({ parentalControl: value })}
-        />
-        <Check
-          label="Safe Search"
-          checked={safe.enabled}
-          onChange={(value) =>
-            update({ safeSearch: { ...safe, enabled: value } })
-          }
-        />
-        {(
-          [
-            "bing",
-            "duckDuckGo",
-            "ecosia",
-            "google",
-            "pixabay",
-            "yandex",
-            "youTube",
-          ] as const
-        ).map((engine) => (
-          <Check
-            key={engine}
-            label={`Safe Search: ${engine}`}
-            checked={safe[engine]}
-            onChange={(value) =>
-              update({ safeSearch: { ...safe, [engine]: value } })
-            }
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function PrivacyForm({ draft, setDraft }: DraftProps) {
-  const shared = draft.document.shared;
-  const setQuery = (patch: Partial<typeof shared.queryLog>) =>
-    setDraft({
-      ...draft,
-      document: {
-        ...draft.document,
-        shared: { ...shared, queryLog: { ...shared.queryLog, ...patch } },
-      },
-    });
-  const setStats = (patch: Partial<typeof shared.statistics>) =>
-    setDraft({
-      ...draft,
-      document: {
-        ...draft.document,
-        shared: { ...shared, statistics: { ...shared.statistics, ...patch } },
-      },
-    });
-  return (
-    <div className="form-stack">
-      <div className="notice notice--info">
-        These settings control storage inside each AdGuard Home node. Release
-        0.4 does not copy query history or statistics into the controller.
-      </div>
-      <section className="card form-stack">
-        <h2>Query log</h2>
-        <div className="form-grid">
-          <Check
-            label="Query log enabled"
-            checked={shared.queryLog.enabled}
-            onChange={(value) => setQuery({ enabled: value })}
-          />
-          <DurationDaysField
-            label="Retention/rotation interval (days)"
-            valueMillis={shared.queryLog.intervalMillis}
-            onChange={(value) => setQuery({ intervalMillis: value })}
-          />
-          <Check
-            label="Anonymize client IP"
-            checked={shared.queryLog.anonymizeClientIp}
-            onChange={(value) => setQuery({ anonymizeClientIp: value })}
-          />
-          <Check
-            label="Apply ignored-host list"
-            checked={shared.queryLog.ignoredEnabled}
-            onChange={(value) => setQuery({ ignoredEnabled: value })}
-          />
-          <TextLines
-            label="Ignored host names"
-            value={shared.queryLog.ignored}
-            onChange={(value) => setQuery({ ignored: value })}
-          />
-          <Check
-            label="Apply ignored-host list"
-            checked={shared.statistics.ignoredEnabled}
-            onChange={(value) => setStats({ ignoredEnabled: value })}
-          />
-        </div>
-      </section>
-      <section className="card form-stack">
-        <h2>Statistics</h2>
-        <div className="form-grid">
-          <Check
-            label="Statistics enabled"
-            checked={shared.statistics.enabled}
-            onChange={(value) => setStats({ enabled: value })}
-          />
-          <DurationDaysField
-            label="Retention interval (days)"
-            valueMillis={shared.statistics.intervalMillis}
-            onChange={(value) => setStats({ intervalMillis: value })}
-          />
-          <TextLines
-            label="Ignored host names"
-            value={shared.statistics.ignored}
-            onChange={(value) => setStats({ ignored: value })}
-          />
-        </div>
-      </section>
     </div>
   );
 }
 
 function InfrastructureForm({
-  draft,
-  setDraft,
   nodes,
   snapshots,
-}: DraftProps & { nodes: Node[]; snapshots: ConfigurationSnapshot[] }) {
+}: {
+  nodes: Node[];
+  snapshots: ConfigurationSnapshot[];
+}) {
   const nodeNames = useMemo(
     () => new Map(nodes.map((node) => [node.id, node.name])),
     [nodes],
   );
-  function setDhcp(nodeId: string, dhcp: DhcpConfiguration) {
-    const current = draft.document.nodeOverrides[nodeId];
-    const overrides = { ...draft.document.nodeOverrides };
-    if (dhcp.enabled) {
-      for (const [otherNodeId, override] of Object.entries(overrides)) {
-        if (otherNodeId !== nodeId && override.dhcp?.enabled) {
-          overrides[otherNodeId] = {
-            ...override,
-            dhcp: { ...override.dhcp, enabled: false },
-          };
-        }
-      }
-    }
-    overrides[nodeId] = {
-      bindHosts: current?.bindHosts ?? [],
-      dnsPort: current?.dnsPort ?? 53,
-      dhcp,
-    };
-    setDraft({
-      ...draft,
-      document: {
-        ...draft.document,
-        nodeOverrides: overrides,
-      },
-    });
-  }
   return (
     <div className="form-stack">
       <div className="notice notice--warning">
@@ -1120,343 +483,7 @@ function InfrastructureForm({
             })}
         </div>
       </section>
-      <section>
-        <h2>DHCP: one active node maximum</h2>
-        <p className="muted">
-          During a role handoff, deployment disables non-active nodes before
-          enabling the designated node.
-        </p>
-        <div className="card-list">
-          {nodes
-            .filter((node) => node.enabled)
-            .map((node) => {
-              const current = draft.document.nodeOverrides[node.id];
-              const dhcp = current?.dhcp;
-              if (!dhcp)
-                return (
-                  <article className="card dhcp-node-card" key={node.id}>
-                    <h3 className="form-card__title">{node.name}</h3>
-                    <p className="muted">
-                      DHCP is unavailable or has not been observed. Refresh and
-                      import this node before managing it.
-                    </p>
-                  </article>
-                );
-              const update = (patch: Partial<DhcpConfiguration>) =>
-                setDhcp(node.id, { ...dhcp, ...patch });
-              return (
-                <fieldset className="card dhcp-node-card" key={node.id}>
-                  <legend className="visually-hidden">
-                    {node.name} DHCP settings
-                  </legend>
-                  <h3 className="form-card__title">{node.name}</h3>
-                  <div className="form-grid">
-                    <Check
-                      label="Designated active DHCP node"
-                      checked={dhcp.enabled}
-                      onChange={(value) => update({ enabled: value })}
-                    />
-                    <label>
-                      Interface
-                      <input
-                        value={dhcp.interfaceName}
-                        onChange={(event) =>
-                          update({ interfaceName: event.target.value })
-                        }
-                      />
-                    </label>
-                    <label>
-                      IPv4 gateway
-                      <input
-                        value={dhcp.ipv4.gateway}
-                        onChange={(event) =>
-                          update({
-                            ipv4: { ...dhcp.ipv4, gateway: event.target.value },
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Subnet mask
-                      <input
-                        value={dhcp.ipv4.subnetMask}
-                        onChange={(event) =>
-                          update({
-                            ipv4: {
-                              ...dhcp.ipv4,
-                              subnetMask: event.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Range start
-                      <input
-                        value={dhcp.ipv4.rangeStart}
-                        onChange={(event) =>
-                          update({
-                            ipv4: {
-                              ...dhcp.ipv4,
-                              rangeStart: event.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Range end
-                      <input
-                        value={dhcp.ipv4.rangeEnd}
-                        onChange={(event) =>
-                          update({
-                            ipv4: {
-                              ...dhcp.ipv4,
-                              rangeEnd: event.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                    <NumberField
-                      label="Lease duration (seconds)"
-                      value={dhcp.ipv4.leaseDurationSeconds}
-                      onChange={(value) =>
-                        update({
-                          ipv4: { ...dhcp.ipv4, leaseDurationSeconds: value },
-                        })
-                      }
-                    />
-                    <label>
-                      IPv6 range start
-                      <input
-                        value={dhcp.ipv6.rangeStart}
-                        onChange={(event) =>
-                          update({
-                            ipv6: {
-                              ...dhcp.ipv6,
-                              rangeStart: event.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                    <NumberField
-                      label="IPv6 lease duration (seconds)"
-                      value={dhcp.ipv6.leaseDurationSeconds}
-                      onChange={(value) =>
-                        update({
-                          ipv6: { ...dhcp.ipv6, leaseDurationSeconds: value },
-                        })
-                      }
-                    />
-                  </div>
-                  <StaticLeasesEditor
-                    value={dhcp.staticLeases}
-                    onChange={(value) => update({ staticLeases: value })}
-                  />
-                </fieldset>
-              );
-            })}
-        </div>
-      </section>
     </div>
-  );
-}
-
-function StaticLeasesEditor({
-  value,
-  onChange,
-}: {
-  value: DhcpStaticLease[];
-  onChange: (value: DhcpStaticLease[]) => void;
-}) {
-  const [leaseKeys, setLeaseKeys] = useState(() =>
-    value.map(() => createEditorRowKey("lease")),
-  );
-  const update = (index: number, patch: Partial<DhcpStaticLease>) =>
-    onChange(
-      value.map((lease, leaseIndex) =>
-        leaseIndex === index ? { ...lease, ...patch } : lease,
-      ),
-    );
-  return (
-    <div className="form-stack">
-      <div className="section-heading">
-        <h3>Static leases</h3>
-        <button
-          type="button"
-          className="button button--secondary"
-          onClick={() => {
-            setLeaseKeys([...leaseKeys, createEditorRowKey("lease")]);
-            onChange([...value, { mac: "", ip: "", hostname: "" }]);
-          }}
-        >
-          Add static lease
-        </button>
-      </div>
-      {value.length === 0 && <p className="muted">No static leases.</p>}
-      {value.map((lease, index) => (
-        <div className="form-grid repeat-row" key={leaseKeys[index]}>
-          <label>
-            MAC address
-            <input
-              value={lease.mac}
-              onChange={(event) => update(index, { mac: event.target.value })}
-            />
-          </label>
-          <label>
-            IP address
-            <input
-              value={lease.ip}
-              onChange={(event) => update(index, { ip: event.target.value })}
-            />
-          </label>
-          <label>
-            Hostname
-            <input
-              value={lease.hostname}
-              onChange={(event) =>
-                update(index, { hostname: event.target.value })
-              }
-            />
-          </label>
-          <button
-            type="button"
-            className="button button--danger"
-            onClick={() => {
-              setLeaseKeys(
-                leaseKeys.filter((_, leaseIndex) => leaseIndex !== index),
-              );
-              onChange(value.filter((_, leaseIndex) => leaseIndex !== index));
-            }}
-          >
-            Remove lease
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-const scheduleDays = [
-  ["sun", "Sunday"],
-  ["mon", "Monday"],
-  ["tue", "Tuesday"],
-  ["wed", "Wednesday"],
-  ["thu", "Thursday"],
-  ["fri", "Friday"],
-  ["sat", "Saturday"],
-] as const;
-
-function ScheduleEditor({
-  value,
-  onChange,
-  label,
-}: {
-  value: Schedule;
-  onChange: (value: Schedule) => void;
-  label: string;
-}) {
-  const schedule = value ?? { timeZone: "Local", days: {} };
-  const updateDay = (day: string, enabled: boolean) => {
-    const days = { ...schedule.days };
-    if (enabled) days[day] = days[day] ?? { start: 0, end: 86_400_000 };
-    else delete days[day];
-    onChange({ ...schedule, days });
-  };
-  return (
-    <fieldset className="schedule-editor">
-      <legend className="visually-hidden">{label}</legend>
-      <h3 className="schedule-editor__title">{label}</h3>
-      <label>
-        IANA time zone (or Local)
-        <input
-          value={schedule.timeZone || "Local"}
-          onChange={(event) =>
-            onChange({ ...schedule, timeZone: event.target.value })
-          }
-        />
-      </label>
-      <div className="schedule-grid">
-        {scheduleDays.map(([day, dayLabel]) => {
-          const range = schedule.days[day];
-          return (
-            <div className="schedule-row" key={day}>
-              <Check
-                label={dayLabel}
-                checked={Boolean(range)}
-                onChange={(enabled) => updateDay(day, enabled)}
-              />
-              <input
-                aria-label={`${dayLabel} start`}
-                type="time"
-                step={60}
-                disabled={!range}
-                value={range ? formatTimeOfDay(range.start) : "00:00"}
-                onChange={(event) =>
-                  onChange({
-                    ...schedule,
-                    days: {
-                      ...schedule.days,
-                      [day]: {
-                        ...(range ?? { end: 86_400_000 }),
-                        start: parseTimeOfDay(event.target.value),
-                      },
-                    },
-                  })
-                }
-              />
-              <input
-                aria-label={`${dayLabel} end`}
-                type="time"
-                step={60}
-                disabled={!range}
-                value={
-                  range?.end === 86_400_000
-                    ? "23:59"
-                    : formatTimeOfDay(range?.end ?? 86_400_000)
-                }
-                onChange={(event) =>
-                  onChange({
-                    ...schedule,
-                    days: {
-                      ...schedule.days,
-                      [day]: {
-                        ...(range ?? { start: 0 }),
-                        end: parseTimeOfDay(event.target.value),
-                      },
-                    },
-                  })
-                }
-              />
-            </div>
-          );
-        })}
-      </div>
-      <p className="muted">
-        A selected day is the period when blocked-service filtering is inactive.
-      </p>
-    </fieldset>
-  );
-}
-
-function DurationDaysField({
-  label,
-  valueMillis,
-  onChange,
-}: {
-  label: string;
-  valueMillis: number;
-  onChange: (valueMillis: number) => void;
-}) {
-  return (
-    <NumberField
-      label={label}
-      value={valueMillis / 86_400_000}
-      step={0.25}
-      onChange={(days) => onChange(Math.round(days * 86_400_000))}
-    />
   );
 }
 

@@ -39,12 +39,21 @@ type Repository interface {
 }
 
 type Service struct {
-	repository Repository
-	now        func() time.Time
+	repository              Repository
+	blockedServiceValidator BlockedServiceValidator
+	now                     func() time.Time
 }
 
-func NewService(repository Repository) *Service {
-	return &Service{repository: repository, now: time.Now}
+type BlockedServiceValidator interface {
+	ValidateBlockedServiceIDs(context.Context, string, []string) ([]configuration.ValidationIssue, error)
+}
+
+func NewService(repository Repository, validators ...BlockedServiceValidator) *Service {
+	var validator BlockedServiceValidator
+	if len(validators) > 0 {
+		validator = validators[0]
+	}
+	return &Service{repository: repository, blockedServiceValidator: validator, now: time.Now}
 }
 
 func (s *Service) UpdateDraft(ctx context.Context, actor domain.Actor, clusterID string, expectedVersion int, document configuration.DesiredDocument) (inventory.Draft, []configuration.ValidationIssue, error) {
@@ -414,6 +423,13 @@ func (s *Service) previewDocument(ctx context.Context, clusterID, revisionID str
 	// A revision remains complete for the whole enabled fleet even when a
 	// deployment targets only a subset or temporarily skips maintenance nodes.
 	preview := Preview{RevisionID: revisionID, Strategy: "sequential", FailurePolicy: "stop", Differences: []configuration.Difference{}, Issues: configuration.ValidateDesired(document, enabledNodeIDs(nodes)), Nodes: []PreviewNode{}}
+	if document.SchemaVersion >= configuration.SchemaVersion && s.blockedServiceValidator != nil {
+		catalogueIssues, validateErr := s.blockedServiceValidator.ValidateBlockedServiceIDs(ctx, clusterID, document.Shared.Services.BlockedServiceIDs)
+		if validateErr != nil {
+			return Preview{}, validateErr
+		}
+		preview.Issues = append(preview.Issues, catalogueIssues...)
+	}
 	snapshots, err := s.repository.LatestSnapshots(ctx, clusterID)
 	if err != nil {
 		return Preview{}, err

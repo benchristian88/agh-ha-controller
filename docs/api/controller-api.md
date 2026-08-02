@@ -73,6 +73,8 @@ PATCH  /api/v1/nodes/{nodeId}
 DELETE /api/v1/nodes/{nodeId}
 POST   /api/v1/nodes/{nodeId}/test-connection
 POST   /api/v1/nodes/{nodeId}/filter-refresh
+GET    /api/v1/nodes/{nodeId}/dhcp/interfaces
+POST   /api/v1/nodes/{nodeId}/dhcp/active-check
 ```
 
 Create and update use:
@@ -100,6 +102,23 @@ Node responses include identity, URL, trust policy, enabled state, health, compa
 
 The manual `test-connection` action atomically stores its safe observed result and an audit event with a success or failure outcome. Background interval polls update health without generating high-volume audit records.
 
+The DHCP interface route performs a bounded, authenticated, node-specific read
+and returns safe interface names, hardware addresses, IP addresses, gateway,
+flags, controller-derived availability, and `fetchedAt`. The result is volatile
+presentation metadata: it is not stored in desired configuration, revisions,
+canonical hashes, or drift state. An unavailable or malformed AdGuard endpoint
+returns a stable capability or node-response error; a legacy desired interface
+remains the draft value.
+
+The active-DHCP route accepts `{ "interfaceName": "eth0" }` and invokes the
+node-specific, non-mutating AdGuard detection operation. It returns aggregate
+`none`, `found`, `multiple`, `partial`, or `error` status plus safe IPv4,
+IPv4-static-IP, and IPv6 results and `checkedAt`. Raw upstream error text is
+discarded. The operation requires CSRF, an enabled node outside maintenance,
+and records `dhcp.active_check_requested` followed by exactly one
+`dhcp.active_check_succeeded` or `dhcp.active_check_failed` audit event. It
+never changes the draft, publishes, deploys, or selects a DHCP node.
+
 Node removal requires `recordVersion` and `confirmName`. It soft-removes the record, disables polling, destroys the stored encrypted credential and CA material, and writes an audit record.
 
 ## Configuration inventory routes
@@ -107,6 +126,9 @@ Node removal requires `recordVersion` and `confirmName`. It soft-removes the rec
 ```text
 POST /api/v1/nodes/{nodeId}/observations
 GET  /api/v1/clusters/{clusterId}/configuration-inventory
+GET  /api/v1/clusters/{clusterId}/blocklists/presentation
+GET  /api/v1/clusters/{clusterId}/allowlists/presentation
+GET  /api/v1/clusters/{clusterId}/blocked-services/catalogue
 GET  /api/v1/configuration-comparisons?leftSnapshotId={uuid}&rightSnapshotId={uuid}
 POST /api/v1/clusters/{clusterId}/configuration-draft/import
 PUT  /api/v1/clusters/{clusterId}/configuration-draft
@@ -119,7 +141,15 @@ Import accepts `snapshotId`, `expectedVersion`, and `confirmed: true`. It reject
 
 Draft update accepts `expectedVersion` and a complete schema-v2 desired `document`. It saves canonical mutable intent and returns validation issues. Frozen schema-v1 drafts must be refreshed/imported before editing or publication; historical v1 revisions remain deployable and reconcilable. Validation returns the same fleet feature/listener/DHCP preflight used by publication and deployment.
 
+The blocked-services catalogue route reads observed metadata through the controller and never mutates desired state. It returns the union of stable service IDs and names, optional group IDs, per-service supported/unsupported node IDs, per-node `available`, `stale`, `error`, or `unsupported` state, and response freshness. Upstream filtering rules and SVG icons are removed at the adapter boundary. Node URLs, credentials, and raw node errors are never returned. Metadata is cached per node version/capability signature for 15 minutes; version/capability changes force refresh, and an expired matching cache entry is exposed as stale only when a refresh fails.
+
+The blocklist and allowlist presentation routes read `GET /control/filtering/status` through the controller and return category-specific, node-attributed filter ID, enabled state, name, rule count, last-update time, portability classification, fetch time, and safe node result. They include disabled node entries so the UI can explain disable-oriented reconciliation. Separate per-category cache keys prevent blocklist and allowlist results from crossing. A successful value is cached only as a stale fallback for a later failed read. These fields are volatile presentation metadata: they are not written to observed configuration documents, drafts, revisions, canonical hashes, verification hashes, or drift comparison.
+
+Selected IDs remain the canonical `shared.services.blockedServiceIds` set. Save Draft preserves unknown legacy IDs. Validation, publication, and deployment preflight require every selected ID to be present in every enabled node's current catalogue and return node-attributed issues otherwise. Catalogue names, groups, counts, and freshness never participate in revision or drift hashes.
+
 `POST /api/v1/nodes/{nodeId}/filter-refresh` accepts `{ "whitelist": false }` (or true), requires an enabled node outside maintenance, and returns the node/list type with `status: "succeeded"`. The controller records `filters.refresh_requested` before the node call and exactly one `filters.refresh_succeeded` or `filters.refresh_failed` terminal event. Fleet fan-out is performed by the UI so partial node outcomes remain explicit.
+
+AdGuard Home's filter-refresh contract selects only blocklists versus allowlists; it does not accept URLs or filter IDs. The controller therefore does not expose a selected-row refresh operation. Both filter-list pages identify that capability boundary instead of presenting a fleet-wide refresh as a targeted action.
 
 ## Revision, deployment, and drift routes
 
@@ -150,6 +180,36 @@ GET /api/v1/system/version
 ```
 
 Audit pagination is bounded to 100 records per request. Audit metadata excludes secrets.
+
+## DHCP operational commands
+
+```text
+POST /api/v1/nodes/{nodeId}/dhcp/reset-leases
+POST /api/v1/nodes/{nodeId}/dhcp/reset-configuration
+GET  /api/v1/nodes/{nodeId}/dhcp/operations?limit=10
+```
+
+Both POST routes require authentication, CSRF, an explicit UUID node path, and
+a UUID `Idempotency-Key` header. Their JSON bodies contain only the fixed
+controller confirmation token: `RESET_LEASES` or
+`RESET_DHCP_CONFIGURATION`. The target must be enabled, in maintenance mode,
+reachable through its configured trust/authentication policy, and in a cluster
+without an active deployment. Configuration reset additionally requires Manual
+or Alert reconciliation so a later drift mismatch cannot be silently Enforced;
+lease reset changes observed-only data. No fleet DHCP reset route exists.
+
+The controller invokes exactly one no-body AdGuard request:
+`POST /control/dhcp/reset_leases` or `POST /control/dhcp/reset`. A terminal
+duplicate idempotency key returns the original persistent result without a
+second node call. Results contain cluster and node identity, per-node status,
+stable safe errors, request ID, terminal audit reference, observation outcome,
+and timestamps. They never contain node URLs, credentials, upstream bodies, or
+raw upstream errors.
+
+Successful commands immediately create a normal fresh observation. Dynamic
+lease changes remain observed-only. A configuration reset does not mutate the
+draft or active revision; its observed mismatch remains subject to the existing
+restore/adopt drift workflow after the maintenance boundary is reviewed.
 
 ## Operational probes
 

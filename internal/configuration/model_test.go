@@ -134,6 +134,24 @@ func TestValidateDesiredRejectsInvalidDHCPNetworkAndDuplicateLeases(t *testing.T
 	}
 }
 
+func TestValidateDesiredRejectsInvalidStaticLeaseIdentity(t *testing.T) {
+	document := DesiredDocument{SchemaVersion: SchemaVersion, NodeOverrides: map[string]NodeSpecific{
+		"node-a": {BindHosts: []string{"192.0.2.2"}, DNSPort: 53, DHCP: &DHCPConfig{StaticLeases: []DHCPStaticLease{{MAC: "not-a-mac", IP: "not-an-ip", Hostname: "bad_host"}}}},
+	}}
+	issues := ValidateDesired(document, []string{"node-a"})
+	for _, suffix := range []string{".mac", ".ip", ".hostname"} {
+		found := false
+		for _, issue := range issues {
+			if strings.HasSuffix(issue.Field, suffix) {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("missing %s validation in %#v", suffix, issues)
+		}
+	}
+}
+
 func TestValidateDesiredRequiresEnabledTelemetryIntervals(t *testing.T) {
 	document := DesiredDocument{
 		SchemaVersion: SchemaVersion,
@@ -188,5 +206,26 @@ func TestValidateDesiredAllowsCurrentV2FilterIntervalRange(t *testing.T) {
 	}
 	if issues := ValidateDesired(document, []string{"node-a"}); len(issues) != 0 {
 		t.Fatalf("current schema-v2 interval rejected: %#v", issues)
+	}
+}
+
+func TestValidateDesiredRejectsNonPortableAndCredentialedFilterURLs(t *testing.T) {
+	document := DesiredDocument{
+		SchemaVersion: SchemaVersion,
+		Shared: Shared{Filtering: Filtering{FilterURLs: []string{
+			"/opt/adguard/list.txt",
+			"https://user:secret@filters.test/list.txt",
+		}}},
+		NodeOverrides: map[string]NodeSpecific{"node-a": {BindHosts: []string{"192.0.2.2"}, DNSPort: 53}},
+	}
+	issues := ValidateDesired(document, []string{"node-a"})
+	filterIssues := 0
+	for _, issue := range issues {
+		if strings.HasPrefix(issue.Field, "shared.filtering.filterUrls") {
+			filterIssues++
+		}
+	}
+	if filterIssues != 2 {
+		t.Fatalf("unsupported URLs were not rejected: %#v", issues)
 	}
 }

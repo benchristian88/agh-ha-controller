@@ -192,6 +192,56 @@ export interface ServicesConfiguration {
   parentalControl: boolean;
   safeSearch: SafeSearchConfiguration;
 }
+export interface BlockedServiceCatalogueService {
+  id: string;
+  name: string;
+  groupId?: string;
+  supportedNodeIds: string[];
+  unsupportedNodeIds: string[];
+}
+export interface BlockedServiceCatalogueNode {
+  nodeId: string;
+  nodeName: string;
+  version?: string;
+  status: "available" | "stale" | "error" | "unsupported";
+  serviceCount: number;
+  fetchedAt?: string;
+  errorCode?: string;
+}
+export interface BlockedServicesCatalogue {
+  services: BlockedServiceCatalogueService[];
+  groups: { id: string }[];
+  nodes: BlockedServiceCatalogueNode[];
+  generatedAt: string;
+  stale: boolean;
+  partial: boolean;
+}
+export interface FilterListMetadata {
+  id: number;
+  url: string;
+  name: string;
+  enabled: boolean;
+  ruleCount: number;
+  lastUpdated?: string;
+  portable: boolean;
+}
+export interface FilterListPresentationNode {
+  nodeId: string;
+  nodeName: string;
+  version?: string;
+  status: "available" | "stale" | "error" | "unsupported";
+  fetchedAt?: string;
+  errorCode?: string;
+  lists: FilterListMetadata[];
+}
+export interface FilterListPresentation {
+  nodes: FilterListPresentationNode[];
+  generatedAt: string;
+  stale: boolean;
+  partial: boolean;
+}
+export type BlocklistPresentation = FilterListPresentation;
+export type AllowlistPresentation = FilterListPresentation;
 export interface QueryLogPolicy {
   enabled: boolean;
   intervalMillis: number;
@@ -233,6 +283,64 @@ export interface DhcpLease {
   ip: string;
   hostname: string;
   expiresAt: string;
+}
+export interface DhcpInterface {
+  name: string;
+  hardwareAddress?: string;
+  ipv4Addresses: string[];
+  ipv6Addresses: string[];
+  gatewayIp?: string;
+  flags: string[];
+  available: boolean;
+}
+export interface DhcpInterfaces {
+  nodeId: string;
+  nodeName: string;
+  interfaces: DhcpInterface[];
+  fetchedAt: string;
+}
+export type DhcpCheckValueStatus = "yes" | "no" | "error" | "unavailable";
+export interface DhcpCheckValue {
+  status: DhcpCheckValueStatus;
+  message?: string;
+}
+export interface DhcpActiveCheckResult {
+  nodeId: string;
+  nodeName: string;
+  interfaceName: string;
+  status: "none" | "found" | "multiple" | "partial" | "error";
+  ipv4: DhcpCheckValue;
+  ipv4StaticIp: { status: DhcpCheckValueStatus; ip?: string };
+  ipv6: DhcpCheckValue;
+  checkedAt: string;
+}
+export type DhcpOperationCommand =
+  | "dhcp_reset_leases"
+  | "dhcp_reset_configuration";
+export interface DhcpOperationNodeResult {
+  id: string;
+  nodeId: string;
+  nodeName: string;
+  status: "running" | "succeeded" | "failed";
+  errorCode?: string;
+  startedAt: string;
+  completedAt?: string;
+}
+export interface DhcpOperation {
+  id: string;
+  clusterId: string;
+  clusterName: string;
+  command: DhcpOperationCommand;
+  status: "running" | "succeeded" | "failed";
+  requestId: string;
+  observationStatus: "not_run" | "succeeded" | "failed";
+  observationSnapshotId?: string;
+  observationErrorCode?: string;
+  auditReference?: string;
+  requestedAt: string;
+  completedAt?: string;
+  nodeResults: DhcpOperationNodeResult[];
+  duplicate?: boolean;
 }
 export interface TlsStatus {
   enabled: boolean;

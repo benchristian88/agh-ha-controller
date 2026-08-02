@@ -165,11 +165,16 @@ export function ControlPlanePage({ cluster }: { cluster: Cluster }) {
                 <ol>
                   {deployment.nodes.map((task) => (
                     <li key={task.id}>
-                      <strong>
-                        {nodeNames.get(task.nodeId) ?? task.nodeId}
-                      </strong>
-                      : {task.status.replaceAll("_", " ")}
-                      {task.errorCode ? ` — ${task.errorCode}` : ""}
+                      <div>
+                        <strong>
+                          {nodeNames.get(task.nodeId) ?? task.nodeId}
+                        </strong>
+                        : {task.status.replaceAll("_", " ")}
+                        {task.errorCode ? ` — ${task.errorCode}` : ""}
+                      </div>
+                      {task.errorMessage && (
+                        <p className="table-subtitle">{task.errorMessage}</p>
+                      )}
                     </li>
                   ))}
                 </ol>

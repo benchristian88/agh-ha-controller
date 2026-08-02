@@ -18,3 +18,5 @@ Released schema milestones:
 - `000001_release_0_1`: authentication, clusters, nodes, encrypted credentials, and audit.
 - `000002_release_0_2`: capabilities, immutable observations, and optimistic inventory drafts.
 - `000003_release_0_3`: desired documents, immutable revisions, durable deployments, applied state, reconciliation, maintenance, and drift history.
+- `000004_release_0_4`: schema-v2 configuration records while preserving immutable schema-v1 history.
+- `000005_release_0_4_1_dhcp_operations`: durable, idempotent DHCP operational commands and per-node results.

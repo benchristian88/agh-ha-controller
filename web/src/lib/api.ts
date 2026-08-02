@@ -1,7 +1,10 @@
 import type {
+  AllowlistPresentation,
   ApiErrorBody,
   AuditEvent,
   AuthResponse,
+  BlockedServicesCatalogue,
+  BlocklistPresentation,
   CapabilityProfile,
   CertificatePolicy,
   Cluster,
@@ -12,6 +15,9 @@ import type {
   Deployment,
   DeploymentPreview,
   DesiredConfigurationDocument,
+  DhcpActiveCheckResult,
+  DhcpInterfaces,
+  DhcpOperation,
   DriftEvent,
   Node,
   ValidationIssue,
@@ -167,6 +173,40 @@ export const api = {
       `/api/v1/nodes/${nodeId}/filter-refresh`,
       { method: "POST", body: JSON.stringify({ whitelist }) },
     ),
+  dhcpInterfaces: (nodeId: string) =>
+    request<DhcpInterfaces>(`/api/v1/nodes/${nodeId}/dhcp/interfaces`),
+  checkActiveDhcp: (nodeId: string, interfaceName: string) =>
+    request<DhcpActiveCheckResult>(
+      `/api/v1/nodes/${nodeId}/dhcp/active-check`,
+      {
+        method: "POST",
+        body: JSON.stringify({ interfaceName }),
+      },
+    ),
+  resetDhcpLeases: (
+    nodeId: string,
+    confirmation: string,
+    idempotencyKey: string,
+  ) =>
+    request<DhcpOperation>(`/api/v1/nodes/${nodeId}/dhcp/reset-leases`, {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ confirmation }),
+    }),
+  resetDhcpConfiguration: (
+    nodeId: string,
+    confirmation: string,
+    idempotencyKey: string,
+  ) =>
+    request<DhcpOperation>(`/api/v1/nodes/${nodeId}/dhcp/reset-configuration`, {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ confirmation }),
+    }),
+  dhcpOperations: (nodeId: string) =>
+    request<{ items: DhcpOperation[] }>(
+      `/api/v1/nodes/${nodeId}/dhcp/operations?limit=10`,
+    ),
   setNodeMaintenance: (node: Node, enabled: boolean) =>
     request<Node>(`/api/v1/nodes/${node.id}/maintenance`, {
       method: "POST",
@@ -177,10 +217,20 @@ export const api = {
       schemaVersion: number;
       snapshots: ConfigurationSnapshot[];
       capabilities: CapabilityProfile[];
-      // 0.2.0 returned null when a cluster had no draft. Keep accepting that
-      // response so the fixed UI can be deployed before the controller update.
-      draft?: ConfigurationDraft | null;
+      draft?: ConfigurationDraft;
     }>(`/api/v1/clusters/${clusterId}/configuration-inventory`),
+  blockedServicesCatalogue: (clusterId: string) =>
+    request<BlockedServicesCatalogue>(
+      `/api/v1/clusters/${clusterId}/blocked-services/catalogue`,
+    ),
+  blocklistPresentation: (clusterId: string) =>
+    request<BlocklistPresentation>(
+      `/api/v1/clusters/${clusterId}/blocklists/presentation`,
+    ),
+  allowlistPresentation: (clusterId: string) =>
+    request<AllowlistPresentation>(
+      `/api/v1/clusters/${clusterId}/allowlists/presentation`,
+    ),
   compareConfigurations: (leftSnapshotId: string, rightSnapshotId: string) =>
     request<{ equal: boolean; differences: ConfigurationDifference[] }>(
       `/api/v1/configuration-comparisons?leftSnapshotId=${encodeURIComponent(leftSnapshotId)}&rightSnapshotId=${encodeURIComponent(rightSnapshotId)}`,

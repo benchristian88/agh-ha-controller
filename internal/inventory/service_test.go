@@ -11,12 +11,15 @@ import (
 )
 
 type fakeRepository struct {
-	snapshot   Snapshot
-	node       domain.Node
-	draft      *Draft
-	imported   bool
-	nodeRecord domain.NodeRecord
-	audits     []domain.AuditEvent
+	snapshot    Snapshot
+	node        domain.Node
+	nodes       []domain.Node
+	profiles    []CapabilityProfile
+	draft       *Draft
+	imported    bool
+	nodeRecord  domain.NodeRecord
+	nodeRecords map[string]domain.NodeRecord
+	audits      []domain.AuditEvent
 }
 
 func (f *fakeRepository) SnapshotByID(context.Context, string) (Snapshot, error) {
@@ -47,8 +50,13 @@ func (*fakeRepository) UpdateCluster(context.Context, domain.Cluster, int, domai
 func (*fakeRepository) CreateNode(context.Context, domain.NodeRecord, domain.AuditEvent) error {
 	return nil
 }
-func (*fakeRepository) ListNodes(context.Context, string) ([]domain.Node, error) { return nil, nil }
-func (f *fakeRepository) NodeRecordByID(context.Context, string) (domain.NodeRecord, error) {
+func (f *fakeRepository) ListNodes(context.Context, string) ([]domain.Node, error) {
+	return f.nodes, nil
+}
+func (f *fakeRepository) NodeRecordByID(_ context.Context, id string) (domain.NodeRecord, error) {
+	if record, ok := f.nodeRecords[id]; ok {
+		return record, nil
+	}
 	return f.nodeRecord, nil
 }
 func (*fakeRepository) UpdateNode(context.Context, domain.NodeRecord, int, domain.AuditEvent) error {
@@ -70,8 +78,8 @@ func (*fakeRepository) SaveObservation(context.Context, Snapshot, CapabilityProf
 	return nil
 }
 func (*fakeRepository) LatestSnapshots(context.Context, string) ([]Snapshot, error) { return nil, nil }
-func (*fakeRepository) CapabilityProfiles(context.Context, string) ([]CapabilityProfile, error) {
-	return nil, nil
+func (f *fakeRepository) CapabilityProfiles(context.Context, string) ([]CapabilityProfile, error) {
+	return f.profiles, nil
 }
 func (f *fakeRepository) RecordAuditEvent(ctx context.Context, event domain.AuditEvent) error {
 	if err := ctx.Err(); err != nil {

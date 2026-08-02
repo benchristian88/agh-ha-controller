@@ -14,6 +14,8 @@ type draftRepositoryFake struct {
 	Repository
 	draft           inventory.Draft
 	nodes           []domain.Node
+	snapshots       []inventory.Snapshot
+	profiles        []inventory.CapabilityProfile
 	saved           *inventory.Draft
 	expectedVersion int
 }
@@ -24,6 +26,14 @@ func (f *draftRepositoryFake) DraftByCluster(context.Context, string) (inventory
 
 func (f *draftRepositoryFake) ListNodes(context.Context, string) ([]domain.Node, error) {
 	return f.nodes, nil
+}
+
+func (f *draftRepositoryFake) LatestSnapshots(context.Context, string) ([]inventory.Snapshot, error) {
+	return f.snapshots, nil
+}
+
+func (f *draftRepositoryFake) CapabilityProfiles(context.Context, string) ([]inventory.CapabilityProfile, error) {
+	return f.profiles, nil
 }
 
 func (f *draftRepositoryFake) UpdateConfigurationDraft(_ context.Context, draft inventory.Draft, expectedVersion int, _ domain.AuditEvent) error {
@@ -54,6 +64,7 @@ func TestUpdateDraftAfterMultiNodeImport(t *testing.T) {
 	service := NewService(repository)
 	service.now = func() time.Time { return time.Date(2026, time.July, 30, 0, 0, 0, 0, time.UTC) }
 	document.Shared.DNS.UpstreamDNS = []string{"1.1.1.1"}
+	document.Shared.Services.BlockedServiceIDs = []string{"legacy-service", "youtube"}
 
 	updated, issues, err := service.UpdateDraft(context.Background(), domain.Actor{UserID: "55555555-5555-4555-8555-555555555555", RequestID: "66666666-6666-4666-8666-666666666666"}, clusterID, 2, document)
 	if err != nil {
@@ -68,6 +79,9 @@ func TestUpdateDraftAfterMultiNodeImport(t *testing.T) {
 	if got := updated.Document.Shared.DNS.UpstreamDNS; len(got) != 1 || got[0] != "1.1.1.1" {
 		t.Fatalf("saved upstreams = %#v", got)
 	}
+	if got := updated.Document.Shared.Services.BlockedServiceIDs; len(got) != 2 || got[0] != "legacy-service" || got[1] != "youtube" {
+		t.Fatalf("legacy blocked-service IDs were not preserved: %#v", got)
+	}
 }
 
 func TestManagedDifferencesIgnoreObservedCompatibilityMetadata(t *testing.T) {
@@ -75,7 +89,101 @@ func TestManagedDifferencesIgnoreObservedCompatibilityMetadata(t *testing.T) {
 	observed := desired
 	observed.Unsupported = []configuration.Unsupported{{Section: "dhcp", Reason: "unavailable"}}
 	observed.ObservedOnly.TLS = configuration.TLSStatus{Enabled: true, ServerName: "dns.example"}
+	observed.ObservedOnly.DHCPLeases = []configuration.DHCPLease{{MAC: "00:11:22:33:44:55", IP: "192.0.2.20", Hostname: "laptop", ExpiresAt: "2026-08-02T12:00:00Z"}}
 	if differences := managedDifferences(desired, observed); len(differences) != 0 {
 		t.Fatalf("unmanaged metadata caused drift: %#v", differences)
+	}
+}
+
+func TestManagedDifferencesDetectDHCPConfigurationResetButIgnoreLeaseReset(t *testing.T) {
+	dhcp := &configuration.DHCPConfig{
+		Enabled: true, InterfaceName: "eth0",
+		IPv4: configuration.DHCPIPv4{Gateway: "192.0.2.1", SubnetMask: "255.255.255.0", RangeStart: "192.0.2.100", RangeEnd: "192.0.2.200", LeaseDuration: 3600},
+	}
+	desired := configuration.Document{SchemaVersion: configuration.SchemaVersion, NodeSpecific: configuration.NodeSpecific{DHCP: dhcp}}
+	leasesReset := desired
+	leasesReset.ObservedOnly.DHCPLeases = []configuration.DHCPLease{}
+	if differences := managedDifferences(desired, leasesReset); len(differences) != 0 {
+		t.Fatalf("dynamic lease reset caused managed drift: %#v", differences)
+	}
+	configurationReset := desired
+	configurationReset.NodeSpecific.DHCP = &configuration.DHCPConfig{}
+	if differences := managedDifferences(desired, configurationReset); len(differences) == 0 {
+		t.Fatal("DHCP configuration reset did not cause managed drift")
+	}
+}
+
+func TestPreviewOrdersDHCPDisableBeforeEnable(t *testing.T) {
+	const (
+		clusterID = "11111111-1111-4111-8111-111111111111"
+		activeID  = "22222222-2222-4222-8222-222222222222"
+		disableID = "33333333-3333-4333-8333-333333333333"
+	)
+	document := configuration.DesiredDocument{SchemaVersion: configuration.SchemaVersion, NodeOverrides: map[string]configuration.NodeSpecific{
+		activeID: {
+			BindHosts: []string{"192.0.2.2"}, DNSPort: 53,
+			DHCP: &configuration.DHCPConfig{Enabled: true, InterfaceName: "eth0", IPv4: configuration.DHCPIPv4{Gateway: "192.0.2.1", SubnetMask: "255.255.255.0", RangeStart: "192.0.2.100", RangeEnd: "192.0.2.200", LeaseDuration: 3600}},
+		},
+		disableID: {BindHosts: []string{"192.0.2.3"}, DNSPort: 53, DHCP: &configuration.DHCPConfig{}},
+	}}
+	repository := &draftRepositoryFake{nodes: []domain.Node{{ID: activeID, ClusterID: clusterID, Enabled: true}, {ID: disableID, ClusterID: clusterID, Enabled: true}}}
+	preview, err := NewService(repository).previewDocument(context.Background(), clusterID, "revision", document, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(preview.Nodes) != 2 || preview.Nodes[0].NodeID != disableID || preview.Nodes[1].NodeID != activeID {
+		t.Fatalf("preview order = %#v", preview.Nodes)
+	}
+}
+
+type blockedServiceValidatorFake struct {
+	issues []configuration.ValidationIssue
+	ids    []string
+}
+
+func (f *blockedServiceValidatorFake) ValidateBlockedServiceIDs(_ context.Context, _ string, ids []string) ([]configuration.ValidationIssue, error) {
+	f.ids = append([]string(nil), ids...)
+	return f.issues, nil
+}
+
+func TestPublicationPreflightIncludesNodeAttributedBlockedServiceCompatibility(t *testing.T) {
+	const (
+		clusterID = "11111111-1111-4111-8111-111111111111"
+		nodeID    = "22222222-2222-4222-8222-222222222222"
+	)
+	document := configuration.DesiredDocument{
+		SchemaVersion: configuration.SchemaVersion,
+		Shared: configuration.Shared{
+			DNS: configuration.DNS{UpstreamDNS: []string{"1.1.1.1"}}, Filtering: configuration.Filtering{UpdateInterval: 24},
+			Services: configuration.Services{BlockedServiceIDs: []string{"chatgpt"}},
+		},
+		NodeOverrides: map[string]configuration.NodeSpecific{nodeID: {BindHosts: []string{"0.0.0.0"}, DNSPort: 53}},
+	}
+	effective, err := configuration.Effective(document, nodeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := &draftRepositoryFake{
+		draft:     inventory.Draft{ClusterID: clusterID, SchemaVersion: configuration.SchemaVersion, Document: document, Version: 1},
+		nodes:     []domain.Node{{ID: nodeID, Enabled: true}},
+		snapshots: []inventory.Snapshot{{NodeID: nodeID, Document: &effective, CollectionStatus: "succeeded"}},
+		profiles: []inventory.CapabilityProfile{{NodeID: nodeID, Compatibility: string(domain.CompatibilitySupported), Features: map[string]bool{
+			"dns": true, "filtering": true, "clients": true, "rewrites": true, "blocked_services": true, "safety": true, "query_log": true, "statistics": true, "tls": true,
+		}}},
+	}
+	validator := &blockedServiceValidatorFake{issues: []configuration.ValidationIssue{{Field: "nodes." + nodeID + ".blockedServices", Message: "Blocked service chatgpt is unsupported."}}}
+	preview, err := NewService(repository, validator).ValidateDraft(context.Background(), clusterID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.Valid || len(validator.ids) != 1 || validator.ids[0] != "chatgpt" {
+		t.Fatalf("compatibility validation was not applied: preview=%#v ids=%#v", preview, validator.ids)
+	}
+	found := false
+	for _, issue := range preview.Issues {
+		found = found || issue.Field == "nodes."+nodeID+".blockedServices"
+	}
+	if !found {
+		t.Fatalf("node-attributed issue missing: %#v", preview.Issues)
 	}
 }

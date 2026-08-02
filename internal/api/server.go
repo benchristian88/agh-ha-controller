@@ -24,6 +24,7 @@ const (
 	csrfCookieName    = "aghha_csrf"
 	requestIDHeader   = "X-Request-ID"
 	csrfHeader        = "X-CSRF-Token"
+	idempotencyHeader = "Idempotency-Key"
 )
 
 type AuditReader interface {
@@ -34,10 +35,41 @@ type HealthChecker interface {
 	Ping(context.Context) error
 }
 
+type BlockedServicesCatalogueReader interface {
+	BlockedServicesCatalogue(context.Context, string) (inventory.BlockedServicesCatalogue, error)
+}
+
+type BlocklistPresentationReader interface {
+	BlocklistPresentation(context.Context, string) (inventory.BlocklistPresentation, error)
+}
+
+type AllowlistPresentationReader interface {
+	AllowlistPresentation(context.Context, string) (inventory.AllowlistPresentation, error)
+}
+
+type DHCPInterfacesReader interface {
+	DHCPInterfaces(context.Context, string) (inventory.DHCPInterfaces, error)
+}
+
+type DHCPActiveChecker interface {
+	FindActiveDHCP(context.Context, domain.Actor, string, string) (inventory.DHCPActiveCheckResult, error)
+}
+
+type DHCPOperationService interface {
+	RunDHCPOperation(context.Context, domain.Actor, string, inventory.DHCPOperationCommand, string, string) (inventory.DHCPOperation, error)
+	ListDHCPOperations(context.Context, string, int) ([]inventory.DHCPOperation, error)
+}
+
 type Server struct {
 	auth           *auth.Service
 	management     *domain.ManagementService
 	inventory      *inventory.Service
+	catalogue      BlockedServicesCatalogueReader
+	blocklists     BlocklistPresentationReader
+	allowlists     AllowlistPresentationReader
+	dhcpInterfaces DHCPInterfacesReader
+	dhcpChecker    DHCPActiveChecker
+	dhcpOperations DHCPOperationService
 	controlplane   *controlplane.Service
 	audit          AuditReader
 	health         HealthChecker
@@ -55,7 +87,7 @@ func NewServer(authService *auth.Service, management *domain.ManagementService, 
 		controlplaneService = controlplanes[0]
 	}
 	server := &Server{
-		auth: authService, management: management, inventory: inventoryService, audit: audit, health: health,
+		auth: authService, management: management, inventory: inventoryService, catalogue: inventoryService, blocklists: inventoryService, allowlists: inventoryService, dhcpInterfaces: inventoryService, dhcpChecker: inventoryService, dhcpOperations: inventoryService, audit: audit, health: health,
 		controlplane: controlplaneService,
 		logger:       logger, secureCookies: secureCookies, publicBaseURL: publicBaseURL, healthInterval: healthInterval,
 		webDist: webDist, mux: http.NewServeMux(),
@@ -89,7 +121,15 @@ func (s *Server) routes() {
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/maintenance", s.authenticated(true, http.HandlerFunc(s.handleNodeMaintenance)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/observations", s.authenticated(true, http.HandlerFunc(s.handleObserveNode)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/filter-refresh", s.authenticated(true, http.HandlerFunc(s.handleFilterRefresh)))
+	s.mux.Handle("GET /api/v1/nodes/{nodeId}/dhcp/interfaces", s.authenticated(false, http.HandlerFunc(s.handleDHCPInterfaces)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/dhcp/active-check", s.authenticated(true, http.HandlerFunc(s.handleDHCPActiveCheck)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/dhcp/reset-leases", s.authenticated(true, http.HandlerFunc(s.handleDHCPResetLeases)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/dhcp/reset-configuration", s.authenticated(true, http.HandlerFunc(s.handleDHCPResetConfiguration)))
+	s.mux.Handle("GET /api/v1/nodes/{nodeId}/dhcp/operations", s.authenticated(false, http.HandlerFunc(s.handleListDHCPOperations)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/configuration-inventory", s.authenticated(false, http.HandlerFunc(s.handleConfigurationInventory)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/blocklists/presentation", s.authenticated(false, http.HandlerFunc(s.handleBlocklistPresentation)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/allowlists/presentation", s.authenticated(false, http.HandlerFunc(s.handleAllowlistPresentation)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/blocked-services/catalogue", s.authenticated(false, http.HandlerFunc(s.handleBlockedServicesCatalogue)))
 	s.mux.Handle("GET /api/v1/configuration-comparisons", s.authenticated(false, http.HandlerFunc(s.handleConfigurationComparison)))
 	s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-draft/import", s.authenticated(true, http.HandlerFunc(s.handleImportConfiguration)))
 	if s.controlplane != nil {

@@ -8,6 +8,13 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Added
 
+- Release 0.4.1 Phase 8B node-scoped reset-leases and reset-DHCP-configuration operational commands with maintenance/deployment and configuration-reset reconciliation-policy guards, typed confirmation, durable per-node results, per-user idempotency, redacted requested/terminal audits, and immediate post-command observation.
+- Authenticated CSRF-protected DHCP reset and durable-result controller routes plus migration `000005_release_0_4_1_dhcp_operations`; there is no fleet reset route and destructive commands never mutate desired state.
+- Release 0.4.1 Phase 7 DNS Rewrites searchable table and add/edit dialogs with contract-bounded domain/answer validation, inferred A/AAAA/CNAME/passthrough presentation, duplicate prevention, confirmed draft-only deletion, capability-aware enablement, and draft/revision/convergence context.
+- Release 0.4.1 Phase 5B dedicated DNS Allowlists page, shared Blocklist/Allowlist table and dialog composition, observed-only rule-count/freshness and per-node application metadata, safer removal confirmation, and audited refresh-all partial results using allowlist semantics.
+- Authenticated `GET /api/v1/clusters/{clusterId}/allowlists/presentation` endpoint with category-separated stale caching and safe node-attributed metadata.
+- Release 0.4.1 Phase 4 Blocked Services page with a controller-mediated, version-aware per-node catalogue; searchable grouped service selection; compatibility warnings; selected counts and group actions; shared schedule editing; and publication/deployment preflight for unsupported IDs.
+- Authenticated `GET /api/v1/clusters/{clusterId}/blocked-services/catalogue` observed-metadata endpoint with bounded per-version caching, stale/partial node results, and safe metadata redaction.
 - Canonical configuration schema v2 covering broader DNS behavior, blocklists and allowlists, persistent clients, DNS rewrites, blocked-service schedules, safety services, Safe Search, query-log policy, statistics policy, redacted TLS inventory, and node-specific DHCP configuration/static leases.
 - Version-aware schema projection so AdGuard Home v0.107.52 and immutable schema-v1 revisions remain observable and deployable while schema v2 supports the current v0.107.53–v0.107.78 contract.
 - Patch-level capability handling for upstream timeout, cache enablement, rewrite enablement, ignored-list activation, and v0.107.78 filter intervals; newer unreviewed contracts are reported as unknown.
@@ -18,6 +25,8 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Changed
 
+- Replace the Release 0.4 inline DNS rewrite editor at `/filters/rewrites` while preserving the schema-v2 desired-state representation, controller-only browser boundary, and separate Save Draft, Publish, and Deploy lifecycle.
+- Move Safe Browsing, parental control, and Safe Search presentation to Settings > General; `/filters/blocked-services` now contains only the blocked-service catalogue and inactivity schedule while preserving the existing desired-state fields.
 - Default controller, image, installer, and web version is 0.4.0.
 - Release 0.3, including Docker and systemd installation and functional validation, is recorded as complete.
 - Use the primary application sidebar as the sole settings navigation and place larger DHCP node, client, and blocked-services schedule headings inside their corresponding configuration cards.
@@ -25,6 +34,8 @@ The project intends to follow Semantic Versioning once the first public release 
 ### Fixed
 
 - Prevent the rewrites, persistent-clients, and DHCP static-lease editors from crashing on non-secure HTTP origins by using stable local row keys instead of the secure-context-only browser UUID API.
+- Avoid redundant `/control/dhcp/set_config` writes when a node's schema-v2 DHCP configuration already matches the immutable revision. This prevents disabled, unconfigured DHCP nodes from rejecting an otherwise successful deployment after DNS settings have been applied, while static leases continue to reconcile.
+- Include the safe AdGuard Home HTTP method, operation path, and status in `NODE_APPLY_FAILED` task details and show that existing per-node diagnostic on the Deployments page without retaining node response bodies.
 
 ### Deferred
 
