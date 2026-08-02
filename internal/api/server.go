@@ -46,6 +46,14 @@ type AllowlistPresentationReader interface {
 	AllowlistPresentation(context.Context, string) (inventory.AllowlistPresentation, error)
 }
 
+type DHCPInterfacesReader interface {
+	DHCPInterfaces(context.Context, string) (inventory.DHCPInterfaces, error)
+}
+
+type DHCPActiveChecker interface {
+	FindActiveDHCP(context.Context, domain.Actor, string, string) (inventory.DHCPActiveCheckResult, error)
+}
+
 type Server struct {
 	auth           *auth.Service
 	management     *domain.ManagementService
@@ -53,6 +61,8 @@ type Server struct {
 	catalogue      BlockedServicesCatalogueReader
 	blocklists     BlocklistPresentationReader
 	allowlists     AllowlistPresentationReader
+	dhcpInterfaces DHCPInterfacesReader
+	dhcpChecker    DHCPActiveChecker
 	controlplane   *controlplane.Service
 	audit          AuditReader
 	health         HealthChecker
@@ -70,7 +80,7 @@ func NewServer(authService *auth.Service, management *domain.ManagementService, 
 		controlplaneService = controlplanes[0]
 	}
 	server := &Server{
-		auth: authService, management: management, inventory: inventoryService, catalogue: inventoryService, blocklists: inventoryService, allowlists: inventoryService, audit: audit, health: health,
+		auth: authService, management: management, inventory: inventoryService, catalogue: inventoryService, blocklists: inventoryService, allowlists: inventoryService, dhcpInterfaces: inventoryService, dhcpChecker: inventoryService, audit: audit, health: health,
 		controlplane: controlplaneService,
 		logger:       logger, secureCookies: secureCookies, publicBaseURL: publicBaseURL, healthInterval: healthInterval,
 		webDist: webDist, mux: http.NewServeMux(),
@@ -104,6 +114,8 @@ func (s *Server) routes() {
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/maintenance", s.authenticated(true, http.HandlerFunc(s.handleNodeMaintenance)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/observations", s.authenticated(true, http.HandlerFunc(s.handleObserveNode)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/filter-refresh", s.authenticated(true, http.HandlerFunc(s.handleFilterRefresh)))
+	s.mux.Handle("GET /api/v1/nodes/{nodeId}/dhcp/interfaces", s.authenticated(false, http.HandlerFunc(s.handleDHCPInterfaces)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/dhcp/active-check", s.authenticated(true, http.HandlerFunc(s.handleDHCPActiveCheck)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/configuration-inventory", s.authenticated(false, http.HandlerFunc(s.handleConfigurationInventory)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/blocklists/presentation", s.authenticated(false, http.HandlerFunc(s.handleBlocklistPresentation)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/allowlists/presentation", s.authenticated(false, http.HandlerFunc(s.handleAllowlistPresentation)))

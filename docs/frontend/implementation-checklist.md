@@ -41,11 +41,11 @@
 - [x] Allowlist table.
 - [x] Client table/dialog.
 - [x] Rewrite table/dialog.
-- [ ] DHCP interface discovery.
-- [ ] Active leases.
-- [ ] Static lease table/dialog.
+- [x] DHCP interface discovery.
+- [x] Active leases.
+- [x] Static lease table/dialog.
 - [ ] Structured list controls.
-- [ ] Friendly duration controls.
+- [x] Friendly duration controls.
 - [ ] Upstream test.
 - [ ] Cache clear.
 - [ ] Query-log clear.
@@ -54,15 +54,15 @@
 
 ## Quality gates
 
-- [ ] Unit tests.
-- [ ] API contract tests unchanged or deliberately updated.
+- [x] Unit tests.
+- [x] API contract tests unchanged or deliberately updated.
 - [ ] Playwright critical flows.
 - [ ] Visual regression screenshots.
 - [ ] Light and dark screenshots.
 - [ ] Desktop and mobile screenshots.
-- [ ] Keyboard navigation.
+- [x] Keyboard navigation.
 - [ ] Accessibility scan.
 - [ ] No raw colours in feature components.
 - [ ] No unknown-route Dashboard fallback.
 - [ ] No TLS secret exposure.
-- [ ] No DHCP safety regression.
+- [x] No DHCP safety regression.

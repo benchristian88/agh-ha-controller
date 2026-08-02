@@ -15,6 +15,8 @@ import type {
   Deployment,
   DeploymentPreview,
   DesiredConfigurationDocument,
+  DhcpActiveCheckResult,
+  DhcpInterfaces,
   DriftEvent,
   Node,
   ValidationIssue,
@@ -169,6 +171,16 @@ export const api = {
     request<{ nodeId: string; whitelist: boolean; status: "succeeded" }>(
       `/api/v1/nodes/${nodeId}/filter-refresh`,
       { method: "POST", body: JSON.stringify({ whitelist }) },
+    ),
+  dhcpInterfaces: (nodeId: string) =>
+    request<DhcpInterfaces>(`/api/v1/nodes/${nodeId}/dhcp/interfaces`),
+  checkActiveDhcp: (nodeId: string, interfaceName: string) =>
+    request<DhcpActiveCheckResult>(
+      `/api/v1/nodes/${nodeId}/dhcp/active-check`,
+      {
+        method: "POST",
+        body: JSON.stringify({ interfaceName }),
+      },
     ),
   setNodeMaintenance: (node: Node, enabled: boolean) =>
     request<Node>(`/api/v1/nodes/${node.id}/maintenance`, {

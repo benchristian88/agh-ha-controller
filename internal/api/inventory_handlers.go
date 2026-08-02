@@ -40,6 +40,31 @@ func (s *Server) handleFilterRefresh(response http.ResponseWriter, request *http
 	writeJSON(response, http.StatusOK, map[string]any{"nodeId": request.PathValue("nodeId"), "whitelist": input.Whitelist, "status": "succeeded"})
 }
 
+func (s *Server) handleDHCPInterfaces(response http.ResponseWriter, request *http.Request) {
+	result, err := s.dhcpInterfaces.DHCPInterfaces(request.Context(), request.PathValue("nodeId"))
+	if err != nil {
+		s.writeError(response, request, err)
+		return
+	}
+	writeJSON(response, http.StatusOK, result)
+}
+
+func (s *Server) handleDHCPActiveCheck(response http.ResponseWriter, request *http.Request) {
+	var input struct {
+		InterfaceName string `json:"interfaceName"`
+	}
+	if err := decodeJSON(response, request, &input); err != nil {
+		s.writeError(response, request, err)
+		return
+	}
+	result, err := s.dhcpChecker.FindActiveDHCP(request.Context(), actor(request.Context()), request.PathValue("nodeId"), input.InterfaceName)
+	if err != nil {
+		s.writeError(response, request, err)
+		return
+	}
+	writeJSON(response, http.StatusOK, result)
+}
+
 func (s *Server) handleConfigurationInventory(response http.ResponseWriter, request *http.Request) {
 	snapshots, profiles, draft, err := s.inventory.Inventory(request.Context(), request.PathValue("clusterId"))
 	if err != nil {

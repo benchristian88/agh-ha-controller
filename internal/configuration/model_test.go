@@ -134,6 +134,24 @@ func TestValidateDesiredRejectsInvalidDHCPNetworkAndDuplicateLeases(t *testing.T
 	}
 }
 
+func TestValidateDesiredRejectsInvalidStaticLeaseIdentity(t *testing.T) {
+	document := DesiredDocument{SchemaVersion: SchemaVersion, NodeOverrides: map[string]NodeSpecific{
+		"node-a": {BindHosts: []string{"192.0.2.2"}, DNSPort: 53, DHCP: &DHCPConfig{StaticLeases: []DHCPStaticLease{{MAC: "not-a-mac", IP: "not-an-ip", Hostname: "bad_host"}}}},
+	}}
+	issues := ValidateDesired(document, []string{"node-a"})
+	for _, suffix := range []string{".mac", ".ip", ".hostname"} {
+		found := false
+		for _, issue := range issues {
+			if strings.HasSuffix(issue.Field, suffix) {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("missing %s validation in %#v", suffix, issues)
+		}
+	}
+}
+
 func TestValidateDesiredRequiresEnabledTelemetryIntervals(t *testing.T) {
 	document := DesiredDocument{
 		SchemaVersion: SchemaVersion,

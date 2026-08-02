@@ -6,13 +6,10 @@ import type {
   Cluster,
   ConfigurationDraft,
   ConfigurationSnapshot,
-  DhcpConfiguration,
-  DhcpStaticLease,
   Node,
   SafeSearchConfiguration,
   ValidationIssue,
 } from "../../lib/types";
-import { createEditorRowKey } from "./settings";
 
 export type SettingsArea =
   | "dns"
@@ -20,6 +17,7 @@ export type SettingsArea =
   | "clients"
   | "rewrites"
   | "privacy"
+  | "dhcp"
   | "infrastructure";
 
 const titles: Record<SettingsArea, [string, string]> = {
@@ -44,8 +42,12 @@ const titles: Record<SettingsArea, [string, string]> = {
     "Safety services, Safe Search, query-log, and statistics policy managed across the cluster.",
   ],
   infrastructure: [
-    "TLS and DHCP",
-    "Redacted TLS inventory and guarded single-active-node DHCP configuration.",
+    "Encryption",
+    "Redacted, node-attributed TLS inventory. Certificate secrets remain outside desired state.",
+  ],
+  dhcp: [
+    "DHCP",
+    "Guarded node-specific DHCP configuration with a single active node.",
   ],
 };
 
@@ -178,12 +180,7 @@ export function ManagedSettingsPage({
             </>
           )}
           {area === "infrastructure" && (
-            <InfrastructureForm
-              draft={draft}
-              setDraft={setDraft}
-              nodes={nodes}
-              snapshots={snapshots}
-            />
+            <InfrastructureForm nodes={nodes} snapshots={snapshots} />
           )}
           {issues.length > 0 && (
             <div className="notice notice--warning">
@@ -607,41 +604,16 @@ function PrivacyForm({ draft, setDraft }: DraftProps) {
 }
 
 function InfrastructureForm({
-  draft,
-  setDraft,
   nodes,
   snapshots,
-}: DraftProps & { nodes: Node[]; snapshots: ConfigurationSnapshot[] }) {
+}: {
+  nodes: Node[];
+  snapshots: ConfigurationSnapshot[];
+}) {
   const nodeNames = useMemo(
     () => new Map(nodes.map((node) => [node.id, node.name])),
     [nodes],
   );
-  function setDhcp(nodeId: string, dhcp: DhcpConfiguration) {
-    const current = draft.document.nodeOverrides[nodeId];
-    const overrides = { ...draft.document.nodeOverrides };
-    if (dhcp.enabled) {
-      for (const [otherNodeId, override] of Object.entries(overrides)) {
-        if (otherNodeId !== nodeId && override.dhcp?.enabled) {
-          overrides[otherNodeId] = {
-            ...override,
-            dhcp: { ...override.dhcp, enabled: false },
-          };
-        }
-      }
-    }
-    overrides[nodeId] = {
-      bindHosts: current?.bindHosts ?? [],
-      dnsPort: current?.dnsPort ?? 53,
-      dhcp,
-    };
-    setDraft({
-      ...draft,
-      document: {
-        ...draft.document,
-        nodeOverrides: overrides,
-      },
-    });
-  }
   return (
     <div className="form-stack">
       <div className="notice notice--warning">
@@ -694,221 +666,6 @@ function InfrastructureForm({
             })}
         </div>
       </section>
-      <section>
-        <h2>DHCP: one active node maximum</h2>
-        <p className="muted">
-          During a role handoff, deployment disables non-active nodes before
-          enabling the designated node.
-        </p>
-        <div className="card-list">
-          {nodes
-            .filter((node) => node.enabled)
-            .map((node) => {
-              const current = draft.document.nodeOverrides[node.id];
-              const dhcp = current?.dhcp;
-              if (!dhcp)
-                return (
-                  <article className="card dhcp-node-card" key={node.id}>
-                    <h3 className="form-card__title">{node.name}</h3>
-                    <p className="muted">
-                      DHCP is unavailable or has not been observed. Refresh and
-                      import this node before managing it.
-                    </p>
-                  </article>
-                );
-              const update = (patch: Partial<DhcpConfiguration>) =>
-                setDhcp(node.id, { ...dhcp, ...patch });
-              return (
-                <fieldset className="card dhcp-node-card" key={node.id}>
-                  <legend className="visually-hidden">
-                    {node.name} DHCP settings
-                  </legend>
-                  <h3 className="form-card__title">{node.name}</h3>
-                  <div className="form-grid">
-                    <Check
-                      label="Designated active DHCP node"
-                      checked={dhcp.enabled}
-                      onChange={(value) => update({ enabled: value })}
-                    />
-                    <label>
-                      Interface
-                      <input
-                        value={dhcp.interfaceName}
-                        onChange={(event) =>
-                          update({ interfaceName: event.target.value })
-                        }
-                      />
-                    </label>
-                    <label>
-                      IPv4 gateway
-                      <input
-                        value={dhcp.ipv4.gateway}
-                        onChange={(event) =>
-                          update({
-                            ipv4: { ...dhcp.ipv4, gateway: event.target.value },
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Subnet mask
-                      <input
-                        value={dhcp.ipv4.subnetMask}
-                        onChange={(event) =>
-                          update({
-                            ipv4: {
-                              ...dhcp.ipv4,
-                              subnetMask: event.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Range start
-                      <input
-                        value={dhcp.ipv4.rangeStart}
-                        onChange={(event) =>
-                          update({
-                            ipv4: {
-                              ...dhcp.ipv4,
-                              rangeStart: event.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Range end
-                      <input
-                        value={dhcp.ipv4.rangeEnd}
-                        onChange={(event) =>
-                          update({
-                            ipv4: {
-                              ...dhcp.ipv4,
-                              rangeEnd: event.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                    <NumberField
-                      label="Lease duration (seconds)"
-                      value={dhcp.ipv4.leaseDurationSeconds}
-                      onChange={(value) =>
-                        update({
-                          ipv4: { ...dhcp.ipv4, leaseDurationSeconds: value },
-                        })
-                      }
-                    />
-                    <label>
-                      IPv6 range start
-                      <input
-                        value={dhcp.ipv6.rangeStart}
-                        onChange={(event) =>
-                          update({
-                            ipv6: {
-                              ...dhcp.ipv6,
-                              rangeStart: event.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                    <NumberField
-                      label="IPv6 lease duration (seconds)"
-                      value={dhcp.ipv6.leaseDurationSeconds}
-                      onChange={(value) =>
-                        update({
-                          ipv6: { ...dhcp.ipv6, leaseDurationSeconds: value },
-                        })
-                      }
-                    />
-                  </div>
-                  <StaticLeasesEditor
-                    value={dhcp.staticLeases}
-                    onChange={(value) => update({ staticLeases: value })}
-                  />
-                </fieldset>
-              );
-            })}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function StaticLeasesEditor({
-  value,
-  onChange,
-}: {
-  value: DhcpStaticLease[];
-  onChange: (value: DhcpStaticLease[]) => void;
-}) {
-  const [leaseKeys, setLeaseKeys] = useState(() =>
-    value.map(() => createEditorRowKey("lease")),
-  );
-  const update = (index: number, patch: Partial<DhcpStaticLease>) =>
-    onChange(
-      value.map((lease, leaseIndex) =>
-        leaseIndex === index ? { ...lease, ...patch } : lease,
-      ),
-    );
-  return (
-    <div className="form-stack">
-      <div className="section-heading">
-        <h3>Static leases</h3>
-        <button
-          type="button"
-          className="button button--secondary"
-          onClick={() => {
-            setLeaseKeys([...leaseKeys, createEditorRowKey("lease")]);
-            onChange([...value, { mac: "", ip: "", hostname: "" }]);
-          }}
-        >
-          Add static lease
-        </button>
-      </div>
-      {value.length === 0 && <p className="muted">No static leases.</p>}
-      {value.map((lease, index) => (
-        <div className="form-grid repeat-row" key={leaseKeys[index]}>
-          <label>
-            MAC address
-            <input
-              value={lease.mac}
-              onChange={(event) => update(index, { mac: event.target.value })}
-            />
-          </label>
-          <label>
-            IP address
-            <input
-              value={lease.ip}
-              onChange={(event) => update(index, { ip: event.target.value })}
-            />
-          </label>
-          <label>
-            Hostname
-            <input
-              value={lease.hostname}
-              onChange={(event) =>
-                update(index, { hostname: event.target.value })
-              }
-            />
-          </label>
-          <button
-            type="button"
-            className="button button--danger"
-            onClick={() => {
-              setLeaseKeys(
-                leaseKeys.filter((_, leaseIndex) => leaseIndex !== index),
-              );
-              onChange(value.filter((_, leaseIndex) => leaseIndex !== index));
-            }}
-          >
-            Remove lease
-          </button>
-        </div>
-      ))}
     </div>
   );
 }

@@ -284,6 +284,36 @@ export interface DhcpLease {
   hostname: string;
   expiresAt: string;
 }
+export interface DhcpInterface {
+  name: string;
+  hardwareAddress?: string;
+  ipv4Addresses: string[];
+  ipv6Addresses: string[];
+  gatewayIp?: string;
+  flags: string[];
+  available: boolean;
+}
+export interface DhcpInterfaces {
+  nodeId: string;
+  nodeName: string;
+  interfaces: DhcpInterface[];
+  fetchedAt: string;
+}
+export type DhcpCheckValueStatus = "yes" | "no" | "error" | "unavailable";
+export interface DhcpCheckValue {
+  status: DhcpCheckValueStatus;
+  message?: string;
+}
+export interface DhcpActiveCheckResult {
+  nodeId: string;
+  nodeName: string;
+  interfaceName: string;
+  status: "none" | "found" | "multiple" | "partial" | "error";
+  ipv4: DhcpCheckValue;
+  ipv4StaticIp: { status: DhcpCheckValueStatus; ip?: string };
+  ipv6: DhcpCheckValue;
+  checkedAt: string;
+}
 export interface TlsStatus {
   enabled: boolean;
   serverName: string;

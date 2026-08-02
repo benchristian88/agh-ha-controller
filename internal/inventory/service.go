@@ -75,6 +75,14 @@ type AllowlistReader interface {
 	ReadAllowlists(context.Context, domain.NodeProbeRequest, string) ([]FilterListMetadata, error)
 }
 
+type DHCPInterfaceReader interface {
+	ReadDHCPInterfaces(context.Context, domain.NodeProbeRequest) ([]DHCPInterface, error)
+}
+
+type DHCPActiveChecker interface {
+	FindActiveDHCP(context.Context, domain.NodeProbeRequest, string) (DHCPActiveCheck, error)
+}
+
 type CredentialProtector interface {
 	Decrypt(string, domain.EncryptedCredentials) (domain.NodeCredentials, error)
 }

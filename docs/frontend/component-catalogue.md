@@ -31,6 +31,12 @@ Phase 7 composes `DataTable`, `Dialog`, `ConfirmDialog`, `Field`, `SettingRow`,
 composition for searchable rows, contract-bounded validation and type
 inference, capability-aware enablement, and confirmed draft-only deletion.
 
+Phase 8A adds the shared `LeaseTable` and composes it with `Dialog`,
+`ConfirmDialog`, `DurationField`, `Field`, `SettingsGroup`, `ScopeIndicator`,
+`StatusBadge`, and feedback under `web/src/features/dhcp/`. DHCP uses separate
+per-node sections for discovered interfaces, audited active-server checks,
+network fields, observed active leases, and draft-managed static leases.
+
 ## Shell
 
 - `AppHeader`

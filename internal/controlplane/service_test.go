@@ -89,8 +89,32 @@ func TestManagedDifferencesIgnoreObservedCompatibilityMetadata(t *testing.T) {
 	observed := desired
 	observed.Unsupported = []configuration.Unsupported{{Section: "dhcp", Reason: "unavailable"}}
 	observed.ObservedOnly.TLS = configuration.TLSStatus{Enabled: true, ServerName: "dns.example"}
+	observed.ObservedOnly.DHCPLeases = []configuration.DHCPLease{{MAC: "00:11:22:33:44:55", IP: "192.0.2.20", Hostname: "laptop", ExpiresAt: "2026-08-02T12:00:00Z"}}
 	if differences := managedDifferences(desired, observed); len(differences) != 0 {
 		t.Fatalf("unmanaged metadata caused drift: %#v", differences)
+	}
+}
+
+func TestPreviewOrdersDHCPDisableBeforeEnable(t *testing.T) {
+	const (
+		clusterID = "11111111-1111-4111-8111-111111111111"
+		activeID  = "22222222-2222-4222-8222-222222222222"
+		disableID = "33333333-3333-4333-8333-333333333333"
+	)
+	document := configuration.DesiredDocument{SchemaVersion: configuration.SchemaVersion, NodeOverrides: map[string]configuration.NodeSpecific{
+		activeID: {
+			BindHosts: []string{"192.0.2.2"}, DNSPort: 53,
+			DHCP: &configuration.DHCPConfig{Enabled: true, InterfaceName: "eth0", IPv4: configuration.DHCPIPv4{Gateway: "192.0.2.1", SubnetMask: "255.255.255.0", RangeStart: "192.0.2.100", RangeEnd: "192.0.2.200", LeaseDuration: 3600}},
+		},
+		disableID: {BindHosts: []string{"192.0.2.3"}, DNSPort: 53, DHCP: &configuration.DHCPConfig{}},
+	}}
+	repository := &draftRepositoryFake{nodes: []domain.Node{{ID: activeID, ClusterID: clusterID, Enabled: true}, {ID: disableID, ClusterID: clusterID, Enabled: true}}}
+	preview, err := NewService(repository).previewDocument(context.Background(), clusterID, "revision", document, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(preview.Nodes) != 2 || preview.Nodes[0].NodeID != disableID || preview.Nodes[1].NodeID != activeID {
+		t.Fatalf("preview order = %#v", preview.Nodes)
 	}
 }
 

@@ -38,6 +38,24 @@ responsive widths, and light/dark themes. The existing deployment and drift
 integration workflow remains authoritative because Phase 5B does not alter
 publication, deployment, verification, or drift execution.
 
+Release 0.4.1 Phase 8A adds exact v0.107.78 DHCP-interface and active-check
+adapter contracts, unavailable endpoint and timeout mapping, sanitized node
+errors, controller authentication/CSRF DTO coverage, audit start/terminal
+events, maintenance rejection, and aggregate none/found/multiple/partial/error
+results. Domain/control-plane regressions prove static-lease MAC/IP/hostname
+validation, one-active-node validation, active-lease drift exclusion, and
+disable-before-enable preview ordering. Frontend model and DOM coverage verifies
+interface selection and legacy preservation, active lease attribution and
+freshness, non-mutating active checks, IPv4 validation, duration conversion,
+static add/edit/confirmed removal, one-designation handoff, loading, empty,
+error, stale, partial, desktop/mobile, light/dark, and keyboard behavior.
+
+On 2 August 2026, Phase 8A passed the full Go and integration-compilation suite,
+all 153 frontend tests across 25 files, TypeScript validation, Biome lint, and
+the production Vite build. PostgreSQL integration cases remain environment
+gated by `TEST_DATABASE_URL`, and a controlled real-network DHCP handoff remains
+a Release 0.4 reference-node gate. Phase 8A adds no database migration.
+
 Local validation on 30 July 2026 passed the full Go suite with race detection (`go test -race -count=1 ./...`), `go vet ./...`, the controller build, frontend TypeScript check, seven Vitest tests, Biome lint, the Vite production build, shell syntax validation, the production npm dependency audit with zero reported vulnerabilities, and `git diff --check`. The PostgreSQL cases compiled but skipped because `TEST_DATABASE_URL` was not available. Docker Compose configuration validation could not run because the Docker CLI is not installed in the validation workspace.
 
 On 31 July 2026, the non-secure-origin settings regression check passed with the full eight-test Vitest suite, TypeScript validation, Biome lint, and the Vite production build. The test removes `crypto.randomUUID` from the runtime and verifies that editor row keys remain unique, covering rewrites, persistent clients, and DHCP static leases without weakening the recommendation to serve the controller over HTTPS. Removal of the duplicate in-page settings navigation and placement of DHCP, client, and blocked-services schedule headings inside their cards passed the same frontend gates; browser visual/accessibility smoke validation remains pending.

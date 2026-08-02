@@ -10,6 +10,7 @@ import { ClusterCreate } from "./features/clusters/ClusterCreate";
 import { ConfigurationPage } from "./features/configuration/ConfigurationPage";
 import { ControlPlanePage } from "./features/controlplane/ControlPlanePage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { DHCPPage } from "./features/dhcp/DHCPPage";
 import { NodesPage } from "./features/nodes/NodesPage";
 import { RewritesPage } from "./features/rewrites/RewritesPage";
 import { ManagedSettingsPage } from "./features/settings/ManagedSettingsPage";
@@ -191,6 +192,8 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
             <ClientsPage cluster={selected} />
           ) : route.area === "rewrites" ? (
             <RewritesPage cluster={selected} />
+          ) : route.area === "dhcp" ? (
+            <DHCPPage cluster={selected} />
           ) : (
             <ManagedSettingsPage
               cluster={selected}

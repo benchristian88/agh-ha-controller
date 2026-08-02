@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/benchristian88/agh-ha-controller/internal/domain"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 )
 
@@ -37,6 +38,7 @@ func TestPresentationEndpointsRequireAuthentication(t *testing.T) {
 		"/api/v1/clusters/11111111-1111-4111-8111-111111111111/blocked-services/catalogue",
 		"/api/v1/clusters/11111111-1111-4111-8111-111111111111/blocklists/presentation",
 		"/api/v1/clusters/11111111-1111-4111-8111-111111111111/allowlists/presentation",
+		"/api/v1/nodes/22222222-2222-4222-8222-222222222222/dhcp/interfaces",
 	} {
 		t.Run(path, func(t *testing.T) {
 			server := &Server{mux: http.NewServeMux()}
@@ -62,6 +64,17 @@ func TestPresentationEndpointsRequireAuthentication(t *testing.T) {
 	}
 }
 
+func TestDHCPActiveCheckEndpointRequiresAuthentication(t *testing.T) {
+	server := &Server{mux: http.NewServeMux()}
+	server.routes()
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/dhcp/active-check", strings.NewReader(`{"interfaceName":"eth0"}`))
+	response := httptest.NewRecorder()
+	server.mux.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized || !strings.Contains(response.Body.String(), `"code":"AUTHENTICATION_REQUIRED"`) {
+		t.Fatalf("unexpected response: status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
 type catalogueReaderFake struct {
 	result inventory.BlockedServicesCatalogue
 	err    error
@@ -75,6 +88,24 @@ type blocklistReaderFake struct {
 type allowlistReaderFake struct {
 	result inventory.AllowlistPresentation
 	err    error
+}
+
+type dhcpInterfacesReaderFake struct {
+	result inventory.DHCPInterfaces
+	err    error
+}
+
+func (f dhcpInterfacesReaderFake) DHCPInterfaces(context.Context, string) (inventory.DHCPInterfaces, error) {
+	return f.result, f.err
+}
+
+type dhcpCheckerFake struct {
+	result inventory.DHCPActiveCheckResult
+	err    error
+}
+
+func (f dhcpCheckerFake) FindActiveDHCP(context.Context, domain.Actor, string, string) (inventory.DHCPActiveCheckResult, error) {
+	return f.result, f.err
 }
 
 func (f blocklistReaderFake) BlocklistPresentation(context.Context, string) (inventory.BlocklistPresentation, error) {
@@ -168,5 +199,37 @@ func TestBlockedServicesCatalogueEndpointMapsInternalErrorsSafely(t *testing.T) 
 	}
 	if !strings.Contains(response.Body.String(), `"code":"INTERNAL_ERROR"`) {
 		t.Fatalf("stable error code missing: %s", response.Body.String())
+	}
+}
+
+func TestDHCPInterfacesEndpointReturnsSanitisedNodeMetadata(t *testing.T) {
+	server := &Server{dhcpInterfaces: dhcpInterfacesReaderFake{result: inventory.DHCPInterfaces{
+		NodeID: "node-a", NodeName: "Primary", Interfaces: []inventory.DHCPInterface{{Name: "eth0", IPv4Addresses: []string{"192.0.2.2"}, IPv6Addresses: []string{}, Flags: []string{"up"}, Available: true}},
+	}}, logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/nodes/node-a/dhcp/interfaces", nil)
+	request.SetPathValue("nodeId", "node-a")
+	response := httptest.NewRecorder()
+	server.handleDHCPInterfaces(response, request)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"available":true`) {
+		t.Fatalf("unexpected response: status=%d body=%s", response.Code, response.Body.String())
+	}
+	for _, forbidden := range []string{"baseUrl", "credentials", "customCaPem"} {
+		if strings.Contains(response.Body.String(), forbidden) {
+			t.Fatalf("response exposed %q: %s", forbidden, response.Body.String())
+		}
+	}
+}
+
+func TestDHCPActiveCheckEndpointReturnsControllerResult(t *testing.T) {
+	server := &Server{dhcpChecker: dhcpCheckerFake{result: inventory.DHCPActiveCheckResult{
+		NodeID: "node-a", NodeName: "Primary", InterfaceName: "eth0", Status: "none",
+		IPv4: inventory.DHCPCheckValue{Status: "no"}, IPv6: inventory.DHCPCheckValue{Status: "no"},
+	}}, logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/nodes/node-a/dhcp/active-check", strings.NewReader(`{"interfaceName":"eth0"}`))
+	request.SetPathValue("nodeId", "node-a")
+	response := httptest.NewRecorder()
+	server.handleDHCPActiveCheck(response, request)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"status":"none"`) || !strings.Contains(response.Body.String(), `"interfaceName":"eth0"`) {
+		t.Fatalf("unexpected response: status=%d body=%s", response.Code, response.Body.String())
 	}
 }

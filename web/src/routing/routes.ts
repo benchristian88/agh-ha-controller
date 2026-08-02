@@ -87,7 +87,7 @@ const settingsRoutes: Readonly<
     ],
   },
   "/settings/dhcp": {
-    area: "infrastructure",
+    area: "dhcp",
     heading: [
       "DHCP",
       "Guarded node-specific DHCP configuration with a single active node.",

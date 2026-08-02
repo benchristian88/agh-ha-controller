@@ -198,6 +198,35 @@ type dhcpStatusResponse struct {
 	StaticLeases  []dhcpLeaseResponse `json:"static_leases"`
 }
 
+type dhcpInterfaceResponse struct {
+	Name            string   `json:"name"`
+	HardwareAddress string   `json:"hardware_address"`
+	IPv4Addresses   []string `json:"ipv4_addresses"`
+	IPv6Addresses   []string `json:"ipv6_addresses"`
+	GatewayIP       string   `json:"gateway_ip"`
+	Flags           string   `json:"flags"`
+}
+
+type dhcpCheckResponseValue struct {
+	Status string `json:"found"`
+	Error  string `json:"error"`
+}
+
+type dhcpStaticIPResponse struct {
+	Status string `json:"static"`
+	IP     string `json:"ip"`
+}
+
+type dhcpActiveCheckResponse struct {
+	V4 struct {
+		OtherServer dhcpCheckResponseValue `json:"other_server"`
+		StaticIP    dhcpStaticIPResponse   `json:"static_ip"`
+	} `json:"v4"`
+	V6 struct {
+		OtherServer dhcpCheckResponseValue `json:"other_server"`
+	} `json:"v6"`
+}
+
 func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request domain.NodeProbeRequest, version string) (configuration.Document, inventory.CapabilityProfile, error) {
 	profile := inventory.CapabilityProfile{ProductVersion: version, Compatibility: string(ConfigurationCompatibility(version)), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"dns": false, "cache_toggle": false, "upstream_timeout": false, "filtering": false, "filter_interval_arbitrary": false, "clients": false, "rewrites": false, "rewrite_toggle": false, "blocked_services": false, "safety": false, "safe_search_ecosia": supportsEcosia(version), "query_log": false, "statistics": false, "ignored_lists_toggle": false, "tls": false, "dhcp": false}, Warnings: []string{}}
 	if ConfigurationCompatibility(version) != domain.CompatibilitySupported {
@@ -332,6 +361,81 @@ func (r *ConfigurationReader) ReadBlockedServicesCatalogue(ctx context.Context, 
 		result.Groups = append(result.Groups, inventory.BlockedServiceGroup{ID: id})
 	}
 	return result, nil
+}
+
+func (r *ConfigurationReader) ReadDHCPInterfaces(ctx context.Context, request domain.NodeProbeRequest) ([]inventory.DHCPInterface, error) {
+	var response map[string]dhcpInterfaceResponse
+	supported, err := r.getOptional(ctx, request, "/control/dhcp/interfaces", &response)
+	if err != nil {
+		return nil, err
+	}
+	if !supported {
+		return nil, domain.NewError(domain.ErrorCapability, "DHCP interface discovery is not supported by this node")
+	}
+	interfaces := make([]inventory.DHCPInterface, 0, len(response))
+	for key, item := range response {
+		name := strings.TrimSpace(item.Name)
+		if name == "" {
+			name = strings.TrimSpace(key)
+		}
+		if name == "" || len(name) > 128 {
+			return nil, domain.NewError(domain.ErrorNodeResponse, "the node returned invalid DHCP interface metadata")
+		}
+		flags := []string{}
+		for _, flag := range strings.Split(item.Flags, "|") {
+			if flag = strings.TrimSpace(flag); flag != "" {
+				flags = append(flags, flag)
+			}
+		}
+		interfaces = append(interfaces, inventory.DHCPInterface{
+			Name: name, HardwareAddress: strings.TrimSpace(item.HardwareAddress),
+			IPv4Addresses: item.IPv4Addresses, IPv6Addresses: item.IPv6Addresses,
+			GatewayIP: strings.TrimSpace(item.GatewayIP), Flags: flags,
+		})
+	}
+	return interfaces, nil
+}
+
+func (r *ConfigurationReader) FindActiveDHCP(ctx context.Context, request domain.NodeProbeRequest, interfaceName string) (inventory.DHCPActiveCheck, error) {
+	var response dhcpActiveCheckResponse
+	if err := r.postResource(ctx, request, "/control/dhcp/find_active_dhcp", map[string]any{"interface": interfaceName}, &response); err != nil {
+		return inventory.DHCPActiveCheck{}, err
+	}
+	v4, err := dhcpCheckValue(response.V4.OtherServer.Status)
+	if err != nil {
+		return inventory.DHCPActiveCheck{}, err
+	}
+	v6, err := dhcpCheckValue(response.V6.OtherServer.Status)
+	if err != nil {
+		return inventory.DHCPActiveCheck{}, err
+	}
+	staticStatus := strings.TrimSpace(response.V4.StaticIP.Status)
+	if staticStatus == "" {
+		staticStatus = "unavailable"
+	}
+	if staticStatus != "yes" && staticStatus != "no" && staticStatus != "error" && staticStatus != "unavailable" {
+		return inventory.DHCPActiveCheck{}, domain.NewError(domain.ErrorNodeResponse, "the node returned an invalid static-IP check result")
+	}
+	return inventory.DHCPActiveCheck{
+		IPv4OtherServer: v4,
+		IPv4StaticIP:    inventory.DHCPStaticIPCheck{Status: staticStatus, IP: strings.TrimSpace(response.V4.StaticIP.IP)},
+		IPv6OtherServer: v6,
+	}, nil
+}
+
+func dhcpCheckValue(status string) (inventory.DHCPCheckValue, error) {
+	status = strings.TrimSpace(status)
+	if status == "" {
+		return inventory.DHCPCheckValue{Status: "unavailable"}, nil
+	}
+	if status != "yes" && status != "no" && status != "error" {
+		return inventory.DHCPCheckValue{}, domain.NewError(domain.ErrorNodeResponse, "the node returned an invalid active DHCP check result")
+	}
+	value := inventory.DHCPCheckValue{Status: status}
+	if status == "error" {
+		value.Message = "The node could not determine whether another DHCP server is active."
+	}
+	return value, nil
 }
 
 func (r *ConfigurationReader) ReadBlocklists(ctx context.Context, request domain.NodeProbeRequest, version string) ([]inventory.FilterListMetadata, error) {
@@ -778,6 +882,57 @@ func (r *ConfigurationReader) post(ctx context.Context, request domain.NodeProbe
 
 func (r *ConfigurationReader) put(ctx context.Context, request domain.NodeProbeRequest, path string, payload any) error {
 	return r.send(ctx, request, http.MethodPut, path, payload)
+}
+
+func (r *ConfigurationReader) postResource(ctx context.Context, request domain.NodeProbeRequest, path string, payload, target any) error {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("encode AdGuard Home read-only request: %w", err)
+	}
+	transport, err := r.probe.transport(request.CertificatePolicy, request.CustomCAPEM)
+	if err != nil {
+		return err
+	}
+	defer transport.CloseIdleConnections()
+	endpoint, err := configurationEndpoint(request.BaseURL, path)
+	if err != nil {
+		return domain.NewError(domain.ErrorNodeResponse, "the node URL is invalid")
+	}
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create AdGuard Home read-only request: %w", err)
+	}
+	httpRequest.SetBasicAuth(request.Credentials.Username, request.Credentials.Password)
+	httpRequest.Header.Set("Accept", "application/json")
+	httpRequest.Header.Set("Content-Type", "application/json")
+	client := &http.Client{Transport: transport, Timeout: r.probe.timeout, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
+	response, err := client.Do(httpRequest)
+	if err != nil {
+		return classifyNetworkError(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
+		return domain.NewError(domain.ErrorNodeAuth, "the node rejected its stored credentials")
+	}
+	if response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusNotImplemented {
+		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, maxConfigurationBody))
+		return domain.NewError(domain.ErrorCapability, "active DHCP detection is not supported by this node")
+	}
+	if response.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, maxConfigurationBody))
+		return domain.NewError(domain.ErrorNodeResponse, "the node active DHCP endpoint returned an unexpected status")
+	}
+	responseBody, err := io.ReadAll(io.LimitReader(response.Body, maxConfigurationBody+1))
+	if err != nil {
+		return domain.NewError(domain.ErrorNodeResponse, "the node active DHCP response could not be read")
+	}
+	if len(responseBody) > maxConfigurationBody {
+		return domain.NewError(domain.ErrorNodeResponse, "the node active DHCP response was too large")
+	}
+	if err := json.Unmarshal(responseBody, target); err != nil {
+		return domain.NewError(domain.ErrorNodeResponse, "the node returned invalid active DHCP JSON")
+	}
+	return nil
 }
 
 func (r *ConfigurationReader) send(ctx context.Context, request domain.NodeProbeRequest, method, path string, payload any) error {

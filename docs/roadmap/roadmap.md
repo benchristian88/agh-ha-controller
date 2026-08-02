@@ -272,6 +272,19 @@ Post-implementation deployment correction on 2 August 2026:
 - Schema-v2 DHCP reconciliation no longer sends `/control/dhcp/set_config` when the node already matches the immutable revision, fixing the reported deployment failure on disabled, unconfigured DHCP nodes without weakening static-lease reconciliation or disable-before-enable ordering.
 - Per-node `NODE_APPLY_FAILED` details now identify the safe AdGuard method, operation path, and HTTP status in the deployment timeline while continuing to discard response bodies and payloads. Automated adapter and DOM regressions cover both behaviors. The real-node two-node deployment and controlled DHCP handoff remain release gates and are not marked complete by this correction.
 
+Release 0.4.1 Phase 8A on 2 August 2026:
+
+- `/settings/dhcp` now clearly separates HA status and each node's desired and
+  observed state. It provides controller-mediated interface discovery,
+  legacy-value preservation, audited non-mutating active-DHCP checks, cohesive
+  validated IPv4/IPv6 fields, friendly durations, observed active leases, and
+  focused static-lease add/edit/remove workflows.
+- Interface metadata and dynamic leases remain outside desired state and drift.
+  The one-active validation and disable-before-enable deployment ordering have
+  explicit regression coverage. No reset, RA, SLAAC, schema, or database
+  operation was added. A controlled real-network handoff remains a release
+  gate.
+
 Deliberately deferred without changing roadmap history:
 
 - TLS certificate/key mutation is excluded until controller-managed secret references are designed; TLS is redacted inventory only.

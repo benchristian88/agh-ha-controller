@@ -302,6 +302,26 @@ tr:last-child td { border-bottom: 0; }
 .rewrite-dialog__fields { display: grid; gap: var(--aghha-space-5); }
 .rewrite-dialog__fields .setting-row { grid-template-columns: minmax(0, 1fr) minmax(180px, .55fr); padding-bottom: 0; }
 
+.dhcp-node-list { display: grid; gap: var(--aghha-space-8); }
+.dhcp-node-section { padding-top: var(--aghha-space-2); border-top: 2px solid var(--aghha-border); }
+.dhcp-node-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--aghha-space-5); margin-bottom: var(--aghha-space-5); }
+.dhcp-node-heading h2 { margin: var(--aghha-space-2) 0 var(--aghha-space-1); font-size: 1.3rem; }
+.dhcp-node-heading p { margin: 0; }
+.dhcp-active-toggle { flex: 0 0 auto; min-height: 42px; padding: var(--aghha-space-3); border: 1px solid var(--aghha-border); border-radius: var(--aghha-radius-control); background: var(--aghha-page-subtle); }
+.dhcp-group-content { display: grid; gap: var(--aghha-space-4); padding-block: var(--aghha-space-5); }
+.dhcp-status-grid { display: grid; grid-template-columns: minmax(300px, .85fr) minmax(340px, 1.15fr); gap: var(--aghha-space-5); padding-block: var(--aghha-space-5); }
+.dhcp-status-grid > dl, .dhcp-interface-details, .dhcp-check-results { display: grid; gap: var(--aghha-space-2); margin: 0; }
+.dhcp-status-grid > dl div, .dhcp-interface-details div, .dhcp-check-results div { display: grid; grid-template-columns: minmax(130px, .55fr) minmax(0, 1fr); gap: var(--aghha-space-3); padding: var(--aghha-space-2); border-radius: var(--aghha-radius-control); background: var(--aghha-page-subtle); }
+.dhcp-status-grid dt, .dhcp-interface-details dt, .dhcp-check-results dt { color: var(--aghha-text-muted); font-size: .75rem; }
+.dhcp-status-grid dd, .dhcp-interface-details dd, .dhcp-check-results dd { margin: 0; overflow-wrap: anywhere; }
+.dhcp-status-grid .banner { margin: 0; }
+.dhcp-status-grid .banner p { margin: var(--aghha-space-3) 0 0; }
+.dhcp-network-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--aghha-space-5); padding-block: var(--aghha-space-5); }
+.dhcp-freshness { display: flex; align-items: center; gap: var(--aghha-space-3); margin: 0; color: var(--aghha-text-muted); font-size: .8rem; }
+.dhcp-table-actions { display: inline-flex; justify-content: flex-end; gap: var(--aghha-space-2); }
+.dhcp-lease-fields { display: grid; gap: var(--aghha-space-5); }
+.dhcp-node-section .data-table small { display: block; margin-top: var(--aghha-space-1); color: var(--aghha-text-muted); }
+
 .banner { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--aghha-space-4); margin-block: var(--aghha-space-3); padding: var(--aghha-space-3) var(--aghha-space-4); border: 1px solid var(--aghha-border); border-radius: var(--aghha-radius-control); background: var(--aghha-neutral-soft); color: var(--aghha-text); line-height: 1.45; }
 .banner--info { border-color: color-mix(in srgb, var(--aghha-info) 45%, transparent); background: var(--aghha-info-soft); }
 .banner--success { border-color: color-mix(in srgb, var(--aghha-success) 45%, transparent); background: var(--aghha-success-soft); }
@@ -453,11 +473,14 @@ th[data-align="right"], td[data-align="right"] { text-align: right; }
   .structured-diff__row dl div + div { border-top: 1px solid var(--aghha-border); border-left: 0; }
   .list-field__row, .list-field__add { grid-template-columns: 1fr; }
   .list-field__row .button, .list-field__add .button { justify-self: start; }
-  .tag-multi-select__add, .client-table-toolbar, .rewrite-table-toolbar, .cache-size-field { grid-template-columns: 1fr; }
+  .tag-multi-select__add, .client-table-toolbar, .rewrite-table-toolbar, .cache-size-field, .dhcp-status-grid, .dhcp-network-grid { grid-template-columns: 1fr; }
   .tag-multi-select__add .button { justify-self: start; }
   .client-table-toolbar p { margin: 0; text-align: left; }
   .rewrite-table-toolbar p { margin: 0; text-align: left; }
   .rewrite-dialog__fields .setting-row { grid-template-columns: 1fr; }
+  .dhcp-node-heading { align-items: stretch; flex-direction: column; }
+  .dhcp-active-toggle { align-self: flex-start; }
+  .dhcp-table-actions { flex-wrap: wrap; }
   .convergence-summary dl { grid-template-columns: 1fr 1fr; }
   .progress-timeline__step, .partial-success-panel header, .banner { flex-direction: column; }
   .pagination { justify-content: space-between; }

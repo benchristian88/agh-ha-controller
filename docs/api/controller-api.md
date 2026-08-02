@@ -73,6 +73,8 @@ PATCH  /api/v1/nodes/{nodeId}
 DELETE /api/v1/nodes/{nodeId}
 POST   /api/v1/nodes/{nodeId}/test-connection
 POST   /api/v1/nodes/{nodeId}/filter-refresh
+GET    /api/v1/nodes/{nodeId}/dhcp/interfaces
+POST   /api/v1/nodes/{nodeId}/dhcp/active-check
 ```
 
 Create and update use:
@@ -99,6 +101,23 @@ Before saving an enabled node, the controller verifies status, authentication, T
 Node responses include identity, URL, trust policy, enabled state, health, compatibility, version, polling timestamps, latency, safe error code, and `recordVersion`. They never include credentials, ciphertext, nonces, CA contents, or authentication headers. The cluster node-list envelope also includes `refreshedAt` and `staleAfterSeconds`; the latter is three configured health intervals so the UI freshness state follows runtime polling configuration.
 
 The manual `test-connection` action atomically stores its safe observed result and an audit event with a success or failure outcome. Background interval polls update health without generating high-volume audit records.
+
+The DHCP interface route performs a bounded, authenticated, node-specific read
+and returns safe interface names, hardware addresses, IP addresses, gateway,
+flags, controller-derived availability, and `fetchedAt`. The result is volatile
+presentation metadata: it is not stored in desired configuration, revisions,
+canonical hashes, or drift state. An unavailable or malformed AdGuard endpoint
+returns a stable capability or node-response error; a legacy desired interface
+remains the draft value.
+
+The active-DHCP route accepts `{ "interfaceName": "eth0" }` and invokes the
+node-specific, non-mutating AdGuard detection operation. It returns aggregate
+`none`, `found`, `multiple`, `partial`, or `error` status plus safe IPv4,
+IPv4-static-IP, and IPv6 results and `checkedAt`. Raw upstream error text is
+discarded. The operation requires CSRF, an enabled node outside maintenance,
+and records `dhcp.active_check_requested` followed by exactly one
+`dhcp.active_check_succeeded` or `dhcp.active_check_failed` audit event. It
+never changes the draft, publishes, deploys, or selects a DHCP node.
 
 Node removal requires `recordVersion` and `confirmName`. It soft-removes the record, disables polling, destroys the stored encrypted credential and CA material, and writes an audit record.
 

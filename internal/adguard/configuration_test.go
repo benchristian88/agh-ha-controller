@@ -385,6 +385,80 @@ func TestOptionalDHCPReadRejectsMalformedSuccessfulResponse(t *testing.T) {
 	}
 }
 
+func TestReadDHCPInterfacesMapsExactAdGuardShape(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet || request.URL.Path != "/control/dhcp/interfaces" {
+			http.NotFound(response, request)
+			return
+		}
+		_, _ = response.Write([]byte(`{"eth0":{"name":"eth0","hardware_address":"00:11:22:33:44:55","ipv4_addresses":["192.0.2.2"],"ipv6_addresses":["2001:db8::2"],"gateway_ip":"192.0.2.1","flags":"up|broadcast|multicast"}}`))
+	}))
+	defer server.Close()
+
+	adapter := NewConfigurationReader(NewProbe(time.Second))
+	interfaces, err := adapter.ReadDHCPInterfaces(context.Background(), probeRequest(server.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(interfaces) != 1 || interfaces[0].Name != "eth0" || interfaces[0].GatewayIP != "192.0.2.1" || len(interfaces[0].Flags) != 3 || interfaces[0].IPv6Addresses[0] != "2001:db8::2" {
+		t.Fatalf("interfaces = %#v", interfaces)
+	}
+}
+
+func TestReadDHCPInterfacesReportsUnavailableEndpoint(t *testing.T) {
+	for _, status := range []int{http.StatusNotFound, http.StatusInternalServerError, http.StatusNotImplemented} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { response.WriteHeader(status) }))
+			defer server.Close()
+			adapter := NewConfigurationReader(NewProbe(time.Second))
+			_, err := adapter.ReadDHCPInterfaces(context.Background(), probeRequest(server.URL))
+			var domainError *domain.Error
+			if !errors.As(err, &domainError) || domainError.Kind != domain.ErrorCapability {
+				t.Fatalf("error = %#v, want capability error", err)
+			}
+		})
+	}
+}
+
+func TestFindActiveDHCPUsesJSONRequestAndSanitisesNodeErrors(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPost || request.URL.Path != "/control/dhcp/find_active_dhcp" {
+			http.NotFound(response, request)
+			return
+		}
+		var input map[string]string
+		if err := json.NewDecoder(request.Body).Decode(&input); err != nil || input["interface"] != "eth0" {
+			http.Error(response, "bad request", http.StatusBadRequest)
+			return
+		}
+		_, _ = response.Write([]byte(`{"v4":{"other_server":{"found":"error","error":"private implementation detail"},"static_ip":{"static":"no","ip":"192.0.2.2"}},"v6":{"other_server":{"found":"yes"}}}`))
+	}))
+	defer server.Close()
+
+	adapter := NewConfigurationReader(NewProbe(time.Second))
+	result, err := adapter.FindActiveDHCP(context.Background(), probeRequest(server.URL), "eth0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IPv4OtherServer.Status != "error" || strings.Contains(result.IPv4OtherServer.Message, "private") || result.IPv4StaticIP.IP != "192.0.2.2" || result.IPv6OtherServer.Status != "yes" {
+		t.Fatalf("result = %#v", result)
+	}
+}
+
+func TestFindActiveDHCPTimeoutIsNodeUnreachable(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		time.Sleep(50 * time.Millisecond)
+		_, _ = response.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+	adapter := NewConfigurationReader(NewProbe(5 * time.Millisecond))
+	_, err := adapter.FindActiveDHCP(context.Background(), probeRequest(server.URL), "eth0")
+	var domainError *domain.Error
+	if !errors.As(err, &domainError) || domainError.Kind != domain.ErrorNodeUnreachable {
+		t.Fatalf("error = %#v, want node unreachable", err)
+	}
+}
+
 func TestReadBlockedServicesCatalogueSupportsUngroupedAndGroupedContracts(t *testing.T) {
 	tests := []struct {
 		name, version, body string
