@@ -67,3 +67,25 @@ func (c *CredentialCipher) Decrypt(nodeID string, envelope domain.EncryptedCrede
 	}
 	return credentials, nil
 }
+
+func (c *CredentialCipher) EncryptPayload(scope string, payload []byte) (domain.EncryptedPayload, error) {
+	nonce := make([]byte, c.aead.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return domain.EncryptedPayload{}, fmt.Errorf("create operational payload nonce: %w", err)
+	}
+	return domain.EncryptedPayload{
+		Ciphertext: c.aead.Seal(nil, nonce, payload, []byte(scope)),
+		Nonce:      nonce, KeyVersion: CredentialKeyVersion, Algorithm: CredentialAlgorithm,
+	}, nil
+}
+
+func (c *CredentialCipher) DecryptPayload(scope string, envelope domain.EncryptedPayload) ([]byte, error) {
+	if envelope.Algorithm != CredentialAlgorithm || envelope.KeyVersion != CredentialKeyVersion {
+		return nil, fmt.Errorf("unsupported operational payload envelope")
+	}
+	payload, err := c.aead.Open(nil, envelope.Nonce, envelope.Ciphertext, []byte(scope))
+	if err != nil {
+		return nil, fmt.Errorf("decrypt operational payload: %w", err)
+	}
+	return payload, nil
+}

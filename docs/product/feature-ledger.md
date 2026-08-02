@@ -75,10 +75,27 @@ The operator completed Release 0.3 functional, PostgreSQL, Docker, and systemd v
 | Query-log/statistics policy | Implemented | Node-local enablement, retention, ignore/anonymization policy via supported PUT APIs | Real-node workflow; ingestion deliberately later |
 | TLS modelling | Implemented; mutation deferred | Public status/certificate metadata only; secret fields have no domain/API representation | Redaction scan against a real node |
 | DHCP management | Implemented; Phase 8B destructive operations complete | Inventory, dynamic observed leases, node-specific config/static leases, single-active validation, disable-before-enable ordering, idempotent reconciliation, controller-mediated interface discovery, audited non-mutating active-DHCP checks, and separate maintenance-guarded reset-leases/reset-configuration commands with durable per-node results, audit references, idempotency, and post-command observation | Controlled-network handoff/reset exercise and packaged retry of the reported disabled-node case |
-| Release 0.4 UI | Implemented | Seven nested settings routes using one primary navigation, responsive accessible forms, schema gate, partial refresh, and TLS/DHCP safeguards; DHCP now has explicit per-node sections, discovered interfaces, active/static lease tables, network validation, and draft-only dialogs; deployment tasks show persisted safe operation/status failure detail | Browser accessibility/visual smoke |
+| Release 0.4 UI | Superseded by Release 0.4.1 presentation | The schema-v2 feature behavior remains implemented, but the sidebar-era presentation and broad route descriptions are historical | See Release 0.4.1 UI alignment below |
 | Migration and history compatibility | Implemented | `000004` permits v1/v2 without rewriting immutable data; historical execution projects observations; PostgreSQL integration tests compile | PostgreSQL 0.3-to-0.4 upgrade run (`TEST_DATABASE_URL` was unavailable locally) |
 
 Local Go race/vet/build and frontend type/test/lint/build checks passed on 30 July 2026; the production dependency audit reported zero vulnerabilities. Exact results and unavailable Docker/PostgreSQL environment gates are recorded in `docs/development/testing.md`. Release 0.4 remains implemented rather than complete until the remaining reference environment gates above pass.
+
+## Release 0.4.1 UI alignment and hardening
+
+| Feature | Status | Implementation and evidence | Remaining release validation |
+|---|---|---|---|
+| Canonical routing and compatibility | Implemented and locally validated | Exact canonical route table, preserved legacy redirects, trailing-slash normalization, explicit planned states, Not Found, active parent state, and route-focused Deployments/Drift | Packaged browser smoke |
+| Navigation and global context | Implemented and locally validated | Horizontal desktop groups, matching mobile drawer, cluster/scope/revision/health/deployment context, unavailable state, keyboard coverage, and 320–1440px captures | Packaged authenticated browser workflow |
+| Operator-facing feature presentation | Implemented | Configuration Control plus Blocked Services, subscriptions, clients, rewrites, DHCP, General, DNS, Custom Rules, and dedicated redacted Encryption pages use the shared primitives and retain Save Draft/Publish/Deploy separation | Supported real-node workflow |
+| Accessibility and visual baselines | Locally validated | Axe WCAG A/AA structural checks, keyboard/dialog focus regressions, contrast-checked semantic tokens, light/dark screenshots at 320, 768, 1199, 1200, and 1440px, plus mobile drawer | External assistive-technology/browser audit |
+| Regression and cleanup | Locally validated | 191 frontend tests, full uncached Go race suite, vet, native production build, zero production dependency vulnerabilities, no browser `/control/` calls; obsolete broad editor removed | PostgreSQL-backed workflow requires `TEST_DATABASE_URL` |
+| Release 0.4.1 packaging and upgrade | Partially validated | All source-build defaults agree on 0.4.1; controller/migrator/web build and installer syntax pass; append-only migrations unchanged | Docker/systemd clean install, 0.4 upgrade, restart persistence, and live log scan unavailable on this host |
+
+The complete Phase 10 evidence, route table, deletion inventory, and known
+issues are in
+`docs/development/release-0.4.1-phase-10-regression-report.md`. Statistics
+aggregation and combined Query Log ingestion remain Releases 0.5 and 0.6 and
+are not classified as implemented here.
 
 ## Deliberately deferred
 

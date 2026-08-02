@@ -91,6 +91,23 @@ client filtering-policy change for drift creation and Enforce convergence. It
 compiled in the full Go run but skipped execution because `TEST_DATABASE_URL`
 was not set.
 
+Release 0.4.1 Phase 10 adds exact canonical-route and compatibility-redirect
+coverage, distinct Deployments/Drift focus, a dedicated redacted Encryption
+inventory test, shell/mobile hierarchy checks, and Axe WCAG A/AA structural
+checks. The production screenshot set covers explicit light and dark themes at
+320, 768, 1199, 1200, and 1440 pixels plus the active mobile drawer hierarchy.
+Semantic foreground/background pairs were contrast-checked separately because
+jsdom cannot compute browser colour contrast.
+
+On 2 August 2026, Phase 10 passed 191 frontend tests across 32 files,
+TypeScript, Biome, the production Vite build, the complete uncached Go race
+suite, `go vet ./...`, controller/migrator builds, the production dependency
+audit with zero vulnerabilities, installer shell syntax, and `git diff
+--check`. All four PostgreSQL integration cases compiled and skipped because
+`TEST_DATABASE_URL` was unset. Docker and systemd validation were unavailable
+on the macOS host. Full details are in
+`release-0.4.1-phase-10-regression-report.md`.
+
 ## Integration tests
 
 Use real PostgreSQL.
@@ -127,7 +144,7 @@ Critical workflows:
 6. Detect drift.
 7. Restore drift.
 8. Roll back revision.
-9. Search combined query log.
+9. Search combined query log (Release 0.6; not a Release 0.4.1 gate).
 
 The 0.1 API workflow, authoritative two-node integration workflow, and React production build are automated. Release 0.3 packaged Docker/systemd and functional validation completed on 30 July 2026. Browser-driven 0.4 settings and a reference-node schema-v2/DHCP handoff exercise remain release-gate dependencies; central statistics and query-log ingestion workflows remain assigned to later releases.
 

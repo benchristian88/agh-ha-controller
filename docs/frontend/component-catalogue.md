@@ -51,6 +51,23 @@ authoritative. Cache sizes use exact bytes with binary KiB/MiB presentation,
 and DNS TTL/timeout values use exact whole-second duration conversion. Upstream
 testing remains excluded until the separate Phase 9C controller command.
 
+Phase 9C-1 composes `OperationalCommandDialog`, `PartialSuccessPanel`, and
+`StatusBadge` on DNS Settings for current-draft upstream testing and confirmed
+DNS cache clearing. Both commands have explicit selected-node/fleet scope,
+durable node-attributed results, and remain outside desired state.
+
+Phase 9C-2 migrates Custom Filter Rules to its specialist `RuleEditor` page and
+composes the same operational primitives for host-filtering tests. Hostname,
+optional client, optional query type, exact scope, compatibility exclusions,
+and node-attributed matched rules remain separate from Save Draft and desired
+state.
+
+Phase 9C-3 composes `OperationalCommandDialog`, `PartialSuccessPanel`, and
+`StatusBadge` in the General Settings Query Log and Statistics policy groups.
+Both destructive commands use typed confirmation, narrow selected-node
+defaults, explicit compatible-fleet scope, and durable node-attributed results
+without changing the corresponding desired policy.
+
 ## Shell
 
 - `AppHeader`

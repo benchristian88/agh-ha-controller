@@ -160,8 +160,19 @@ presentation) were implemented on 2 August 2026. Phase 9B preserves schema-v2
 collection semantics and the existing capability/deployment path while adding
 specialist resolver editors, network validation, conditional address fields,
 exact byte/duration presentation, terminology fixes, and lifecycle context.
-Upstream testing and operational clear/reset commands remain unimplemented and
-must use the separate audited-command boundary in Phase 9C.
+Operational tests and clear/reset commands use the separate audited-command
+boundary in Phase 9C.
+
+Phase 9C-1 was implemented on 2 August 2026. It adds durable current-draft
+upstream tests and confirmed DNS cache clearing with encrypted queued input,
+explicit selected-node/fleet scope, per-node results, and post-clear
+observation. Phase 9C-2 was implemented on 2 August 2026. It adds durable
+host-filter testing with optional client and query-type context, version-aware
+capability exclusions, and bounded node-attributed matched-rule results.
+Phase 9C-3 was implemented on 2 August 2026. It completes Phase 9C with strongly
+confirmed Query Log clearing and Statistics reset, narrow defaults, explicit
+fleet scope, durable per-node results, and post-command observation. Query Log
+ingestion remains Release 0.6 and Statistics ingestion remains Release 0.5.
 
 ### Deliverables
 
@@ -174,6 +185,11 @@ must use the separate audited-command boundary in Phase 9C.
 - operational clear/reset actions.
 
 ## Phase 10 — Regression and cleanup
+
+Implemented locally on 2 August 2026. The complete route/redirect table,
+deletion inventory, regression evidence, visual/accessibility results,
+packaging limits, rollback plan, and known issues are recorded in
+`docs/development/release-0.4.1-phase-10-regression-report.md`.
 
 ### Deliverables
 
@@ -196,3 +212,9 @@ Release 0.4.1 is complete when:
 - unknown routes cannot masquerade as Dashboard;
 - no secret or DHCP safety regression exists;
 - documentation matches implementation.
+
+The code and local-browser portions of this gate pass. Docker/systemd clean
+install and 0.4 upgrade, PostgreSQL migration/persistence, supported real-node
+write/read-back, controlled DHCP handoff/reset, and packaged controller-outage
+checks remain environment-dependent gates and are not marked complete by Phase
+10.

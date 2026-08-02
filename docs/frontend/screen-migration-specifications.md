@@ -1,5 +1,9 @@
 # Screen Migration Specifications
 
+> **Completed migration specification.** Retained to explain the Release 0.4.1
+> implementation choices. Use the Phase 10 regression report and current
+> route/feature documentation for live status.
+
 ## Configuration Control
 
 ### Preserve

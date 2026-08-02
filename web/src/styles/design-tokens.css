@@ -36,20 +36,23 @@
   --aghha-primary: #43a047;
   --aghha-primary-hover: #388e3c;
   --aghha-primary-soft: #e8f5e9;
+  --aghha-on-primary: #07150f;
 
-  --aghha-success: #2f8f46;
+  --aghha-success: #1f6f35;
   --aghha-success-soft: #e9f6ec;
-  --aghha-info: #2878c7;
+  --aghha-info: #1d5f9e;
   --aghha-info-soft: #e9f2fb;
-  --aghha-warning: #c47a10;
+  --aghha-warning: #8a5200;
   --aghha-warning-soft: #fff4df;
-  --aghha-danger: #cf3f45;
+  --aghha-danger: #a52832;
   --aghha-danger-soft: #fdecee;
   --aghha-neutral-soft: #eef1f4;
 
-  --aghha-link: #268b4a;
+  --aghha-link: #1f783e;
   --aghha-overlay: rgb(15 23 42 / 55%);
   --aghha-shadow-popup: 0 12px 32px rgb(25 35 50 / 14%);
+  --aghha-shadow-context: 0 5px 14px rgb(25 35 50 / 12%);
+  --aghha-shadow-drawer: -18px 0 40px rgb(25 35 50 / 30%);
   --aghha-focus: 0 0 0 3px rgb(67 160 71 / 28%);
 }
 
@@ -68,18 +71,21 @@
   --aghha-primary: #43a047;
   --aghha-primary-hover: #388e3c;
   --aghha-primary-soft: #e8f5e9;
-  --aghha-success: #2f8f46;
+  --aghha-on-primary: #07150f;
+  --aghha-success: #1f6f35;
   --aghha-success-soft: #e9f6ec;
-  --aghha-info: #2878c7;
+  --aghha-info: #1d5f9e;
   --aghha-info-soft: #e9f2fb;
-  --aghha-warning: #c47a10;
+  --aghha-warning: #8a5200;
   --aghha-warning-soft: #fff4df;
-  --aghha-danger: #cf3f45;
+  --aghha-danger: #a52832;
   --aghha-danger-soft: #fdecee;
   --aghha-neutral-soft: #eef1f4;
-  --aghha-link: #268b4a;
+  --aghha-link: #1f783e;
   --aghha-overlay: rgb(15 23 42 / 55%);
   --aghha-shadow-popup: 0 12px 32px rgb(25 35 50 / 14%);
+  --aghha-shadow-context: 0 5px 14px rgb(25 35 50 / 12%);
+  --aghha-shadow-drawer: -18px 0 40px rgb(25 35 50 / 30%);
   --aghha-focus: 0 0 0 3px rgb(67 160 71 / 28%);
 }
 
@@ -99,6 +105,7 @@
   --aghha-primary: #55b85b;
   --aghha-primary-hover: #67c56d;
   --aghha-primary-soft: #213c29;
+  --aghha-on-primary: #061a11;
 
   --aghha-success: #69c278;
   --aghha-success-soft: #243d2a;
@@ -113,6 +120,8 @@
   --aghha-link: #65c87c;
   --aghha-overlay: rgb(0 0 0 / 70%);
   --aghha-shadow-popup: 0 14px 36px rgb(0 0 0 / 35%);
+  --aghha-shadow-context: 0 5px 14px rgb(0 0 0 / 20%);
+  --aghha-shadow-drawer: -18px 0 40px rgb(0 0 0 / 40%);
   --aghha-focus: 0 0 0 3px rgb(85 184 91 / 30%);
 }
 
@@ -132,6 +141,7 @@
     --aghha-primary: #55b85b;
     --aghha-primary-hover: #67c56d;
     --aghha-primary-soft: #213c29;
+    --aghha-on-primary: #061a11;
     --aghha-success: #69c278;
     --aghha-success-soft: #243d2a;
     --aghha-info: #6eafe8;
@@ -144,6 +154,8 @@
     --aghha-link: #65c87c;
     --aghha-overlay: rgb(0 0 0 / 70%);
     --aghha-shadow-popup: 0 14px 36px rgb(0 0 0 / 35%);
+    --aghha-shadow-context: 0 5px 14px rgb(0 0 0 / 20%);
+    --aghha-shadow-drawer: -18px 0 40px rgb(0 0 0 / 40%);
     --aghha-focus: 0 0 0 3px rgb(85 184 91 / 30%);
   }
 }

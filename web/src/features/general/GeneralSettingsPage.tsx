@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PartialSuccessPanel } from "../../components/DataDisplay";
 import {
   Banner,
   EmptyState,
   ErrorState,
   LoadingSkeleton,
 } from "../../components/Feedback";
+import { OperationalCommandDialog } from "../../components/Overlays";
 import { PageContainer, PageHeader } from "../../components/Page";
 import {
   CapabilityWarning,
@@ -13,18 +15,22 @@ import {
   SettingsGroup,
   UnsavedChangesNotice,
 } from "../../components/Settings";
+import { StatusBadge } from "../../components/StatusBadge";
 import {
   DomainListField,
   DurationField,
   validateDomain,
 } from "../../components/StructuredInputs";
 import { api } from "../../lib/api";
+import { newIdempotencyKey } from "../../lib/idempotency";
 import type {
   CapabilityProfile,
   Cluster,
   ConfigurationDraft,
   ConfigurationRevision,
+  DNSOperationalCommand,
   Node,
+  OperationalTarget,
   SafeSearchConfiguration,
   ValidationIssue,
 } from "../../lib/types";
@@ -51,6 +57,13 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<unknown>();
+  const [command, setCommand] = useState<"querylog" | "statistics" | "">("");
+  const [commandScope, setCommandScope] = useState<
+    "node" | "all_compatible_enabled_nodes"
+  >("node");
+  const [commandNodeID, setCommandNodeID] = useState("");
+  const [commandBusy, setCommandBusy] = useState(false);
+  const [commandResult, setCommandResult] = useState<DNSOperationalCommand>();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,6 +92,44 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
 
   useEffect(() => void load(), [load]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const key = `aghha-policy-operation:${cluster.id}`;
+    const stored = window.sessionStorage.getItem(key);
+    if (stored === null) return;
+    try {
+      const value = JSON.parse(stored) as { id?: string };
+      if (typeof value.id !== "string") return;
+      void (async () => {
+        try {
+          let result = await api.dnsOperation(value.id as string);
+          while (
+            !cancelled &&
+            (result.status === "queued" || result.status === "running")
+          ) {
+            setCommandResult(result);
+            await new Promise((resolve) => window.setTimeout(resolve, 500));
+            result = await api.dnsOperation(value.id as string);
+          }
+          if (!cancelled) {
+            if (result.status === "succeeded") {
+              window.sessionStorage.removeItem(key);
+            } else {
+              setCommandResult(result);
+            }
+          }
+        } catch {
+          window.sessionStorage.removeItem(key);
+        }
+      })();
+    } catch {
+      window.sessionStorage.removeItem(key);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [cluster.id]);
+
   const affectedNodes = nodes.filter((node) => node.enabled);
   const activeRevision = revisions.find(
     (revision) => revision.active || revision.id === cluster.activeRevisionId,
@@ -94,6 +145,16 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
   );
   const missingFeature = (feature: string) =>
     affectedCapabilities.filter((profile) => !profile.features[feature]);
+  const commandFeature =
+    command === "statistics" ? "stats_reset" : "querylog_clear";
+  const eligibleCommandNodes = affectedNodes.filter((node) => {
+    const profile = capabilities.find((item) => item.nodeId === node.id);
+    return (
+      !node.maintenanceMode &&
+      profile?.compatibility === "supported" &&
+      profile.features[commandFeature] === true
+    );
+  });
 
   if (loading && draft === undefined) {
     return (
@@ -170,6 +231,60 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
         shared: next(draft.document.shared),
       },
     });
+  }
+
+  function openCommand(next: "querylog" | "statistics") {
+    const feature = next === "statistics" ? "stats_reset" : "querylog_clear";
+    const eligible = affectedNodes.filter((node) => {
+      const profile = capabilities.find((item) => item.nodeId === node.id);
+      return (
+        !node.maintenanceMode &&
+        profile?.compatibility === "supported" &&
+        profile.features[feature] === true
+      );
+    });
+    setCommandScope("node");
+    setCommandNodeID(eligible[0]?.id ?? "");
+    setCommand(next);
+  }
+
+  async function runCommand() {
+    if (command === "") return;
+    const target: OperationalTarget =
+      commandScope === "node"
+        ? { scope: "node", nodeId: commandNodeID }
+        : { scope: "all_compatible_enabled_nodes" };
+    setCommandBusy(true);
+    setCommandResult(undefined);
+    try {
+      const idempotencyKey = newIdempotencyKey();
+      let result =
+        command === "statistics"
+          ? await api.resetStatistics(cluster.id, target, idempotencyKey)
+          : await api.clearQueryLog(cluster.id, target, idempotencyKey);
+      setCommand("");
+      setCommandResult(result);
+      const key = `aghha-policy-operation:${cluster.id}`;
+      window.sessionStorage.setItem(key, JSON.stringify({ id: result.id }));
+      while (result.status === "queued" || result.status === "running") {
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+        result = await api.dnsOperation(result.id);
+        setCommandResult(result);
+      }
+      if (result.status === "succeeded") {
+        window.sessionStorage.removeItem(key);
+      }
+      setError(undefined);
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setCommandBusy(false);
+    }
+  }
+
+  function dismissCommandResult() {
+    setCommandResult(undefined);
+    window.sessionStorage.removeItem(`aghha-policy-operation:${cluster.id}`);
   }
 
   const safeSearch = shared?.services.safeSearch;
@@ -255,6 +370,13 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
             in Configuration Control, then deploy it separately. Nodes continue
             serving DNS throughout the controller workflow.
           </Banner>
+
+          {commandResult !== undefined && (
+            <PolicyCommandResultPanel
+              operation={commandResult}
+              onDismiss={dismissCommandResult}
+            />
+          )}
 
           {filterNeedsArbitraryCapability &&
             arbitraryIntervalMissing.length > 0 && (
@@ -438,6 +560,20 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
           <SettingsGroup
             title="Query Log policy"
             description="Configures logging inside each AdGuard Home node. The combined, node-attributed Query Log arrives in Release 0.6."
+            actions={
+              <button
+                type="button"
+                className="button button--danger"
+                disabled={
+                  !affectedCapabilities.some(
+                    (profile) => profile.features.querylog_clear,
+                  )
+                }
+                onClick={() => openCommand("querylog")}
+              >
+                Clear Query Log
+              </button>
+            }
           >
             <SettingRow
               title="Query logging enabled"
@@ -522,6 +658,20 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
           <SettingsGroup
             title="Statistics policy"
             description="Configures retention inside each AdGuard Home node. Cluster statistics aggregation arrives in Release 0.5."
+            actions={
+              <button
+                type="button"
+                className="button button--danger"
+                disabled={
+                  !affectedCapabilities.some(
+                    (profile) => profile.features.stats_reset,
+                  )
+                }
+                onClick={() => openCommand("statistics")}
+              >
+                Reset Statistics
+              </button>
+            }
           >
             <SettingRow
               title="Statistics enabled"
@@ -607,9 +757,165 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
               </ul>
             </Banner>
           )}
+          <OperationalCommandDialog
+            open={command !== ""}
+            onClose={() => !commandBusy && setCommand("")}
+            onConfirm={() => void runCommand()}
+            command={
+              command === "statistics" ? "Reset Statistics" : "Clear Query Log"
+            }
+            cluster={cluster.name}
+            target={
+              commandScope === "node"
+                ? eligibleCommandNodes.find((node) => node.id === commandNodeID)
+                    ?.name
+                : undefined
+            }
+            scope={
+              commandScope === "node"
+                ? "Selected node"
+                : `All compatible enabled nodes (${eligibleCommandNodes.length})`
+            }
+            consequence={
+              command === "statistics"
+                ? "All accumulated statistics on every target are reset immediately and permanently."
+                : "All locally stored query records on every target are deleted immediately and permanently."
+            }
+            recoverable="No. Cleared operational data cannot be recovered by the controller."
+            impact={
+              command === "statistics"
+                ? "Statistics enabled state, retention policy, ignored domains, draft, and revisions remain unchanged."
+                : "Query logging enabled state, retention policy, ignored domains, draft, and revisions remain unchanged."
+            }
+            confirmationText={
+              command === "statistics" ? "RESET_STATISTICS" : "CLEAR_QUERY_LOG"
+            }
+            busy={commandBusy}
+            confirmDisabled={
+              eligibleCommandNodes.length === 0 ||
+              (commandScope === "node" &&
+                !eligibleCommandNodes.some((node) => node.id === commandNodeID))
+            }
+            destructive
+          >
+            <div className="dns-command-targets">
+              <label>
+                Target scope
+                <select
+                  value={commandScope}
+                  disabled={commandBusy}
+                  onChange={(event) =>
+                    setCommandScope(event.target.value as typeof commandScope)
+                  }
+                >
+                  <option value="node">Selected node</option>
+                  <option value="all_compatible_enabled_nodes">
+                    All compatible enabled nodes
+                  </option>
+                </select>
+              </label>
+              {commandScope === "node" && (
+                <label>
+                  Node
+                  <select
+                    value={commandNodeID}
+                    disabled={commandBusy}
+                    onChange={(event) => setCommandNodeID(event.target.value)}
+                  >
+                    {eligibleCommandNodes.map((node) => (
+                      <option key={node.id} value={node.id}>
+                        {node.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+          </OperationalCommandDialog>
         </>
       )}
     </PageContainer>
+  );
+}
+
+function PolicyCommandResultPanel({
+  operation,
+  onDismiss,
+}: {
+  operation: DNSOperationalCommand;
+  onDismiss: () => void;
+}) {
+  const pending =
+    operation.status === "queued" || operation.status === "running";
+  const results = operation.nodeResults.map((node) => ({
+    id: node.id,
+    label: node.nodeName,
+    status:
+      node.status === "succeeded"
+        ? ("success" as const)
+        : node.status === "failed"
+          ? ("failed" as const)
+          : ("pending" as const),
+    message: node.errorCode,
+  }));
+  return (
+    <>
+      {operation.status === "partial_success" && (
+        <PartialSuccessPanel
+          title={
+            operation.command === "reset_statistics"
+              ? "Statistics reset partially completed"
+              : "Query Log clear partially completed"
+          }
+          results={results}
+        />
+      )}
+      <section className="dns-command-result" aria-live="polite">
+        <header>
+          <StatusBadge
+            status={
+              pending
+                ? "pending"
+                : operation.status === "succeeded"
+                  ? "success"
+                  : operation.status === "partial_success"
+                    ? "warning"
+                    : "failed"
+            }
+          />
+          <h2>
+            {operation.command === "reset_statistics"
+              ? "Statistics reset result"
+              : "Query Log clear result"}
+          </h2>
+          {!pending && (
+            <button
+              type="button"
+              className="button button--secondary dns-command-result__dismiss"
+              onClick={onDismiss}
+            >
+              Dismiss result
+            </button>
+          )}
+        </header>
+        <ul className="compact-list">
+          {operation.nodeResults.map((node) => (
+            <li key={node.id}>
+              <strong>{node.nodeName}</strong>: {node.status}
+              {node.errorCode ? ` (${node.errorCode})` : ""}
+              {node.observationStatus === "failed" &&
+                ` · status refresh failed (${node.observationErrorCode})`}
+            </li>
+          ))}
+        </ul>
+        {operation.excludedNodes.length > 0 && (
+          <p className="muted">
+            Excluded:{" "}
+            {operation.excludedNodes.map((node) => node.nodeName).join(", ")}.
+          </p>
+        )}
+      </section>
+    </>
   );
 }
 

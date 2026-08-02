@@ -679,8 +679,6 @@ export function validateAdGuardUpstream(
 ): ValidationResult {
   const candidate = value.trim();
   if (candidate === "") return undefined;
-  if (/\s/.test(candidate))
-    return `Upstream ${index + 1} cannot contain whitespace.`;
   if (candidate.startsWith("[/")) {
     const closingBracket = candidate.indexOf("]");
     if (closingBracket < 3)
@@ -692,6 +690,8 @@ export function validateAdGuardUpstream(
       return `Upstream ${index + 1} needs a resolver or # after its selector.`;
   } else if (candidate.includes("[") || candidate.includes("]")) {
     return `Upstream ${index + 1} has unmatched selector brackets.`;
+  } else if (/\s/.test(candidate)) {
+    return `Upstream ${index + 1} cannot contain whitespace.`;
   }
   return undefined;
 }

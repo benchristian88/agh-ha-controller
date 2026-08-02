@@ -18,8 +18,10 @@ import type {
   DhcpActiveCheckResult,
   DhcpInterfaces,
   DhcpOperation,
+  DNSOperationalCommand,
   DriftEvent,
   Node,
+  OperationalTarget,
   ValidationIssue,
 } from "./types";
 
@@ -172,6 +174,92 @@ export const api = {
     request<{ nodeId: string; whitelist: boolean; status: "succeeded" }>(
       `/api/v1/nodes/${nodeId}/filter-refresh`,
       { method: "POST", body: JSON.stringify({ whitelist }) },
+    ),
+  testUpstreamDNS: (
+    clusterId: string,
+    target: OperationalTarget,
+    input: {
+      draftVersion: number;
+      upstreamDns: string[];
+      bootstrapDns: string[];
+      fallbackDns: string[];
+      privateReverseDns: string[];
+      upstreamMode: string;
+      usePrivateReverseResolvers: boolean;
+    },
+    idempotencyKey: string,
+  ) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/clusters/${clusterId}/operational-commands/test-upstream-dns`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ target, input }),
+      },
+    ),
+  clearDNSCache: (
+    clusterId: string,
+    target: OperationalTarget,
+    idempotencyKey: string,
+  ) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/clusters/${clusterId}/operational-commands/clear-dns-cache`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ target, confirmation: "CLEAR_DNS_CACHE" }),
+      },
+    ),
+  testHostFiltering: (
+    clusterId: string,
+    target: OperationalTarget,
+    input: { hostname: string; client?: string; queryType?: string },
+    idempotencyKey: string,
+  ) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/clusters/${clusterId}/operational-commands/test-host-filtering`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ target, input }),
+      },
+    ),
+  clearQueryLog: (
+    clusterId: string,
+    target: OperationalTarget,
+    idempotencyKey: string,
+  ) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/clusters/${clusterId}/operational-commands/clear-query-log`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ target, confirmation: "CLEAR_QUERY_LOG" }),
+      },
+    ),
+  resetStatistics: (
+    clusterId: string,
+    target: OperationalTarget,
+    idempotencyKey: string,
+  ) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/clusters/${clusterId}/operational-commands/reset-statistics`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ target, confirmation: "RESET_STATISTICS" }),
+      },
+    ),
+  dnsOperation: (operationId: string) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/operational-commands/${operationId}`,
+    ),
+  dnsOperations: (
+    clusterId: string,
+    command?: DNSOperationalCommand["command"],
+  ) =>
+    request<{ items: DNSOperationalCommand[] }>(
+      `/api/v1/clusters/${clusterId}/operational-commands?limit=10${command ? `&command=${command}` : ""}`,
     ),
   dhcpInterfaces: (nodeId: string) =>
     request<DhcpInterfaces>(`/api/v1/nodes/${nodeId}/dhcp/interfaces`),

@@ -34,6 +34,26 @@ func RunDeploymentExecutor(ctx context.Context, executor DeploymentExecutor, log
 	}
 }
 
+func RunOperationalCommandExecutor(ctx context.Context, executor DeploymentExecutor, logger *slog.Logger) {
+	for {
+		worked, err := executor.RunOnce(ctx)
+		if err != nil && ctx.Err() == nil {
+			logger.Error("operational command execution failed", "error", err)
+		}
+		delay := time.Second
+		if worked {
+			delay = 10 * time.Millisecond
+		}
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+		}
+	}
+}
+
 func RunReconciler(ctx context.Context, reconciler DriftReconciler, interval time.Duration, logger *slog.Logger) {
 	if interval < 10*time.Second {
 		interval = 10 * time.Second

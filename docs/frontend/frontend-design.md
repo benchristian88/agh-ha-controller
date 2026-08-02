@@ -1,5 +1,11 @@
 # Frontend Design
 
+> **Historical foundation.** Release 0.1–0.4 implementation descriptions below
+> are retained as design history. Where sidebar, route, or current component
+> language conflicts, ADR-0026, `ui-navigation.md`,
+> `navigation-and-shell.md`, and the Release 0.4.1 Phase 10 regression report
+> are authoritative.
+
 ## Design goal
 
 The frontend should feel immediately familiar to an AdGuard Home user while clearly exposing HA concepts that do not exist in a single-node product.
@@ -18,7 +24,8 @@ Release 0.3 implements the configuration authoring form, immutable revision hist
 
 Routine AdGuard settings use nested, bookmarkable `/settings/*` pages instead of overloading the HA Configuration page. The application sidebar is their single navigation surface; individual settings pages do not repeat that menu. Every page loads and saves the same typed schema-v2 draft and directs publication/deployment back to Configuration. Forms cover DNS, filter/allowlist authoring and partial-result refresh, persistent clients, rewrites, blocked-service schedules, safety/Safe Search, human-readable retention days, redacted TLS cards, and per-node DHCP/static leases. DHCP node names, client identifiers, and blocked-services schedule labels are headings inside their corresponding cards while hidden fieldset legends preserve form grouping for assistive technology. Patch-level capability notices explain when cache/timeout/filter/rewrite/ignore controls must retain an older node's imported defaults. Selecting an active DHCP node disables other draft overrides in the browser; server validation remains authoritative. Schema-v1 drafts show upgrade/import guidance rather than editable v2 controls.
 
-Release 0.4.1 Phase 9A makes `/settings/general` the canonical presentation for
+Release 0.4.1 makes the horizontal header and matching mobile drawer the sole
+primary navigation. Phase 9A makes `/settings/general` the canonical presentation for
 protection, filtering, safety, Safe Search, and node-local Query Log and
 Statistics policy. It uses preset/custom lossless durations, validated domain
 rows, explicit patch-capability warnings, and draft/revision/affected-node

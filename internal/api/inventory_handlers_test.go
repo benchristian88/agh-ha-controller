@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/auth"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
+	"github.com/benchristian88/agh-ha-controller/internal/operations"
 )
 
 func TestConfigurationInventoryResponseOmitsMissingDraft(t *testing.T) {
@@ -41,6 +43,8 @@ func TestPresentationEndpointsRequireAuthentication(t *testing.T) {
 		"/api/v1/clusters/11111111-1111-4111-8111-111111111111/blocklists/presentation",
 		"/api/v1/clusters/11111111-1111-4111-8111-111111111111/allowlists/presentation",
 		"/api/v1/nodes/22222222-2222-4222-8222-222222222222/dhcp/interfaces",
+		"/api/v1/operational-commands/77777777-7777-4777-8777-777777777777",
+		"/api/v1/clusters/11111111-1111-4111-8111-111111111111/operational-commands",
 	} {
 		t.Run(path, func(t *testing.T) {
 			server := &Server{mux: http.NewServeMux()}
@@ -85,6 +89,22 @@ func TestDHCPOperationEndpointsRequireAuthentication(t *testing.T) {
 	}
 }
 
+func TestDNSOperationEndpointsRequireAuthentication(t *testing.T) {
+	for _, path := range []string{
+		"/api/v1/clusters/11111111-1111-4111-8111-111111111111/operational-commands/test-upstream-dns",
+		"/api/v1/clusters/11111111-1111-4111-8111-111111111111/operational-commands/clear-dns-cache",
+	} {
+		server := &Server{mux: http.NewServeMux()}
+		server.routes()
+		request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{}`))
+		response := httptest.NewRecorder()
+		server.mux.ServeHTTP(response, request)
+		if response.Code != http.StatusUnauthorized || !strings.Contains(response.Body.String(), `"code":"AUTHENTICATION_REQUIRED"`) {
+			t.Fatalf("path=%s status=%d body=%s", path, response.Code, response.Body.String())
+		}
+	}
+}
+
 type catalogueReaderFake struct {
 	result inventory.BlockedServicesCatalogue
 	err    error
@@ -123,6 +143,44 @@ type dhcpOperationsFake struct {
 	command      inventory.DHCPOperationCommand
 	confirmation string
 	idempotency  string
+}
+
+type dnsOperationsFake struct {
+	result operations.Operation
+	calls  int
+	target operations.Target
+}
+
+func (f *dnsOperationsFake) StartUpstreamTest(_ context.Context, _ domain.Actor, _ string, target operations.Target, _ operations.UpstreamInput, _ string) (operations.Operation, error) {
+	f.calls++
+	f.target = target
+	return f.result, nil
+}
+func (f *dnsOperationsFake) StartHostFilterTest(_ context.Context, _ domain.Actor, _ string, target operations.Target, _ operations.HostFilterInput, _ string) (operations.Operation, error) {
+	f.calls++
+	f.target = target
+	return f.result, nil
+}
+func (f *dnsOperationsFake) StartCacheClear(_ context.Context, _ domain.Actor, _ string, target operations.Target, _ string, _ string) (operations.Operation, error) {
+	f.calls++
+	f.target = target
+	return f.result, nil
+}
+func (f *dnsOperationsFake) StartQueryLogClear(_ context.Context, _ domain.Actor, _ string, target operations.Target, _ string, _ string) (operations.Operation, error) {
+	f.calls++
+	f.target = target
+	return f.result, nil
+}
+func (f *dnsOperationsFake) StartStatisticsReset(_ context.Context, _ domain.Actor, _ string, target operations.Target, _ string, _ string) (operations.Operation, error) {
+	f.calls++
+	f.target = target
+	return f.result, nil
+}
+func (f *dnsOperationsFake) Operation(context.Context, string) (operations.Operation, error) {
+	return f.result, nil
+}
+func (f *dnsOperationsFake) List(context.Context, string, operations.Command, int) ([]operations.Operation, error) {
+	return []operations.Operation{f.result}, nil
 }
 
 func (f *dhcpOperationsFake) RunDHCPOperation(_ context.Context, _ domain.Actor, nodeID string, command inventory.DHCPOperationCommand, confirmation, idempotency string) (inventory.DHCPOperation, error) {
@@ -352,6 +410,96 @@ func TestDHCPResetEndpointRequiresCSRFAndAcceptsMatchingToken(t *testing.T) {
 	server.mux.ServeHTTP(withResponse, withCSRF)
 	if withResponse.Code != http.StatusOK || operations.calls != 1 {
 		t.Fatalf("matching CSRF response: status=%d calls=%d body=%s", withResponse.Code, operations.calls, withResponse.Body.String())
+	}
+}
+
+func TestDNSOperationRequiresCSRFAndReturnsQueuedResource(t *testing.T) {
+	tokens, err := auth.NewTokenManager([]byte("0123456789abcdef0123456789abcdef"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const csrf = "csrf-token"
+	repository := &apiAuthRepositoryFake{
+		session: domain.Session{ID: "session-a", CSRFHash: tokens.HashCSRFToken(csrf)},
+		user:    domain.User{ID: "33333333-3333-4333-8333-333333333333", Enabled: true},
+	}
+	authService, err := auth.NewService(repository, tokens, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := &dnsOperationsFake{result: operations.Operation{ID: "operation-a", Status: "queued", Command: operations.TestUpstreamDNS, NodeResults: []operations.NodeResult{{NodeID: "node-a", NodeName: "Primary", Status: "pending"}}}}
+	server := &Server{auth: authService, dnsOperations: service, logger: slog.New(slog.NewTextHandler(io.Discard, nil)), mux: http.NewServeMux()}
+	server.routes()
+	path := "/api/v1/clusters/11111111-1111-4111-8111-111111111111/operational-commands/test-upstream-dns"
+	body := `{"target":{"scope":"node","nodeId":"22222222-2222-4222-8222-222222222222"},"input":{"draftVersion":4,"upstreamDns":["1.1.1.1"],"bootstrapDns":[],"fallbackDns":[],"privateReverseDns":[],"upstreamMode":"load_balance","usePrivateReverseResolvers":false}}`
+
+	without := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	without.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+	withoutResponse := httptest.NewRecorder()
+	server.mux.ServeHTTP(withoutResponse, without)
+	if withoutResponse.Code != http.StatusForbidden || service.calls != 0 {
+		t.Fatalf("missing CSRF status=%d calls=%d", withoutResponse.Code, service.calls)
+	}
+
+	with := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	with.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+	with.AddCookie(&http.Cookie{Name: csrfCookieName, Value: csrf})
+	with.Header.Set(csrfHeader, csrf)
+	with.Header.Set(idempotencyHeader, "55555555-5555-4555-8555-555555555555")
+	response := httptest.NewRecorder()
+	server.mux.ServeHTTP(response, with)
+	if response.Code != http.StatusAccepted || service.calls != 1 || service.target.NodeID == "" || !strings.Contains(response.Body.String(), `"status":"queued"`) {
+		t.Fatalf("status=%d calls=%d body=%s", response.Code, service.calls, response.Body.String())
+	}
+
+	hostPath := "/api/v1/clusters/11111111-1111-4111-8111-111111111111/operational-commands/test-host-filtering"
+	hostBody := `{"target":{"scope":"all_compatible_enabled_nodes"},"input":{"hostname":"ads.example","client":"192.0.2.10","queryType":"AAAA"}}`
+	unauthenticated := httptest.NewRequest(http.MethodPost, hostPath, strings.NewReader(hostBody))
+	unauthenticatedResponse := httptest.NewRecorder()
+	server.mux.ServeHTTP(unauthenticatedResponse, unauthenticated)
+	if unauthenticatedResponse.Code != http.StatusUnauthorized || service.calls != 1 {
+		t.Fatalf("unauthenticated status=%d calls=%d", unauthenticatedResponse.Code, service.calls)
+	}
+	hostRequest := httptest.NewRequest(http.MethodPost, hostPath, strings.NewReader(hostBody))
+	hostRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+	hostRequest.AddCookie(&http.Cookie{Name: csrfCookieName, Value: csrf})
+	hostRequest.Header.Set(csrfHeader, csrf)
+	hostRequest.Header.Set(idempotencyHeader, "66666666-6666-4666-8666-666666666666")
+	hostResponse := httptest.NewRecorder()
+	server.mux.ServeHTTP(hostResponse, hostRequest)
+	if hostResponse.Code != http.StatusAccepted || service.calls != 2 || service.target.Scope != "all_compatible_enabled_nodes" {
+		t.Fatalf("host status=%d calls=%d body=%s", hostResponse.Code, service.calls, hostResponse.Body.String())
+	}
+
+	queryPath := "/api/v1/clusters/11111111-1111-4111-8111-111111111111/operational-commands/clear-query-log"
+	queryBody := `{"target":{"scope":"node","nodeId":"22222222-2222-4222-8222-222222222222"},"confirmation":"CLEAR_QUERY_LOG"}`
+	queryWithoutCSRF := httptest.NewRequest(http.MethodPost, queryPath, strings.NewReader(queryBody))
+	queryWithoutCSRF.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+	queryWithoutResponse := httptest.NewRecorder()
+	server.mux.ServeHTTP(queryWithoutResponse, queryWithoutCSRF)
+	if queryWithoutResponse.Code != http.StatusForbidden || service.calls != 2 {
+		t.Fatalf("query missing CSRF status=%d calls=%d", queryWithoutResponse.Code, service.calls)
+	}
+	for index, item := range []struct {
+		path string
+		body string
+	}{
+		{queryPath, queryBody},
+		{"/api/v1/clusters/11111111-1111-4111-8111-111111111111/operational-commands/reset-statistics", `{"target":{"scope":"all_compatible_enabled_nodes"},"confirmation":"RESET_STATISTICS"}`},
+	} {
+		request := httptest.NewRequest(http.MethodPost, item.path, strings.NewReader(item.body))
+		request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+		request.AddCookie(&http.Cookie{Name: csrfCookieName, Value: csrf})
+		request.Header.Set(csrfHeader, csrf)
+		request.Header.Set(idempotencyHeader, fmt.Sprintf("77777777-7777-4777-8777-77777777777%d", index))
+		result := httptest.NewRecorder()
+		server.mux.ServeHTTP(result, request)
+		if result.Code != http.StatusAccepted {
+			t.Fatalf("policy operation %s status=%d body=%s", item.path, result.Code, result.Body.String())
+		}
+	}
+	if service.calls != 4 {
+		t.Fatalf("policy operation calls=%d", service.calls)
 	}
 }
 

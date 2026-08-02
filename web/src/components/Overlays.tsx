@@ -143,6 +143,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   confirmationText,
   busy = false,
+  confirmDisabled = false,
   danger = true,
 }: {
   open: boolean;
@@ -155,6 +156,7 @@ export function ConfirmDialog({
   cancelLabel?: string;
   confirmationText?: string;
   busy?: boolean;
+  confirmDisabled?: boolean;
   danger?: boolean;
 }) {
   const [typed, setTyped] = useState("");
@@ -182,7 +184,7 @@ export function ConfirmDialog({
           <button
             type="button"
             className={danger ? "button button--danger" : "button"}
-            disabled={busy || !valid}
+            disabled={busy || confirmDisabled || !valid}
             onClick={onConfirm}
           >
             {busy ? "Working…" : confirmLabel}
@@ -219,7 +221,9 @@ export function OperationalCommandDialog({
   recoverable,
   confirmationText,
   busy = false,
+  confirmDisabled = false,
   destructive = false,
+  children,
 }: {
   open: boolean;
   onClose: () => void;
@@ -233,7 +237,9 @@ export function OperationalCommandDialog({
   recoverable?: ReactNode;
   confirmationText?: string;
   busy?: boolean;
+  confirmDisabled?: boolean;
   destructive?: boolean;
+  children?: ReactNode;
 }) {
   return (
     <ConfirmDialog
@@ -245,6 +251,7 @@ export function OperationalCommandDialog({
       confirmLabel={command}
       confirmationText={confirmationText}
       busy={busy}
+      confirmDisabled={confirmDisabled}
       danger={destructive}
     >
       <dl className="operational-command-summary">
@@ -291,6 +298,7 @@ export function OperationalCommandDialog({
           </div>
         )}
       </dl>
+      {children}
     </ConfirmDialog>
   );
 }

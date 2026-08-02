@@ -1,5 +1,12 @@
 # AGH HA Controller UI Audit Against the AdGuard Home v2 Audits
 
+> **Historical baseline — superseded for current presentation.** This audit
+> describes the pre-migration Release 0.4 UI. Release 0.4.1 Phases 0–10
+> resolved or reclassified its selected presentation findings. Use
+> `ui-navigation.md`, the Release 0.4.1 roadmap, and the Phase 10 regression
+> report for current implementation status. Functional and deferred-scope
+> evidence remains useful historical context.
+
 ## Purpose
 
 Compare the implemented Release 0.4 controller UI and execution path with:
@@ -310,7 +317,7 @@ The current free-text ID control directly conflicts with the source catalogue’
 | Validation | No parse/check action or rule-level diagnostics | Missing | Add controller validation or an audited non-mutating node check before publication. |
 | Save | Save Draft is available | Matches | — |
 | Rule count | Not shown | Missing | Show draft count and, separately, observed compiled/status metadata. |
-| Test a host | `/control/filtering/check_host` is not exposed | Missing | Add non-mutating test form with node-attributed results. |
+| Test a host | Controller-mediated `/control/filtering/check_host` is exposed through the durable Phase 9C-2 command | Matches | Hostname, optional client/query type, selected-node/fleet scope, compatibility exclusions, and bounded node-attributed rules are presented without desired-state mutation. |
 | Search within rules | Browser textarea behavior only | Missing | Specialist editor should provide search. |
 | Revision diff | Whole custom-rule arrays participate in semantic revision comparison | Partially implemented | Add line-level diff presentation. |
 
@@ -330,7 +337,7 @@ The current free-text ID control directly conflicts with the source catalogue’
 | Upstream detail | No query table | Deferred | Release 0.6. |
 | Filtering rule/reason | No query table | Deferred | Release 0.6. |
 | Add allow/block rule | No contextual query action | Deferred | Depends on Release 0.6 and safe draft authoring linkage. |
-| Clear log | No audited command | Missing | Node-local destructive action is not implemented even though central ingestion is deferred. |
+| Clear log | Phase 9C-3 exposes a strongly confirmed controller command from General Settings | Matches | Selected-node default, explicit compatible-fleet scope, durable per-node results, and unchanged Query Log policy. |
 | Log configuration | Node-local policy is fully managed under Logs & Statistics | Matches | Keep separate from the future query-event route. |
 | Mandatory node column | No query table | Deferred | Must be present in Release 0.6. |
 
@@ -341,7 +348,7 @@ The current free-text ID control directly conflicts with the source catalogue’
 | Statistics dashboard | No `/control/stats` polling, storage, aggregation, or route | Deferred | Release 0.5. |
 | Cluster/node period selection | No statistics route | Deferred | Release 0.5. |
 | Statistics retention | Node-local desired policy is read, edited, deployed, and verified | Matches | Current numeric-days presentation should become a friendly duration selector. |
-| Reset statistics | No audited command | Missing | Can be implemented independently as a destructive per-node/fleet action. |
+| Reset statistics | Phase 9C-3 exposes a strongly confirmed controller command from General Settings | Matches | Selected-node default, explicit compatible-fleet scope, durable per-node results, and unchanged Statistics policy. |
 | Weighted aggregates and coverage | No aggregation | Deferred | Release 0.5 acceptance criteria. |
 
 ### 2.15 Setup Guide
@@ -364,16 +371,16 @@ This table verifies the implementation behind the visible-control classification
 |---|---|---|---|
 | Status and version reads | `/control/status` used for health, version, listener identity | Matches | Node polling and observations preserve controller independence. |
 | Protection command `/control/protection` | Not used; protection is desired DNS configuration | Intentionally different | Revisioned source-of-truth behavior is preferred; timed pause remains unmodelled. |
-| DNS cache clear | Not used | Missing | No controller command endpoint. |
+| DNS cache clear | Used through the audited Phase 9C-1 controller command | Matches | Confirmed selected-node/fleet scope and per-node results remain outside desired state. |
 | AdGuard version check/update | Not used | Deferred | Node upgrade orchestration is later roadmap work. |
 | Filtering status/config | Read and written | Matches | Includes enabled state and interval. |
 | Filter add/set URL | Used by desired-set reconciliation | Matches | Removal is implemented as disable rather than destructive URL deletion. |
 | Filter remove URL | Not called | Intentionally different | Controller reconciliation disables unmanaged current entries, preserving safer reversibility. Document this operator-visible behavior. |
 | Filter refresh | Direct audited per-node endpoint and fleet UI action | Matches | Partial results are shown, though not durably as a job. |
 | Set custom rules | Used | Matches | UI tooling remains poor. |
-| Check host filtering | Not used | Missing | No test-host controller action. |
+| Check host filtering | Used through the audited Phase 9C-2 controller command | Matches | Host/client/query-type input and bounded node-attributed matched rules. |
 | DNS info/config | Read and written for the modelled schema-v2 fields | Matches | Managed fields are read back and compared. |
-| Test upstream DNS | Not used | Missing | No controller action. |
+| Test upstream DNS | Used through the audited Phase 9C-1 controller command | Matches | Tests current draft inputs without applying or publishing them. |
 | Access list read/set | Not used | Missing | No access-policy domain model. |
 | TLS status | Read and redacted before domain/browser state | Matches | Secret material is excluded and redaction is contract-tested. |
 | TLS configure/validate | Not used | Deferred | Secret-reference architecture required. |
@@ -394,10 +401,10 @@ This table verifies the implementation behind the visible-control classification
 | Safe Search status/settings | Used | Matches | Patch-level Ecosia capability is explicit. |
 | Query-log config read/update | Used | Matches | Policy only in 0.4. |
 | Query-log records/search/page | Not used | Deferred | Release 0.6. |
-| Query-log clear | Not used | Missing | Destructive node operation absent. |
+| Query-log clear | Used through the audited Phase 9C-3 controller command | Matches | Typed confirmation, explicit scope, durable results, and unchanged policy. |
 | Statistics config read/update | Used | Matches | Policy only in 0.4. |
 | Statistics data | Not used | Deferred | Release 0.5. |
-| Statistics reset | Not used | Missing | Destructive node operation absent. |
+| Statistics reset | Used through the audited Phase 9C-3 controller command | Matches | Typed confirmation, explicit scope, durable results, and unchanged policy. |
 | AdGuard install/login/logout/profile APIs | Not used | Intentionally different | Controller has its own setup, local authentication, sessions, CSRF, and encrypted node credentials. |
 
 ## 4. HA controller-specific features not represented by the AdGuard parity catalogue
@@ -464,6 +471,8 @@ The smallest compliant redesign is to rename the navigation item to **Configurat
 6. Add contextual draft/revision/convergence state to settings pages.
 
 ### Priority 2 — missing operational commands
+
+Completed by Release 0.4.1 Phases 8B and 9C-1 through 9C-3:
 
 1. Test upstream DNS.
 2. Clear DNS cache.

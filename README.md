@@ -2,7 +2,7 @@
 
 AGH HA Controller is a management plane for running two or more AdGuard Home instances as a coordinated, highly available DNS service.
 
-AdGuard Home remains the DNS engine. AGH HA Controller provides the shared control plane for configuration, authentication, revision history, deployment, drift detection, statistics aggregation, and eventually central query-log ingestion.
+AdGuard Home remains the DNS engine. AGH HA Controller currently provides the shared control plane for configuration, authentication, revision history, deployment, and drift detection. Cluster statistics aggregation and central query-log ingestion remain planned for Releases 0.5 and 0.6.
 
 ## Why this project exists
 
@@ -21,7 +21,7 @@ AGH HA Controller is intended to solve that gap by providing:
 
 ## Project status
 
-Release 0.4 implements broader AdGuard Home administration on top of the validated 0.3 authoritative control plane. Operators can manage shared DNS behavior, blocklists and allowlists, custom rules, persistent clients, rewrites, blocked services and schedules, safety services, Safe Search, and node query-log/statistics policy. TLS is exposed as redacted inventory, and DHCP is a guarded node override with one active node maximum. Release 0.3, including Docker and systemd installation and functional workflows, was operator-validated on 30 July 2026. Current implementation and validation status is tracked in the [feature ledger](docs/product/feature-ledger.md).
+Release 0.4.1 aligns broader AdGuard Home administration with the approved horizontal navigation, mobile drawer, global cluster/scope/revision/health/deployment context, schema-v2 Configuration Control, and operator-focused settings presentations. Operators can manage shared DNS behavior, blocklists and allowlists, custom rules, persistent clients, rewrites, blocked services and schedules, safety services, Safe Search, and node query-log/statistics policy. TLS is exposed as redacted inventory, and DHCP is a guarded node override with one active node maximum. Local regression, accessibility, visual, race, vet, dependency, and native-build gates pass; PostgreSQL, Docker, systemd, and controlled real-node upgrade checks remain external release gates. Current evidence is tracked in the [feature ledger](docs/product/feature-ledger.md) and [Phase 10 regression report](docs/development/release-0.4.1-phase-10-regression-report.md).
 
 The first meaningful product milestone is the configuration-control MVP:
 
@@ -90,6 +90,17 @@ AdGuard Home remains the live DNS service and never sends normal DNS traffic thr
 - Dark mode modelled closely on AdGuard Home
 - Responsive desktop-first administration interface
 
+Canonical navigation is grouped under Settings, Filters, and HA Controller.
+Statistics and Query Log have explicit future-release states and do not imply
+that aggregation or ingestion is available. Previous Release 0.4 settings URLs
+remain usable through documented compatibility redirects.
+
+### Release 0.4.1 interface
+
+[![Configuration Control desktop](docs/frontend/screenshots/release-0.4.1/configuration-control-desktop.png)](docs/frontend/screenshots/release-0.4.1/configuration-control-desktop.png)
+
+[![Mobile navigation drawer](docs/frontend/screenshots/release-0.4.1/phase-10-mobile-drawer-dark-320.png)](docs/frontend/screenshots/release-0.4.1/phase-10-mobile-drawer-dark-320.png)
+
 ### Forwarder
 
 Planned for a later release: Go static binary, systemd service, local disk spool, at-least-once delivery, and controller-side deduplication.
@@ -143,7 +154,7 @@ The installer builds from source without requiring ripgrep, creates the `aghha` 
 
 ## Authoritative configuration workflow
 
-After adding nodes, open `/ha/configuration`. Refresh and import every enabled node so the desired draft has an explicit listener override and any available DHCP override for each node. Use the nested `/settings/*` pages for routine AdGuard Home settings, save the shared draft with optimistic concurrency, then return to Configuration to validate, summarize, and publish an immutable revision. Preview and deploy it; deployment is asynchronous and visible under `/ha/deployments` with per-node phases and safe errors.
+After adding nodes, open `/ha/configuration`. Refresh and import every enabled node so the desired draft has an explicit listener override and any available DHCP override for each node. Use the grouped `/settings/*` and `/filters/*` pages for routine AdGuard Home settings, save the shared draft with optimistic concurrency, then return to Configuration Control to validate, summarize, and publish an immutable revision. Preview and deploy it; deployment is asynchronous and visible under `/ha/deployments` with per-node phases and safe errors. `/ha/drift` opens the drift-focused view of the same control plane.
 
 Listener addresses and DNS port are read from AdGuard Home's `/control/status` response and retained as verification-only node overrides. If a draft created by the initial 0.3.0 build reports an empty/invalid listener override, refresh and re-import the named node; repeat for each enabled node that is missing an override. Import replaces the draft's shared values with the selected snapshot, so review and reapply intended shared edits after the final recovery import.
 

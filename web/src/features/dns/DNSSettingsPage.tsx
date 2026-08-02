@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { PartialSuccessPanel } from "../../components/DataDisplay";
 import {
   Banner,
   EmptyState,
   ErrorState,
   LoadingSkeleton,
 } from "../../components/Feedback";
+import { OperationalCommandDialog } from "../../components/Overlays";
 import { PageContainer, PageHeader } from "../../components/Page";
 import {
   CapabilityWarning,
@@ -14,6 +16,7 @@ import {
   SettingsGroup,
   UnsavedChangesNotice,
 } from "../../components/Settings";
+import { StatusBadge } from "../../components/StatusBadge";
 import {
   DurationField,
   NetworkListField,
@@ -21,12 +24,15 @@ import {
   validateNetwork,
 } from "../../components/StructuredInputs";
 import { api } from "../../lib/api";
+import { newIdempotencyKey } from "../../lib/idempotency";
 import type {
   CapabilityProfile,
   Cluster,
   ConfigurationDraft,
   ConfigurationRevision,
+  DNSOperationalCommand,
   Node,
+  OperationalTarget,
   ValidationIssue,
 } from "../../lib/types";
 import {
@@ -72,6 +78,14 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<unknown>();
+  const [command, setCommand] = useState<"test" | "cache" | "">("");
+  const [commandScope, setCommandScope] = useState<
+    "node" | "all_compatible_enabled_nodes"
+  >("node");
+  const [commandNodeID, setCommandNodeID] = useState("");
+  const [commandBusy, setCommandBusy] = useState(false);
+  const [commandResult, setCommandResult] = useState<DNSOperationalCommand>();
+  const [commandUpstreams, setCommandUpstreams] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,6 +114,53 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
 
   useEffect(() => void load(), [load]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const stored = window.sessionStorage.getItem(
+      `aghha-dns-operation:${cluster.id}`,
+    );
+    if (stored === null) return;
+    try {
+      const value = JSON.parse(stored) as { id?: string; upstreams?: string[] };
+      if (typeof value.id !== "string") return;
+      setCommandUpstreams(
+        Array.isArray(value.upstreams) ? value.upstreams.slice(0, 64) : [],
+      );
+      void (async () => {
+        try {
+          let result = await api.dnsOperation(value.id as string);
+          while (
+            !cancelled &&
+            (result.status === "queued" || result.status === "running")
+          ) {
+            setCommandResult(result);
+            await new Promise((resolve) => window.setTimeout(resolve, 500));
+            result = await api.dnsOperation(value.id as string);
+          }
+          if (!cancelled) {
+            if (
+              result.command === "test_upstream_dns" &&
+              result.status === "succeeded"
+            ) {
+              window.sessionStorage.removeItem(
+                `aghha-dns-operation:${cluster.id}`,
+              );
+            } else {
+              setCommandResult(result);
+            }
+          }
+        } catch {
+          window.sessionStorage.removeItem(`aghha-dns-operation:${cluster.id}`);
+        }
+      })();
+    } catch {
+      window.sessionStorage.removeItem(`aghha-dns-operation:${cluster.id}`);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [cluster.id]);
+
   const affectedNodes = nodes.filter((node) => node.enabled);
   const activeRevision = revisions.find(
     (revision) => revision.active || revision.id === cluster.activeRevisionId,
@@ -119,6 +180,13 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
   );
   const missingFeature = (feature: string) =>
     affectedCapabilities.filter((profile) => !profile.features[feature]);
+  const eligibleCommandNodes = affectedNodes.filter((node) => {
+    const profile = capabilities.find((item) => item.nodeId === node.id);
+    if (node.maintenanceMode || profile?.compatibility !== "supported")
+      return false;
+    const feature = command === "cache" ? "cache_clear" : "test_upstream_dns";
+    return profile.features[feature] === true;
+  });
 
   if (loading && draft === undefined) {
     return (
@@ -175,6 +243,86 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
         },
       },
     });
+  }
+
+  function openCommand(next: "test" | "cache") {
+    const feature = next === "cache" ? "cache_clear" : "test_upstream_dns";
+    const eligible = affectedNodes.filter((node) => {
+      const profile = capabilities.find((item) => item.nodeId === node.id);
+      return (
+        !node.maintenanceMode &&
+        profile?.compatibility === "supported" &&
+        profile.features[feature] === true
+      );
+    });
+    setCommandNodeID(eligible[0]?.id ?? "");
+    setCommandScope("node");
+    setCommand(next);
+  }
+
+  async function runCommand() {
+    if (draft === undefined || dns === undefined) return;
+    const target: OperationalTarget =
+      commandScope === "node"
+        ? { scope: "node", nodeId: commandNodeID }
+        : { scope: "all_compatible_enabled_nodes" };
+    const submittedUpstreams =
+      command === "test" ? [...(dns.upstreamDns ?? [])] : [];
+    setCommandBusy(true);
+    setCommandResult(undefined);
+    setCommandUpstreams(submittedUpstreams);
+    try {
+      const idempotencyKey = newIdempotencyKey();
+      let result =
+        command === "test"
+          ? await api.testUpstreamDNS(
+              cluster.id,
+              target,
+              {
+                draftVersion: draft.version,
+                upstreamDns: dns.upstreamDns ?? [],
+                bootstrapDns: dns.bootstrapDns ?? [],
+                fallbackDns: dns.fallbackDns ?? [],
+                privateReverseDns: dns.privateReverseDns ?? [],
+                upstreamMode: dns.upstreamMode || "load_balance",
+                usePrivateReverseResolvers:
+                  dns.usePrivateReverseResolvers ?? false,
+              },
+              idempotencyKey,
+            )
+          : await api.clearDNSCache(cluster.id, target, idempotencyKey);
+      setCommand("");
+      setCommandResult(result);
+      window.sessionStorage.setItem(
+        `aghha-dns-operation:${cluster.id}`,
+        JSON.stringify({ id: result.id, upstreams: submittedUpstreams }),
+      );
+      while (result.status === "queued" || result.status === "running") {
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+        result = await api.dnsOperation(result.id);
+        setCommandResult(result);
+      }
+      if (command === "test" && result.status === "succeeded") {
+        window.sessionStorage.removeItem(`aghha-dns-operation:${cluster.id}`);
+      }
+      if (
+        command === "cache" &&
+        result.nodeResults.some((item) => item.status === "succeeded")
+      ) {
+        await load();
+      }
+      setError(undefined);
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setCommandBusy(false);
+    }
+  }
+
+  function dismissCommandResult() {
+    setCommandResult(undefined);
+    setCommandUpstreams([]);
+    window.sessionStorage.removeItem(`aghha-dns-operation:${cluster.id}`);
   }
 
   const cacheToggleMissing = missingFeature("cache_toggle");
@@ -259,6 +407,14 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
             in Configuration Control, then deploy and verify it separately.
           </Banner>
 
+          {commandResult !== undefined && (
+            <CommandResultPanel
+              operation={commandResult}
+              upstreams={commandUpstreams}
+              onDismiss={dismissCommandResult}
+            />
+          )}
+
           {(missingProfileNodes.length > 0 || dnsMissing.length > 0) && (
             <CapabilityWarning
               state="partial"
@@ -296,10 +452,15 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
               <button
                 type="button"
                 className="button button--secondary"
-                disabled
-                title="Upstream testing requires the Phase 9C controller command"
+                disabled={
+                  (dns.upstreamDns ?? []).length === 0 ||
+                  !affectedCapabilities.some(
+                    (profile) => profile.features.test_upstream_dns,
+                  )
+                }
+                onClick={() => openCommand("test")}
               >
-                Test Upstreams (Phase 9C)
+                Test upstreams
               </button>
             }
           >
@@ -631,6 +792,20 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
           <SettingsGroup
             title="Cache"
             description="Control each node's DNS response cache using human-readable units backed by exact schema values."
+            actions={
+              <button
+                type="button"
+                className="button button--danger"
+                disabled={
+                  !affectedCapabilities.some(
+                    (profile) => profile.features.cache_clear,
+                  )
+                }
+                onClick={() => openCommand("cache")}
+              >
+                Clear DNS cache
+              </button>
+            }
           >
             <SettingRow
               title="Cache enabled"
@@ -749,9 +924,171 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
               </ul>
             </Banner>
           )}
+          <OperationalCommandDialog
+            open={command !== ""}
+            onClose={() => !commandBusy && setCommand("")}
+            onConfirm={() => void runCommand()}
+            command={command === "cache" ? "Clear DNS cache" : "Test upstreams"}
+            cluster={cluster.name}
+            target={
+              commandScope === "node"
+                ? (eligibleCommandNodes.find(
+                    (node) => node.id === commandNodeID,
+                  )?.name ?? "Select a node")
+                : undefined
+            }
+            scope={
+              commandScope === "node"
+                ? "Selected node"
+                : `All compatible enabled nodes (${eligibleCommandNodes.length})`
+            }
+            consequence={
+              command === "cache"
+                ? "Cached DNS responses are removed. New queries resolve upstream until the cache warms again."
+                : "The current draft resolver values are tested without saving or applying them."
+            }
+            recoverable={
+              command === "cache"
+                ? "The cache repopulates from subsequent DNS traffic."
+                : "No node configuration is changed."
+            }
+            impact={
+              command === "cache"
+                ? "DNS desired state, the draft, and active revision remain unchanged."
+                : "Resolver values may contain sensitive details and are encrypted while the command is queued."
+            }
+            busy={commandBusy}
+            destructive={command === "cache"}
+          >
+            <div className="dns-command-targets">
+              <label>
+                Target scope
+                <select
+                  value={commandScope}
+                  disabled={commandBusy}
+                  onChange={(event) =>
+                    setCommandScope(event.target.value as typeof commandScope)
+                  }
+                >
+                  <option value="node">Selected node</option>
+                  <option value="all_compatible_enabled_nodes">
+                    All compatible enabled nodes
+                  </option>
+                </select>
+              </label>
+              {commandScope === "node" && (
+                <label>
+                  Node
+                  <select
+                    value={commandNodeID}
+                    disabled={commandBusy}
+                    onChange={(event) => setCommandNodeID(event.target.value)}
+                  >
+                    {eligibleCommandNodes.map((node) => (
+                      <option key={node.id} value={node.id}>
+                        {node.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+          </OperationalCommandDialog>
         </>
       )}
     </PageContainer>
+  );
+}
+
+function CommandResultPanel({
+  operation,
+  upstreams,
+  onDismiss,
+}: {
+  operation: DNSOperationalCommand;
+  upstreams: string[];
+  onDismiss: () => void;
+}) {
+  const pending =
+    operation.status === "queued" || operation.status === "running";
+  const results = operation.nodeResults.map((node) => ({
+    id: node.id,
+    label: node.nodeName,
+    status:
+      node.status === "succeeded"
+        ? ("success" as const)
+        : node.status === "failed"
+          ? ("failed" as const)
+          : ("pending" as const),
+    message: node.errorCode || undefined,
+  }));
+  return (
+    <>
+      {operation.status === "partial_success" && (
+        <PartialSuccessPanel
+          title="DNS command partially completed"
+          results={results}
+        />
+      )}
+      <section className="dns-command-result" aria-live="polite">
+        <header>
+          <StatusBadge
+            status={
+              pending
+                ? "pending"
+                : operation.status === "succeeded"
+                  ? "success"
+                  : operation.status === "partial_success"
+                    ? "warning"
+                    : "failed"
+            }
+          />
+          <h2>
+            {operation.command === "test_upstream_dns"
+              ? "Upstream test result"
+              : "DNS cache clear result"}
+          </h2>
+          {!pending && (
+            <button
+              type="button"
+              className="button button--secondary dns-command-result__dismiss"
+              onClick={onDismiss}
+            >
+              Dismiss result
+            </button>
+          )}
+        </header>
+        <ul className="compact-list">
+          {operation.nodeResults.map((node) => (
+            <li key={node.id}>
+              <strong>{node.nodeName}</strong>: {node.status}
+              {node.errorCode ? ` (${node.errorCode})` : ""}
+              {node.upstreamResults && node.upstreamResults.length > 0 && (
+                <ul>
+                  {node.upstreamResults.map((resolver) => {
+                    const index =
+                      Number(resolver.resolverId.split("-").at(-1)) - 1;
+                    return (
+                      <li key={resolver.resolverId}>
+                        {upstreams[index] ?? resolver.resolverId}:{" "}
+                        {resolver.status}
+                        {resolver.errorCode ? ` (${resolver.errorCode})` : ""}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+        {operation.excludedNodes.length > 0 && (
+          <p className="muted">
+            Excluded:{" "}
+            {operation.excludedNodes.map((node) => node.nodeName).join(", ")}.
+          </p>
+        )}
+      </section>
+    </>
   );
 }
 

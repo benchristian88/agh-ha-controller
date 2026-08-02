@@ -9,12 +9,14 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/benchristian88/agh-ha-controller/internal/configuration"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/operations"
 )
 
 func TestVersionFixturesSuppressVolatileFields(t *testing.T) {
@@ -214,7 +216,7 @@ func TestReadConfigurationKeepsV010752OnFrozenSchemaV1(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if document.SchemaVersion != configuration.LegacySchemaVersion || profile.SchemaVersion != configuration.LegacySchemaVersion || len(requests) != 3 {
+	if document.SchemaVersion != configuration.LegacySchemaVersion || profile.SchemaVersion != configuration.LegacySchemaVersion || !profile.Features["querylog_clear"] || !profile.Features["stats_reset"] || profile.Features["query_log"] || profile.Features["statistics"] || len(requests) != 3 {
 		t.Fatalf("legacy inventory document=%#v profile=%#v requests=%#v", document, profile, requests)
 	}
 }
@@ -260,6 +262,256 @@ func TestReadConfigurationV2MapsBroaderInventoryWithoutTLSSecrets(t *testing.T) 
 	}
 	if strings.Contains(string(body), "SECRET") {
 		t.Fatalf("TLS secret entered canonical inventory: %s", body)
+	}
+}
+
+func TestDNSOperationalCommandsMapSafeResultsAndExactPaths(t *testing.T) {
+	requests := make([]string, 0, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests = append(requests, request.Method+" "+request.URL.Path)
+		switch request.URL.Path {
+		case "/control/test_upstream_dns":
+			var payload map[string]any
+			if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(payload, map[string]any{
+				"upstream_dns":     []any{"https://user:secret@dns.example/dns-query", "192.0.2.53"},
+				"bootstrap_dns":    []any{"9.9.9.9"},
+				"fallback_dns":     []any{},
+				"private_upstream": []any{"192.0.2.1"},
+			}) {
+				t.Fatalf("payload=%#v", payload)
+			}
+			response.Header().Set("Content-Type", "application/json")
+			_, _ = response.Write([]byte(`{"https://user:xxxxx@dns.example:443/dns-query":"OK","192.0.2.53":"dial detail that must not escape","9.9.9.9":"OK","192.0.2.1":"OK"}`))
+		case "/control/cache_clear":
+			response.WriteHeader(http.StatusOK)
+		default:
+			http.NotFound(response, request)
+		}
+	}))
+	defer server.Close()
+	adapter := NewConfigurationReader(NewProbe(2 * time.Second))
+	results, err := adapter.TestUpstreamDNS(context.Background(), probeRequest(server.URL), operations.UpstreamInput{
+		DraftVersion: 4, UpstreamDNS: []string{"https://user:secret@dns.example/dns-query", "192.0.2.53"}, BootstrapDNS: []string{"9.9.9.9"}, FallbackDNS: []string{}, PrivateReverseDNS: []string{"192.0.2.1"}, UpstreamMode: "parallel", UsePrivateReverseResolvers: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 2 || results[0].ResolverID != "upstream-1" || results[0].Status != "succeeded" || results[1].ErrorCode != "UPSTREAM_TEST_FAILED" {
+		t.Fatalf("results=%#v", results)
+	}
+	encoded, _ := json.Marshal(results)
+	if strings.Contains(string(encoded), "secret") || strings.Contains(string(encoded), "dial detail") {
+		t.Fatalf("unsafe result=%s", encoded)
+	}
+	if err := adapter.ClearDNSCache(context.Background(), probeRequest(server.URL)); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(requests, []string{"POST /control/test_upstream_dns", "POST /control/cache_clear"}) {
+		t.Fatalf("requests=%#v", requests)
+	}
+}
+
+func TestHostFilteringOperationalCommandMapsAttributedSafeResult(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet || request.URL.Path != "/control/filtering/check_host" || request.URL.Query().Get("name") != "ads.example" || request.URL.Query().Get("client") != "192.0.2.10" || request.URL.Query().Get("qtype") != "AAAA" {
+			t.Fatalf("request=%s %s query=%s", request.Method, request.URL.Path, request.URL.RawQuery)
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"reason":"FilteredBlackList","rules":[{"text":"||ads.example^","filter_list_id":42}],"service_name":"tracking","cname":"safe.example","ip_addrs":["192.0.2.44"]}`))
+	}))
+	defer server.Close()
+	result, err := NewConfigurationReader(NewProbe(time.Second)).TestHostFiltering(context.Background(), probeRequest(server.URL), operations.HostFilterInput{Hostname: "ads.example", Client: "192.0.2.10", QueryType: "AAAA"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Matched || result.Reason != "FilteredBlackList" || len(result.Rules) != 1 || result.Rules[0].Text != "||ads.example^" || result.Rules[0].FilterListID != 42 || result.CanonicalName != "safe.example" {
+		t.Fatalf("result=%#v", result)
+	}
+}
+
+func TestPolicyOperationalCommandsUseExactNoBodyPaths(t *testing.T) {
+	requests := make([]string, 0, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		body, err := io.ReadAll(request.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(body) != 0 {
+			t.Fatalf("unexpected body=%q", body)
+		}
+		requests = append(requests, request.Method+" "+request.URL.Path)
+		response.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	adapter := NewConfigurationReader(NewProbe(time.Second))
+	if err := adapter.ClearQueryLog(context.Background(), probeRequest(server.URL)); err != nil {
+		t.Fatal(err)
+	}
+	if err := adapter.ResetStatistics(context.Background(), probeRequest(server.URL)); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"POST /control/querylog_clear", "POST /control/stats_reset"}
+	if !reflect.DeepEqual(requests, want) {
+		t.Fatalf("requests=%#v want=%#v", requests, want)
+	}
+}
+
+func TestPolicyOperationalCommandsMapSafeFailureAndTimeout(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		status  int
+		delay   time.Duration
+		timeout time.Duration
+		want    domain.ErrorKind
+	}{
+		{name: "authentication", status: http.StatusUnauthorized, want: domain.ErrorNodeAuth},
+		{name: "rejected", status: http.StatusInternalServerError, want: domain.ErrorNodeApply},
+		{name: "timeout", status: http.StatusOK, delay: 50 * time.Millisecond, timeout: time.Millisecond, want: domain.ErrorNodeUnreachable},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				if test.delay > 0 {
+					time.Sleep(test.delay)
+				}
+				response.WriteHeader(test.status)
+			}))
+			defer server.Close()
+			timeout := test.timeout
+			if timeout == 0 {
+				timeout = time.Second
+			}
+			err := NewConfigurationReader(NewProbe(timeout)).ClearQueryLog(context.Background(), probeRequest(server.URL))
+			var domainError *domain.Error
+			if !errors.As(err, &domainError) || domainError.Kind != test.want {
+				t.Fatalf("error=%#v want=%s", err, test.want)
+			}
+		})
+	}
+}
+
+func TestHostFilteringOperationalCommandMapsLegacyRuleAndSafeErrors(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		status   int
+		body     string
+		delay    time.Duration
+		timeout  time.Duration
+		wantRule bool
+		wantKind domain.ErrorKind
+	}{
+		{name: "legacy response", status: http.StatusOK, body: `{"reason":"FilteredBlackList","rule":"||legacy.example^","filter_id":7}`, wantRule: true},
+		{name: "capability", status: http.StatusNotFound, wantKind: domain.ErrorCapability},
+		{name: "invalid json", status: http.StatusOK, body: `{`, wantKind: domain.ErrorNodeResponse},
+		{name: "unsafe rule", status: http.StatusOK, body: `{"rules":[{"text":"unsafe\nrule","filter_list_id":1}]}`, wantKind: domain.ErrorNodeResponse},
+		{name: "invalid address", status: http.StatusOK, body: `{"ip_addrs":["not-an-address"]}`, wantKind: domain.ErrorNodeResponse},
+		{name: "timeout", status: http.StatusOK, body: `{}`, delay: 50 * time.Millisecond, timeout: time.Millisecond, wantKind: domain.ErrorNodeUnreachable},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				if test.delay > 0 {
+					time.Sleep(test.delay)
+				}
+				response.WriteHeader(test.status)
+				_, _ = response.Write([]byte(test.body))
+			}))
+			defer server.Close()
+			timeout := test.timeout
+			if timeout == 0 {
+				timeout = time.Second
+			}
+			result, err := NewConfigurationReader(NewProbe(timeout)).TestHostFiltering(context.Background(), probeRequest(server.URL), operations.HostFilterInput{Hostname: "legacy.example"})
+			if test.wantRule {
+				if err != nil || len(result.Rules) != 1 || result.Rules[0].Text != "||legacy.example^" {
+					t.Fatalf("result=%#v err=%v", result, err)
+				}
+				return
+			}
+			var domainError *domain.Error
+			if !errors.As(err, &domainError) || domainError.Kind != test.wantKind {
+				t.Fatalf("error=%#v want=%s", err, test.wantKind)
+			}
+		})
+	}
+}
+
+func TestOperationalUpstreamStatusMatchesAdGuardCanonicalAddresses(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		requested string
+		returned  string
+	}{
+		{name: "plain ipv4", requested: "192.168.5.3", returned: "192.168.5.3:53"},
+		{name: "plain ipv6", requested: "2a10:50c0::1:ff", returned: "[2a10:50c0::1:ff]:53"},
+		{name: "plain explicit port", requested: "94.140.14.140:53", returned: "94.140.14.140:53"},
+		{name: "udp hostname", requested: "udp://unfiltered.adguard-dns.com", returned: "unfiltered.adguard-dns.com:53"},
+		{name: "tcp", requested: "tcp://94.140.14.140", returned: "tcp://94.140.14.140:53"},
+		{name: "tcp ipv6", requested: "tcp://[2a10:50c0::1:ff]", returned: "tcp://[2a10:50c0::1:ff]:53"},
+		{name: "tls", requested: "tls://unfiltered.adguard-dns.com", returned: "tls://unfiltered.adguard-dns.com:853"},
+		{name: "quad9 doh", requested: "https://dns10.quad9.net/dns-query", returned: "https://dns10.quad9.net:443/dns-query"},
+		{name: "cloudflare gateway doh", requested: "https://ky7ror94zq.cloudflare-gateway.com/dns-query", returned: "https://ky7ror94zq.cloudflare-gateway.com:443/dns-query"},
+		{name: "http3", requested: "h3://unfiltered.adguard-dns.com/dns-query", returned: "https://unfiltered.adguard-dns.com:443/dns-query"},
+		{name: "quic", requested: "quic://unfiltered.adguard-dns.com", returned: "quic://unfiltered.adguard-dns.com:853"},
+		{name: "stamp", requested: "sdns://AQcAAAAAAAAAEzE5Mi4wLjIuMTo1NDQz", returned: "sdns://AQcAAAAAAAAAEzE5Mi4wLjIuMTo1NDQz"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			status, ok := operationalUpstreamStatus(map[string]string{test.returned: "OK"}, test.requested)
+			if !ok || status != "OK" {
+				t.Fatalf("status=%q ok=%t", status, ok)
+			}
+		})
+	}
+}
+
+func TestOperationalUpstreamStatusesMatchDomainSpecificAndExpandedStampResults(t *testing.T) {
+	statuses, ok := operationalUpstreamStatuses(map[string]string{
+		"94.140.14.140:53":     "OK",
+		"[2a10:50c0::1:ff]:53": "OK",
+	}, "[/example.local/]94.140.14.140 2a10:50c0::1:ff")
+	if !ok || len(statuses) != 2 || statuses[0] != "OK" || statuses[1] != "OK" {
+		t.Fatalf("statuses=%#v ok=%t", statuses, ok)
+	}
+
+	statuses, ok = operationalUpstreamStatuses(map[string]string{"https://stamp.example:443/dns-query": "OK"}, "sdns://opaque-stamp")
+	if !ok || len(statuses) != 1 || statuses[0] != "OK" {
+		t.Fatalf("stamp statuses=%#v ok=%t", statuses, ok)
+	}
+}
+
+func TestUpstreamOperationalCommandMapsCapabilityInvalidAndTimeoutErrors(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		status     int
+		body       string
+		delay      time.Duration
+		timeout    time.Duration
+		wantedKind domain.ErrorKind
+	}{
+		{name: "capability", status: http.StatusNotFound, wantedKind: domain.ErrorCapability},
+		{name: "invalid response", status: http.StatusOK, body: `{`, wantedKind: domain.ErrorNodeResponse},
+		{name: "timeout", status: http.StatusOK, body: `{}`, delay: 50 * time.Millisecond, timeout: time.Millisecond, wantedKind: domain.ErrorNodeUnreachable},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				if test.delay > 0 {
+					time.Sleep(test.delay)
+				}
+				response.WriteHeader(test.status)
+				_, _ = response.Write([]byte(test.body))
+			}))
+			defer server.Close()
+			timeout := test.timeout
+			if timeout == 0 {
+				timeout = time.Second
+			}
+			_, err := NewConfigurationReader(NewProbe(timeout)).TestUpstreamDNS(context.Background(), probeRequest(server.URL), operations.UpstreamInput{DraftVersion: 1, UpstreamDNS: []string{"1.1.1.1"}, UpstreamMode: "load_balance"})
+			var domainError *domain.Error
+			if !errors.As(err, &domainError) || domainError.Kind != test.wantedKind {
+				t.Fatalf("error=%#v want kind=%s", err, test.wantedKind)
+			}
+		})
 	}
 }
 

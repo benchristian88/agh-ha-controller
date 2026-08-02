@@ -48,24 +48,14 @@ uses existing controller reads for cluster, selected-node scope, active
 revision, node health, and active deployment. A context-read failure is shown
 as unavailable and does not block the feature page.
 
-Phase 2 established canonical URLs without redesigning Release 0.4 feature
-controls. Later migration phases supersede the corresponding items below:
-
-- General renders the Phase 9A protection/filtering, safety, Safe Search,
-  node-local Query Log policy, and node-local Statistics policy groups with
-  friendly lossless durations and structured ignored domains;
-- Encryption and DHCP each render the existing combined infrastructure form;
-- DNS Blocklists renders the dedicated searchable desired/observed table,
-  add/edit dialogs, accurate disable-oriented removal confirmation, per-node
-  metadata, and audited refresh-all results;
-- DNS Allowlists and Custom Filter Rules each retain the existing combined
-  filtering form until their assigned migration phase;
-- Blocked Services renders the dedicated controller-mediated searchable
-  catalogue and shared inactivity schedule, with Save Draft as its only write
-  action;
-- Drift renders the existing combined deployments and drift page;
-- Change History renders Configuration Control, where immutable history and
-  comparison remain available.
+Phase 10 confirms that every selected feature route uses its migrated
+operator-facing presentation. Encryption is now a dedicated redacted,
+observed-only inventory page rather than the final branch of the superseded
+broad settings component. Deployments and Drift share one control-plane
+implementation but each canonical URL focuses its corresponding section.
+Change History shares Configuration Control, where immutable history and
+comparison remain available. Statistics and Query Log remain explicit planned
+states owned by Releases 0.5 and 0.6.
 
 ## Route migrations
 

@@ -18,6 +18,7 @@ import {
   RuleEditor,
   UpstreamEditor,
   UrlListField,
+  validateAdGuardUpstream,
   validateDomain,
   validateHttpUrl,
   validateIdentifier,
@@ -193,7 +194,10 @@ describe("ordered specialist editors", () => {
         />
         <UpstreamEditor
           label="Upstreams"
-          value={["bad upstream"]}
+          value={[
+            "bad upstream",
+            "[/example.local/]94.140.14.140 2a10:50c0::1:ff",
+          ]}
           onChange={() => undefined}
         />
       </>,
@@ -203,5 +207,11 @@ describe("ordered specialist editors", () => {
       screen.getByLabelText("Upstreams").closest(".field") as HTMLElement,
     );
     expect(upstream.getByRole("alert").textContent).toContain("whitespace");
+    expect(
+      validateAdGuardUpstream(
+        "[/example.local/]94.140.14.140 2a10:50c0::1:ff",
+        0,
+      ),
+    ).toBeUndefined();
   });
 });

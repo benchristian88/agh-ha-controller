@@ -1,4 +1,11 @@
-import type { SettingsArea } from "../features/settings/ManagedSettingsPage";
+export type SettingsArea =
+  | "dns"
+  | "filters"
+  | "clients"
+  | "rewrites"
+  | "privacy"
+  | "dhcp"
+  | "infrastructure";
 
 export type RouteResolution =
   | { kind: "dashboard" }

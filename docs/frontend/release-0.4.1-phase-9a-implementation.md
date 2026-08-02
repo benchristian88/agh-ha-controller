@@ -15,7 +15,8 @@ Settings pages.
 
 Save Draft is the only write action. Publication, deployment, read-back
 verification, and drift handling remain separate HA Controller workflows.
-Clear Query Log and Reset Statistics are not implemented by this phase.
+Clear Query Log and Reset Statistics were deliberately excluded from Phase 9A
+and are implemented separately as audited destructive commands in Phase 9C-3.
 
 ## Architecture boundary
 

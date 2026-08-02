@@ -17,6 +17,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/controlplane"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
+	"github.com/benchristian88/agh-ha-controller/internal/operations"
 )
 
 const (
@@ -60,6 +61,16 @@ type DHCPOperationService interface {
 	ListDHCPOperations(context.Context, string, int) ([]inventory.DHCPOperation, error)
 }
 
+type DNSOperationService interface {
+	StartUpstreamTest(context.Context, domain.Actor, string, operations.Target, operations.UpstreamInput, string) (operations.Operation, error)
+	StartHostFilterTest(context.Context, domain.Actor, string, operations.Target, operations.HostFilterInput, string) (operations.Operation, error)
+	StartCacheClear(context.Context, domain.Actor, string, operations.Target, string, string) (operations.Operation, error)
+	StartQueryLogClear(context.Context, domain.Actor, string, operations.Target, string, string) (operations.Operation, error)
+	StartStatisticsReset(context.Context, domain.Actor, string, operations.Target, string, string) (operations.Operation, error)
+	Operation(context.Context, string) (operations.Operation, error)
+	List(context.Context, string, operations.Command, int) ([]operations.Operation, error)
+}
+
 type Server struct {
 	auth           *auth.Service
 	management     *domain.ManagementService
@@ -70,6 +81,7 @@ type Server struct {
 	dhcpInterfaces DHCPInterfacesReader
 	dhcpChecker    DHCPActiveChecker
 	dhcpOperations DHCPOperationService
+	dnsOperations  DNSOperationService
 	controlplane   *controlplane.Service
 	audit          AuditReader
 	health         HealthChecker
@@ -80,6 +92,8 @@ type Server struct {
 	webDist        string
 	mux            *http.ServeMux
 }
+
+func (s *Server) SetDNSOperations(service DNSOperationService) { s.dnsOperations = service }
 
 func NewServer(authService *auth.Service, management *domain.ManagementService, inventoryService *inventory.Service, audit AuditReader, health HealthChecker, logger *slog.Logger, secureCookies bool, publicBaseURL string, healthInterval time.Duration, webDist string, controlplanes ...*controlplane.Service) *Server {
 	var controlplaneService *controlplane.Service
@@ -126,6 +140,13 @@ func (s *Server) routes() {
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/dhcp/reset-leases", s.authenticated(true, http.HandlerFunc(s.handleDHCPResetLeases)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/dhcp/reset-configuration", s.authenticated(true, http.HandlerFunc(s.handleDHCPResetConfiguration)))
 	s.mux.Handle("GET /api/v1/nodes/{nodeId}/dhcp/operations", s.authenticated(false, http.HandlerFunc(s.handleListDHCPOperations)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/test-upstream-dns", s.authenticated(true, http.HandlerFunc(s.handleTestUpstreamDNS)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/test-host-filtering", s.authenticated(true, http.HandlerFunc(s.handleTestHostFiltering)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/clear-dns-cache", s.authenticated(true, http.HandlerFunc(s.handleClearDNSCache)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/clear-query-log", s.authenticated(true, http.HandlerFunc(s.handleClearQueryLog)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/reset-statistics", s.authenticated(true, http.HandlerFunc(s.handleResetStatistics)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/operational-commands", s.authenticated(false, http.HandlerFunc(s.handleListDNSOperations)))
+	s.mux.Handle("GET /api/v1/operational-commands/{operationId}", s.authenticated(false, http.HandlerFunc(s.handleGetDNSOperation)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/configuration-inventory", s.authenticated(false, http.HandlerFunc(s.handleConfigurationInventory)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/blocklists/presentation", s.authenticated(false, http.HandlerFunc(s.handleBlocklistPresentation)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/allowlists/presentation", s.authenticated(false, http.HandlerFunc(s.handleAllowlistPresentation)))
