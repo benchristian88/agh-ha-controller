@@ -282,7 +282,7 @@ func TestDNSOperationsAreNodeAttributedIdempotentAndDoNotChangeDesiredState(t *t
 	if err := store.Pool().QueryRow(ctx, `SELECT count(*) FROM operational_commands WHERE cluster_id=$1 AND payload_ciphertext IS NOT NULL`, clusterID).Scan(&payloadRows); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Pool().QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE metadata::text LIKE '%1.1.1.1%' OR metadata::text LIKE '%ads.example%' OR metadata::text LIKE '%192.0.2.10%' OR metadata::text LIKE '%node-secret%'`).Scan(&auditLeaks); err != nil {
+	if err := store.Pool().QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE metadata_json::text LIKE '%1.1.1.1%' OR metadata_json::text LIKE '%ads.example%' OR metadata_json::text LIKE '%192.0.2.10%' OR metadata_json::text LIKE '%node-secret%'`).Scan(&auditLeaks); err != nil {
 		t.Fatal(err)
 	}
 	if payloadRows != 0 || auditLeaks != 0 {
