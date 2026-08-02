@@ -127,7 +127,7 @@ func TestDNSOperationsAreNodeAttributedIdempotentAndDoNotChangeDesiredState(t *t
 			switch request.URL.Path {
 			case "/control/test_upstream_dns":
 				response.Header().Set("Content-Type", "application/json")
-				_, _ = response.Write([]byte(`{"1.1.1.1":""}`))
+				_, _ = response.Write([]byte(`{"1.1.1.1":"OK"}`))
 			case "/control/cache_clear":
 				response.WriteHeader(http.StatusOK)
 			default:

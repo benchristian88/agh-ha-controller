@@ -671,9 +671,7 @@ func (r *ConfigurationReader) RefreshFilters(ctx context.Context, request domain
 func (r *ConfigurationReader) TestUpstreamDNS(ctx context.Context, request domain.NodeProbeRequest, input operations.UpstreamInput) ([]operations.ResolverResult, error) {
 	payload := map[string]any{
 		"upstream_dns": input.UpstreamDNS, "bootstrap_dns": input.BootstrapDNS,
-		"fallback_dns": input.FallbackDNS, "private_reverse_dns": input.PrivateReverseDNS,
-		"upstream_mode":             input.UpstreamMode,
-		"use_private_ptr_resolvers": input.UsePrivateReverseResolvers,
+		"fallback_dns": input.FallbackDNS, "private_upstream": input.PrivateReverseDNS,
 	}
 	var response map[string]string
 	if err := r.postOperationalResource(ctx, request, "/control/test_upstream_dns", payload, &response); err != nil {
@@ -686,7 +684,7 @@ func (r *ConfigurationReader) TestUpstreamDNS(ctx context.Context, request domai
 			return nil, domain.NewError(domain.ErrorNodeResponse, "the node upstream test response omitted a requested resolver")
 		}
 		result := operations.ResolverResult{ResolverID: fmt.Sprintf("upstream-%d", index+1), Status: "succeeded"}
-		if strings.TrimSpace(value) != "" {
+		if strings.TrimSpace(value) != "OK" {
 			result.Status, result.ErrorCode = "failed", "UPSTREAM_TEST_FAILED"
 		}
 		results = append(results, result)

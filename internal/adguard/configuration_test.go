@@ -275,11 +275,16 @@ func TestDNSOperationalCommandsMapSafeResultsAndExactPaths(t *testing.T) {
 			if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
 				t.Fatal(err)
 			}
-			if payload["upstream_mode"] != "parallel" {
+			if !reflect.DeepEqual(payload, map[string]any{
+				"upstream_dns":     []any{"https://user:secret@dns.example/dns-query", "192.0.2.53"},
+				"bootstrap_dns":    []any{"9.9.9.9"},
+				"fallback_dns":     []any{},
+				"private_upstream": []any{"192.0.2.1"},
+			}) {
 				t.Fatalf("payload=%#v", payload)
 			}
 			response.Header().Set("Content-Type", "application/json")
-			_, _ = response.Write([]byte(`{"https://user:secret@dns.example/dns-query":"","192.0.2.53":"dial detail that must not escape"}`))
+			_, _ = response.Write([]byte(`{"https://user:secret@dns.example/dns-query":"OK","192.0.2.53":"dial detail that must not escape","9.9.9.9":"OK","192.0.2.1":"OK"}`))
 		case "/control/cache_clear":
 			response.WriteHeader(http.StatusOK)
 		default:
@@ -289,7 +294,7 @@ func TestDNSOperationalCommandsMapSafeResultsAndExactPaths(t *testing.T) {
 	defer server.Close()
 	adapter := NewConfigurationReader(NewProbe(2 * time.Second))
 	results, err := adapter.TestUpstreamDNS(context.Background(), probeRequest(server.URL), operations.UpstreamInput{
-		DraftVersion: 4, UpstreamDNS: []string{"https://user:secret@dns.example/dns-query", "192.0.2.53"}, UpstreamMode: "parallel",
+		DraftVersion: 4, UpstreamDNS: []string{"https://user:secret@dns.example/dns-query", "192.0.2.53"}, BootstrapDNS: []string{"9.9.9.9"}, FallbackDNS: []string{}, PrivateReverseDNS: []string{"192.0.2.1"}, UpstreamMode: "parallel", UsePrivateReverseResolvers: true,
 	})
 	if err != nil {
 		t.Fatal(err)
