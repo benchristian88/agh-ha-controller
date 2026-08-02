@@ -43,6 +43,14 @@ feedback, and `UnsavedChangesNotice` under `web/src/features/general/`.
 `DurationField` now optionally supports exact custom-unit multipliers so
 millisecond schema values can use friendly units without conversion loss.
 
+Phase 9B composes `UpstreamEditor`, `NetworkListField`, `DurationField`,
+`Field`, `SettingRow`, `SettingsGroup`, `ScopeIndicator`, capability feedback,
+and draft feedback under `web/src/features/dns/`. DNS resolver lists remain
+lossless browser-side inputs; schema-v2 ordered/set canonicalisation remains
+authoritative. Cache sizes use exact bytes with binary KiB/MiB presentation,
+and DNS TTL/timeout values use exact whole-second duration conversion. Upstream
+testing remains excluded until the separate Phase 9C controller command.
+
 ## Shell
 
 - `AppHeader`

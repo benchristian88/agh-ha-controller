@@ -183,6 +183,7 @@ export function DurationField({
   customUnits,
   integer = false,
   invalidMessage,
+  error,
 }: {
   label: string;
   value: number;
@@ -196,6 +197,7 @@ export function DurationField({
   customUnits?: readonly DurationCustomUnit[];
   integer?: boolean;
   invalidMessage?: string;
+  error?: ReactNode;
 }) {
   const id = useId();
   const [customUnit, setCustomUnit] = useState(
@@ -223,10 +225,11 @@ export function DurationField({
       htmlFor={`${id}-preset`}
       help={help}
       error={
-        invalid
+        error ??
+        (invalid
           ? (invalidMessage ??
             `Enter a value from ${min}${max === undefined ? " or greater" : ` to ${max}`}.`)
-          : undefined
+          : undefined)
       }
     >
       <div className="duration-field">

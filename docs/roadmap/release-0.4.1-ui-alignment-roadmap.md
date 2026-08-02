@@ -155,6 +155,14 @@ Preserve one-active-node validation and disable-before-enable deployment orderin
 
 ## Phase 9 — General settings refinement
 
+Phase 9A (General Settings presentation) and Phase 9B (DNS Settings
+presentation) were implemented on 2 August 2026. Phase 9B preserves schema-v2
+collection semantics and the existing capability/deployment path while adding
+specialist resolver editors, network validation, conditional address fields,
+exact byte/duration presentation, terminology fixes, and lifecycle context.
+Upstream testing and operational clear/reset commands remain unimplemented and
+must use the separate audited-command boundary in Phase 9C.
+
 ### Deliverables
 
 - structured ignored-domain lists;

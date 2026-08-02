@@ -63,6 +63,22 @@ describe("structured input validation", () => {
     expect(changed).toHaveBeenLastCalledWith(721);
   });
 
+  it("shows caller-provided cross-field duration validation", () => {
+    render(
+      <DurationField
+        label="Maximum TTL"
+        value={60}
+        unit="seconds"
+        presets={[]}
+        error="Maximum TTL cannot be below minimum TTL."
+        onChange={() => undefined}
+      />,
+    );
+    expect(
+      screen.getByText("Maximum TTL cannot be below minimum TTL."),
+    ).not.toBeNull();
+  });
+
   it("validates IPv4, IPv6, and CIDR inputs", () => {
     expect(validateNetwork("192.0.2.1")).toBeUndefined();
     expect(validateNetwork("2001:db8::1")).toBeUndefined();
