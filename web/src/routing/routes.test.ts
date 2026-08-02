@@ -8,6 +8,43 @@ describe("canonical route safety", () => {
     }
   });
 
+  it("keeps the complete canonical route table stable", () => {
+    const expectedKinds = {
+      "/": "dashboard",
+      "/statistics": "planned",
+      "/settings/general": "settings",
+      "/settings/dns": "settings",
+      "/settings/encryption": "settings",
+      "/settings/clients": "settings",
+      "/settings/dhcp": "settings",
+      "/filters/blocklists": "blocklists",
+      "/filters/allowlists": "allowlists",
+      "/filters/rewrites": "settings",
+      "/filters/blocked-services": "blocked-services",
+      "/filters/custom-rules": "settings",
+      "/query-log": "planned",
+      "/ha/nodes": "nodes",
+      "/ha/configuration": "configuration",
+      "/ha/deployments": "control-plane",
+      "/ha/drift": "control-plane",
+      "/ha/history": "history",
+      "/setup-guide": "planned",
+      "/system/users": "planned",
+      "/system/audit": "audit",
+      "/system/settings": "planned",
+      "/system/backups": "planned",
+      "/system/about": "planned",
+    } as const;
+
+    expect(Object.keys(expectedKinds)).toEqual([...CANONICAL_PATHS]);
+    for (const [path, kind] of Object.entries(expectedKinds))
+      expect(resolveRoute(path).kind).toBe(kind);
+    expect(resolveRoute("/ha/deployments")).toMatchObject({
+      focus: "deployments",
+    });
+    expect(resolveRoute("/ha/drift")).toMatchObject({ focus: "drift" });
+  });
+
   it("renders an explicit not-found result for unknown paths", () => {
     expect(resolveRoute("/mistyped-dashboard")).toEqual({ kind: "not-found" });
     expect(resolveRoute("/settings/not-real")).toEqual({ kind: "not-found" });

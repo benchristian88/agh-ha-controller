@@ -82,7 +82,7 @@ describe("ControlPlanePage", () => {
       capabilities: [],
     });
 
-    render(<ControlPlanePage cluster={cluster} />);
+    render(<ControlPlanePage cluster={cluster} focus="deployments" />);
 
     expect(await screen.findByText("Primary")).toBeTruthy();
     expect(
@@ -90,5 +90,30 @@ describe("ControlPlanePage", () => {
         "AdGuard Home rejected POST /control/dhcp/set_config with HTTP 400",
       ),
     ).toBeTruthy();
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { name: "Deployment timeline" }),
+    );
+  });
+
+  it("focuses drift for the canonical drift route", async () => {
+    vi.spyOn(api, "deployments").mockResolvedValue({ items: [] });
+    vi.spyOn(api, "driftEvents").mockResolvedValue({ items: [] });
+    vi.spyOn(api, "nodes").mockResolvedValue({
+      items: [node],
+      refreshedAt: "2026-08-02T00:00:00Z",
+      staleAfterSeconds: 60,
+    });
+    vi.spyOn(api, "configurationInventory").mockResolvedValue({
+      schemaVersion: 2,
+      snapshots: [],
+      capabilities: [],
+    });
+
+    render(<ControlPlanePage cluster={cluster} focus="drift" />);
+
+    expect(await screen.findByText("No drift detected")).toBeTruthy();
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { name: "Drift events" }),
+    );
   });
 });

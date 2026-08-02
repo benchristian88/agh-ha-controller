@@ -1,5 +1,12 @@
 # AGH HA Controller UI Audit Against the AdGuard Home v2 Audits
 
+> **Historical baseline — superseded for current presentation.** This audit
+> describes the pre-migration Release 0.4 UI. Release 0.4.1 Phases 0–10
+> resolved or reclassified its selected presentation findings. Use
+> `ui-navigation.md`, the Release 0.4.1 roadmap, and the Phase 10 regression
+> report for current implementation status. Functional and deferred-scope
+> evidence remains useful historical context.
+
 ## Purpose
 
 Compare the implemented Release 0.4 controller UI and execution path with:

@@ -20,11 +20,17 @@ describe("application navigation", () => {
   });
 
   it("highlights a parent when any active child is selected", () => {
-    const filters = PRIMARY_NAVIGATION.find((item) => item.label === "Filters");
-    expect(filters && isNavigationGroup(filters)).toBe(true);
-    if (!filters || !isNavigationGroup(filters)) return;
-
-    expect(isGroupActive(filters, "/filters/rewrites")).toBe(true);
-    expect(isGroupActive(filters, "/settings/dns")).toBe(false);
+    const cases = [
+      ["Settings", "/settings/dns"],
+      ["Filters", "/filters/rewrites"],
+      ["HA Controller", "/ha/drift"],
+    ] as const;
+    for (const [label, pathname] of cases) {
+      const group = PRIMARY_NAVIGATION.find((item) => item.label === label);
+      expect(group && isNavigationGroup(group)).toBe(true);
+      if (!group || !isNavigationGroup(group)) continue;
+      expect(isGroupActive(group, pathname)).toBe(true);
+      expect(isGroupActive(group, "/")).toBe(false);
+    }
   });
 });

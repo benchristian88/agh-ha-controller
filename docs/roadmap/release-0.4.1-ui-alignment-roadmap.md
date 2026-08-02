@@ -186,6 +186,11 @@ ingestion remains Release 0.6 and Statistics ingestion remains Release 0.5.
 
 ## Phase 10 — Regression and cleanup
 
+Implemented locally on 2 August 2026. The complete route/redirect table,
+deletion inventory, regression evidence, visual/accessibility results,
+packaging limits, rollback plan, and known issues are recorded in
+`docs/development/release-0.4.1-phase-10-regression-report.md`.
+
 ### Deliverables
 
 - remove unused sidebar and old components;
@@ -207,3 +212,9 @@ Release 0.4.1 is complete when:
 - unknown routes cannot masquerade as Dashboard;
 - no secret or DHCP safety regression exists;
 - documentation matches implementation.
+
+The code and local-browser portions of this gate pass. Docker/systemd clean
+install and 0.4 upgrade, PostgreSQL migration/persistence, supported real-node
+write/read-back, controlled DHCP handoff/reset, and packaged controller-outage
+checks remain environment-dependent gates and are not marked complete by Phase
+10.

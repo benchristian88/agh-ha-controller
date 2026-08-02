@@ -1,7 +1,7 @@
 {
   "name": "agh-ha-controller-web",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -21,6 +21,7 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.4.0",
+    "axe-core": "^4.10.3",
     "jsdom": "^26.1.0",
     "typescript": "^5.4.5",
     "vite": "^6.2.0",

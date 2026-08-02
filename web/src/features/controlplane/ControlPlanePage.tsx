@@ -1,9 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
 import { api } from "../../lib/api";
 import type { Cluster, Deployment, DriftEvent, Node } from "../../lib/types";
 
-export function ControlPlanePage({ cluster }: { cluster: Cluster }) {
+export function ControlPlanePage({
+  cluster,
+  focus,
+}: {
+  cluster: Cluster;
+  focus: "deployments" | "drift";
+}) {
   const [deployments, setDeployments] = useState<Deployment[]>();
   const [drift, setDrift] = useState<DriftEvent[]>([]);
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -12,6 +18,9 @@ export function ControlPlanePage({ cluster }: { cluster: Cluster }) {
   const [clusterVersion, setClusterVersion] = useState(cluster.version);
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState("");
+  const deploymentHeading = useRef<HTMLHeadingElement>(null);
+  const driftHeading = useRef<HTMLHeadingElement>(null);
+  const lastFocusedRoute = useRef("");
   const nodeNames = useMemo(
     () => new Map(nodes.map((node) => [node.id, node.name])),
     [nodes],
@@ -46,6 +55,17 @@ export function ControlPlanePage({ cluster }: { cluster: Cluster }) {
     const timer = window.setInterval(() => void load(), 3000);
     return () => window.clearInterval(timer);
   }, [load]);
+
+  useEffect(() => {
+    const routeKey = `${cluster.id}:${focus}`;
+    if (deployments === undefined || lastFocusedRoute.current === routeKey)
+      return;
+    lastFocusedRoute.current = routeKey;
+    (focus === "deployments"
+      ? deploymentHeading
+      : driftHeading
+    ).current?.focus();
+  }, [cluster.id, deployments, focus]);
 
   async function updatePolicy(value: Cluster["reconciliationPolicy"]) {
     setBusy("policy");
@@ -134,7 +154,13 @@ export function ControlPlanePage({ cluster }: { cluster: Cluster }) {
       </section>
       <section className="section-block">
         <div className="section-heading">
-          <h2>Deployment timeline</h2>
+          <h2
+            id="deployment-timeline"
+            ref={deploymentHeading}
+            tabIndex={focus === "deployments" ? -1 : undefined}
+          >
+            Deployment timeline
+          </h2>
           <small>Newest first; refreshing every 3 seconds</small>
         </div>
         {deployments.length === 0 ? (
@@ -202,7 +228,13 @@ export function ControlPlanePage({ cluster }: { cluster: Cluster }) {
       </section>
       <section className="section-block">
         <div className="section-heading">
-          <h2>Drift events</h2>
+          <h2
+            id="drift-events"
+            ref={driftHeading}
+            tabIndex={focus === "drift" ? -1 : undefined}
+          >
+            Drift events
+          </h2>
           <small>
             {drift.filter((item) => item.status === "open").length} open
           </small>

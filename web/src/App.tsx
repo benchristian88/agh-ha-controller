@@ -12,11 +12,11 @@ import { ControlPlanePage } from "./features/controlplane/ControlPlanePage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { DHCPPage } from "./features/dhcp/DHCPPage";
 import { DNSSettingsPage } from "./features/dns/DNSSettingsPage";
+import { EncryptionPage } from "./features/encryption/EncryptionPage";
 import { CustomRulesPage } from "./features/filters/CustomRulesPage";
 import { GeneralSettingsPage } from "./features/general/GeneralSettingsPage";
 import { NodesPage } from "./features/nodes/NodesPage";
 import { RewritesPage } from "./features/rewrites/RewritesPage";
-import { ManagedSettingsPage } from "./features/settings/ManagedSettingsPage";
 import { ApiError, api } from "./lib/api";
 import type { Cluster, User } from "./lib/types";
 import { NotFoundPage, PlannedPage } from "./routing/RouteStatePages";
@@ -178,7 +178,7 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
         content = <ConfigurationPage cluster={selected} />;
         break;
       case "control-plane":
-        content = <ControlPlanePage cluster={selected} />;
+        content = <ControlPlanePage cluster={selected} focus={route.focus} />;
         break;
       case "blocked-services":
         content = <BlockedServicesPage cluster={selected} />;
@@ -203,12 +203,10 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
             <DHCPPage cluster={selected} />
           ) : route.area === "filters" ? (
             <CustomRulesPage cluster={selected} />
+          ) : route.area === "infrastructure" ? (
+            <EncryptionPage cluster={selected} />
           ) : (
-            <ManagedSettingsPage
-              cluster={selected}
-              area={route.area}
-              heading={route.heading}
-            />
+            <NotFoundPage pathname={path} />
           );
         break;
     }

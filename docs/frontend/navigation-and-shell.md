@@ -125,4 +125,5 @@ It should provide:
 - deployment preview;
 - rollback.
 
-Remove stale schema-v1 wording and the narrow duplicate DNS/filter editor.
+The current implementation removes stale schema-v1 wording and the narrow
+duplicate DNS/filter editor.
