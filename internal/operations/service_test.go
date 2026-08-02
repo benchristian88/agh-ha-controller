@@ -105,6 +105,18 @@ func (dnsExecutorFake) TestHostFiltering(_ context.Context, request domain.NodeP
 	return HostFilterResult{Matched: true, Reason: "FilteredBlackList", Rules: []MatchedRule{{Text: "||ads.test^", FilterListID: 1}}}, nil
 }
 func (dnsExecutorFake) ClearDNSCache(context.Context, domain.NodeProbeRequest) error { return nil }
+func (dnsExecutorFake) ClearQueryLog(_ context.Context, request domain.NodeProbeRequest) error {
+	if strings.Contains(request.BaseURL, "secondary") {
+		return domain.NewError(domain.ErrorNodeUnreachable, "private query-log error")
+	}
+	return nil
+}
+func (dnsExecutorFake) ResetStatistics(_ context.Context, request domain.NodeProbeRequest) error {
+	if strings.Contains(request.BaseURL, "secondary") {
+		return domain.NewError(domain.ErrorNodeResponse, "private statistics response")
+	}
+	return nil
+}
 
 type observerFake struct{}
 
@@ -119,8 +131,8 @@ func operationFixture(t *testing.T) (*Service, *operationRepositoryFake, *auth.C
 		{ID: testNodeB, ClusterID: testClusterID, Name: "Secondary", BaseURL: "http://secondary.test", Enabled: true},
 	}
 	profiles := []inventory.CapabilityProfile{
-		{NodeID: testNodeA, Compatibility: string(domain.CompatibilitySupported), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"test_upstream_dns": true, "test_host_filtering": true, "test_host_filtering_context": true, "cache_clear": true}},
-		{NodeID: testNodeB, Compatibility: string(domain.CompatibilitySupported), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"test_upstream_dns": true, "test_host_filtering": true, "test_host_filtering_context": true, "cache_clear": true}},
+		{NodeID: testNodeA, Compatibility: string(domain.CompatibilitySupported), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"test_upstream_dns": true, "test_host_filtering": true, "test_host_filtering_context": true, "cache_clear": true, "querylog_clear": true, "stats_reset": true}},
+		{NodeID: testNodeB, Compatibility: string(domain.CompatibilitySupported), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"test_upstream_dns": true, "test_host_filtering": true, "test_host_filtering_context": true, "cache_clear": true, "querylog_clear": true, "stats_reset": true}},
 	}
 	repository := &operationRepositoryFake{nodes: nodes, profiles: profiles, records: map[string]domain.NodeRecord{
 		testNodeA: {Node: nodes[0]}, testNodeB: {Node: nodes[1]},
@@ -269,5 +281,64 @@ func TestHostFilterOptionalContextRequiresPatchCapability(t *testing.T) {
 	}
 	if _, err := service.StartHostFilterTest(context.Background(), actor, testClusterID, Target{Scope: "node", NodeID: testNodeA}, HostFilterInput{Hostname: "https://example.org/path"}, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"); err == nil {
 		t.Fatal("invalid host was accepted")
+	}
+}
+
+func TestQueryLogClearRequiresConfirmationDeduplicatesAuditsAndReturnsPartialResults(t *testing.T) {
+	service, repository, cipher := operationFixture(t)
+	actor := domain.Actor{UserID: testUserID, RequestID: testRequestID}
+	if _, err := service.StartQueryLogClear(context.Background(), actor, testClusterID, Target{Scope: "node", NodeID: testNodeA}, "wrong", testKey); err == nil {
+		t.Fatal("query-log clear accepted an inaccurate confirmation")
+	}
+	operation, err := service.StartQueryLogClear(context.Background(), actor, testClusterID, Target{Scope: "all_compatible_enabled_nodes"}, ClearQueryLogConfirmation, testKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	duplicate, err := service.StartQueryLogClear(context.Background(), actor, testClusterID, Target{Scope: "all_compatible_enabled_nodes"}, ClearQueryLogConfirmation, testKey)
+	if err != nil || !duplicate.Duplicate || duplicate.ID != operation.ID {
+		t.Fatalf("duplicate=%#v err=%v", duplicate, err)
+	}
+	executor := NewExecutor(repository, credentialFake{}, cipher, dnsExecutorFake{}, observerFake{})
+	if worked, err := executor.RunOnce(context.Background()); err != nil || !worked {
+		t.Fatalf("worked=%t err=%v", worked, err)
+	}
+	if repository.operation.Status != "partial_success" || repository.operation.NodeResults[0].ObservationStatus != "succeeded" || repository.operation.NodeResults[1].ErrorCode != string(domain.ErrorNodeUnreachable) {
+		t.Fatalf("operation=%#v", repository.operation)
+	}
+	events, _ := json.Marshal(repository.events)
+	if strings.Contains(string(events), "private query-log error") || !strings.Contains(string(events), "querylog.clear_requested") || !strings.Contains(string(events), "querylog.clear_partially_succeeded") {
+		t.Fatalf("events=%s", events)
+	}
+}
+
+func TestStatisticsResetConfirmationCapabilityAndSuccess(t *testing.T) {
+	service, repository, cipher := operationFixture(t)
+	actor := domain.Actor{UserID: testUserID, RequestID: testRequestID}
+	if _, err := service.StartStatisticsReset(context.Background(), actor, testClusterID, Target{Scope: "node", NodeID: testNodeA}, "wrong", testKey); err == nil {
+		t.Fatal("statistics reset accepted an inaccurate confirmation")
+	}
+	repository.profiles[1].Features["stats_reset"] = false
+	operation, err := service.StartStatisticsReset(context.Background(), actor, testClusterID, Target{Scope: "all_compatible_enabled_nodes"}, ResetStatisticsConfirmation, testKey)
+	if err != nil || len(operation.NodeResults) != 1 || len(operation.ExcludedNodes) != 1 {
+		t.Fatalf("operation=%#v err=%v", operation, err)
+	}
+	executor := NewExecutor(repository, credentialFake{}, cipher, dnsExecutorFake{}, observerFake{})
+	if worked, err := executor.RunOnce(context.Background()); err != nil || !worked {
+		t.Fatalf("worked=%t err=%v", worked, err)
+	}
+	if repository.operation.Status != "succeeded" || repository.operation.NodeResults[0].ObservationStatus != "succeeded" {
+		t.Fatalf("operation=%#v", repository.operation)
+	}
+	events, _ := json.Marshal(repository.events)
+	if !strings.Contains(string(events), "statistics.reset_succeeded") {
+		t.Fatalf("events=%s", events)
+	}
+
+	other, otherRepository, _ := operationFixture(t)
+	otherRepository.profiles[0].Features["stats_reset"] = false
+	_, err = other.StartStatisticsReset(context.Background(), actor, testClusterID, Target{Scope: "node", NodeID: testNodeA}, ResetStatisticsConfirmation, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+	var domainError *domain.Error
+	if !errors.As(err, &domainError) || domainError.Kind != domain.ErrorCapability {
+		t.Fatalf("error=%v", err)
 	}
 }

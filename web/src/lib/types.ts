@@ -512,7 +512,12 @@ export interface DNSOperationalCommand {
   id: string;
   clusterId: string;
   clusterName: string;
-  command: "test_upstream_dns" | "test_host_filtering" | "clear_dns_cache";
+  command:
+    | "test_upstream_dns"
+    | "test_host_filtering"
+    | "clear_dns_cache"
+    | "clear_query_log"
+    | "reset_statistics";
   target: OperationalTarget;
   status:
     | "queued"

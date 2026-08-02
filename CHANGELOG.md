@@ -8,6 +8,7 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Added
 
+- Release 0.4.1 Phase 9C-3 audited destructive Query Log clearing and Statistics reset with typed confirmation, narrow selected-node defaults, explicit compatible-fleet scope, durable per-node results, post-command observation, safe errors, idempotency, and unchanged desired policy/revisions.
 - Release 0.4.1 Phase 9C-2 audited host-filtering tests from Custom Filter Rules with hostname, optional client/query type, explicit selected-node/fleet scope, version-aware capability exclusions, encrypted queued input, bounded node-attributed rule results, partial success, and idempotency without desired-state mutation.
 - Release 0.4.1 Phase 9C-1 durable audited DNS operational commands: current-draft upstream tests, confirmed selected-node/fleet cache clearing, encrypted queued input, per-node/per-resolver results, idempotency, restart-safe non-replay, and post-clear observation.
 - Release 0.4.1 Phase 8B node-scoped reset-leases and reset-DHCP-configuration operational commands with maintenance/deployment and configuration-reset reconciliation-policy guards, typed confirmation, durable per-node results, per-user idempotency, redacted requested/terminal audits, and immediate post-command observation.

@@ -13,8 +13,12 @@ const (
 	TestUpstreamDNS   Command = "test_upstream_dns"
 	TestHostFiltering Command = "test_host_filtering"
 	ClearDNSCache     Command = "clear_dns_cache"
+	ClearQueryLog     Command = "clear_query_log"
+	ResetStatistics   Command = "reset_statistics"
 
-	ClearDNSCacheConfirmation = "CLEAR_DNS_CACHE"
+	ClearDNSCacheConfirmation   = "CLEAR_DNS_CACHE"
+	ClearQueryLogConfirmation   = "CLEAR_QUERY_LOG"
+	ResetStatisticsConfirmation = "RESET_STATISTICS"
 )
 
 type Target struct {
@@ -105,6 +109,8 @@ type Executor interface {
 	TestUpstreamDNS(context.Context, domain.NodeProbeRequest, UpstreamInput) ([]ResolverResult, error)
 	TestHostFiltering(context.Context, domain.NodeProbeRequest, HostFilterInput) (HostFilterResult, error)
 	ClearDNSCache(context.Context, domain.NodeProbeRequest) error
+	ClearQueryLog(context.Context, domain.NodeProbeRequest) error
+	ResetStatistics(context.Context, domain.NodeProbeRequest) error
 }
 
 type PayloadProtector interface {

@@ -224,6 +224,32 @@ export const api = {
         body: JSON.stringify({ target, input }),
       },
     ),
+  clearQueryLog: (
+    clusterId: string,
+    target: OperationalTarget,
+    idempotencyKey: string,
+  ) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/clusters/${clusterId}/operational-commands/clear-query-log`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ target, confirmation: "CLEAR_QUERY_LOG" }),
+      },
+    ),
+  resetStatistics: (
+    clusterId: string,
+    target: OperationalTarget,
+    idempotencyKey: string,
+  ) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/clusters/${clusterId}/operational-commands/reset-statistics`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ target, confirmation: "RESET_STATISTICS" }),
+      },
+    ),
   dnsOperation: (operationId: string) =>
     request<DNSOperationalCommand>(
       `/api/v1/operational-commands/${operationId}`,

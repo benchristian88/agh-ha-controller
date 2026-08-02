@@ -217,6 +217,8 @@ restore/adopt drift workflow after the maintenance boundary is reviewed.
 POST /api/v1/clusters/{clusterId}/operational-commands/test-upstream-dns
 POST /api/v1/clusters/{clusterId}/operational-commands/test-host-filtering
 POST /api/v1/clusters/{clusterId}/operational-commands/clear-dns-cache
+POST /api/v1/clusters/{clusterId}/operational-commands/clear-query-log
+POST /api/v1/clusters/{clusterId}/operational-commands/reset-statistics
 GET  /api/v1/operational-commands/{operationId}
 GET  /api/v1/clusters/{clusterId}/operational-commands?command={type}&limit=10
 ```
@@ -259,6 +261,23 @@ Cache clear requires `CLEAR_DNS_CACHE`. A successful node call is followed by a
 normal configuration observation. Observation failure is reported separately
 and does not change command success. None of these operations mutates a draft,
 revision, deployment, or active-revision pointer.
+
+Query Log clear requires the exact `CLEAR_QUERY_LOG` confirmation and invokes
+one no-body `POST /control/querylog_clear` per frozen target. Statistics reset
+requires `RESET_STATISTICS` and invokes one no-body
+`POST /control/stats_reset` per target. Both default to explicit node scope in
+the UI; fleet scope is accepted only as
+`all_compatible_enabled_nodes`. Successful nodes receive a normal fresh
+configuration observation so the unchanged enabled/retention/ignored-domain
+policy remains coherent. Observation failure is reported separately from the
+destructive command result.
+
+These commands permanently remove node-local operational data. They do not
+change Query Log or Statistics desired configuration, create a revision, start
+a deployment, ingest query records or statistics, or adopt observed state.
+Audits use `querylog.clear_*` and `statistics.reset_*` action families and
+contain command identity, explicit scope, counts, stable errors, and an input
+fingerprint only.
 
 POST returns HTTP 202 for queued/running resources. Poll the operation URL for
 `succeeded`, `partial_success`, `failed`, or `interrupted`. A repeated terminal

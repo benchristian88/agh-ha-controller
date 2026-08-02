@@ -216,7 +216,7 @@ func TestReadConfigurationKeepsV010752OnFrozenSchemaV1(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if document.SchemaVersion != configuration.LegacySchemaVersion || profile.SchemaVersion != configuration.LegacySchemaVersion || len(requests) != 3 {
+	if document.SchemaVersion != configuration.LegacySchemaVersion || profile.SchemaVersion != configuration.LegacySchemaVersion || !profile.Features["querylog_clear"] || !profile.Features["stats_reset"] || profile.Features["query_log"] || profile.Features["statistics"] || len(requests) != 3 {
 		t.Fatalf("legacy inventory document=%#v profile=%#v requests=%#v", document, profile, requests)
 	}
 }
@@ -329,6 +329,66 @@ func TestHostFilteringOperationalCommandMapsAttributedSafeResult(t *testing.T) {
 	}
 	if !result.Matched || result.Reason != "FilteredBlackList" || len(result.Rules) != 1 || result.Rules[0].Text != "||ads.example^" || result.Rules[0].FilterListID != 42 || result.CanonicalName != "safe.example" {
 		t.Fatalf("result=%#v", result)
+	}
+}
+
+func TestPolicyOperationalCommandsUseExactNoBodyPaths(t *testing.T) {
+	requests := make([]string, 0, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		body, err := io.ReadAll(request.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(body) != 0 {
+			t.Fatalf("unexpected body=%q", body)
+		}
+		requests = append(requests, request.Method+" "+request.URL.Path)
+		response.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	adapter := NewConfigurationReader(NewProbe(time.Second))
+	if err := adapter.ClearQueryLog(context.Background(), probeRequest(server.URL)); err != nil {
+		t.Fatal(err)
+	}
+	if err := adapter.ResetStatistics(context.Background(), probeRequest(server.URL)); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"POST /control/querylog_clear", "POST /control/stats_reset"}
+	if !reflect.DeepEqual(requests, want) {
+		t.Fatalf("requests=%#v want=%#v", requests, want)
+	}
+}
+
+func TestPolicyOperationalCommandsMapSafeFailureAndTimeout(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		status  int
+		delay   time.Duration
+		timeout time.Duration
+		want    domain.ErrorKind
+	}{
+		{name: "authentication", status: http.StatusUnauthorized, want: domain.ErrorNodeAuth},
+		{name: "rejected", status: http.StatusInternalServerError, want: domain.ErrorNodeApply},
+		{name: "timeout", status: http.StatusOK, delay: 50 * time.Millisecond, timeout: time.Millisecond, want: domain.ErrorNodeUnreachable},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				if test.delay > 0 {
+					time.Sleep(test.delay)
+				}
+				response.WriteHeader(test.status)
+			}))
+			defer server.Close()
+			timeout := test.timeout
+			if timeout == 0 {
+				timeout = time.Second
+			}
+			err := NewConfigurationReader(NewProbe(timeout)).ClearQueryLog(context.Background(), probeRequest(server.URL))
+			var domainError *domain.Error
+			if !errors.As(err, &domainError) || domainError.Kind != test.want {
+				t.Fatalf("error=%#v want=%s", err, test.want)
+			}
+		})
 	}
 }
 

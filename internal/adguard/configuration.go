@@ -243,11 +243,15 @@ type dhcpActiveCheckResponse struct {
 }
 
 func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request domain.NodeProbeRequest, version string) (configuration.Document, inventory.CapabilityProfile, error) {
-	profile := inventory.CapabilityProfile{ProductVersion: version, Compatibility: string(ConfigurationCompatibility(version)), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"dns": false, "cache_toggle": false, "upstream_timeout": false, "test_upstream_dns": false, "cache_clear": false, "filtering": false, "test_host_filtering": false, "test_host_filtering_context": false, "filter_interval_arbitrary": false, "clients": false, "rewrites": false, "rewrite_toggle": false, "blocked_services": false, "safety": false, "safe_search_ecosia": supportsEcosia(version), "query_log": false, "statistics": false, "ignored_lists_toggle": false, "tls": false, "dhcp": false}, Warnings: []string{}}
+	profile := inventory.CapabilityProfile{ProductVersion: version, Compatibility: string(ConfigurationCompatibility(version)), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"dns": false, "cache_toggle": false, "upstream_timeout": false, "test_upstream_dns": false, "cache_clear": false, "filtering": false, "test_host_filtering": false, "test_host_filtering_context": false, "filter_interval_arbitrary": false, "clients": false, "rewrites": false, "rewrite_toggle": false, "blocked_services": false, "safety": false, "safe_search_ecosia": supportsEcosia(version), "query_log": false, "querylog_clear": false, "statistics": false, "stats_reset": false, "ignored_lists_toggle": false, "tls": false, "dhcp": false}, Warnings: []string{}}
 	if ConfigurationCompatibility(version) != domain.CompatibilitySupported {
 		profile.Warnings = append(profile.Warnings, "This AdGuard Home version is outside the tested configuration inventory range.")
 		return configuration.Document{}, profile, domain.NewError(domain.ErrorNodeResponse, "the node version is not supported for configuration inventory")
 	}
+	// These destructive endpoints predate the supported v0.107.52 floor and do
+	// not depend on schema-v2 policy inventory.
+	profile.Features["querylog_clear"] = true
+	profile.Features["stats_reset"] = true
 	var status statusResponse
 	if err := r.get(ctx, request, "/control/status", &status); err != nil {
 		profile.Warnings = append(profile.Warnings, "DNS listener configuration could not be read.")
@@ -838,6 +842,14 @@ func defaultUpstreamPort(scheme string) string {
 
 func (r *ConfigurationReader) ClearDNSCache(ctx context.Context, request domain.NodeProbeRequest) error {
 	return r.post(ctx, request, "/control/cache_clear", nil)
+}
+
+func (r *ConfigurationReader) ClearQueryLog(ctx context.Context, request domain.NodeProbeRequest) error {
+	return r.post(ctx, request, "/control/querylog_clear", nil)
+}
+
+func (r *ConfigurationReader) ResetStatistics(ctx context.Context, request domain.NodeProbeRequest) error {
+	return r.post(ctx, request, "/control/stats_reset", nil)
 }
 
 func (r *ConfigurationReader) TestHostFiltering(ctx context.Context, request domain.NodeProbeRequest, input operations.HostFilterInput) (operations.HostFilterResult, error) {

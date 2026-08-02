@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -161,6 +162,16 @@ func (f *dnsOperationsFake) StartHostFilterTest(_ context.Context, _ domain.Acto
 	return f.result, nil
 }
 func (f *dnsOperationsFake) StartCacheClear(_ context.Context, _ domain.Actor, _ string, target operations.Target, _ string, _ string) (operations.Operation, error) {
+	f.calls++
+	f.target = target
+	return f.result, nil
+}
+func (f *dnsOperationsFake) StartQueryLogClear(_ context.Context, _ domain.Actor, _ string, target operations.Target, _ string, _ string) (operations.Operation, error) {
+	f.calls++
+	f.target = target
+	return f.result, nil
+}
+func (f *dnsOperationsFake) StartStatisticsReset(_ context.Context, _ domain.Actor, _ string, target operations.Target, _ string, _ string) (operations.Operation, error) {
 	f.calls++
 	f.target = target
 	return f.result, nil
@@ -458,6 +469,37 @@ func TestDNSOperationRequiresCSRFAndReturnsQueuedResource(t *testing.T) {
 	server.mux.ServeHTTP(hostResponse, hostRequest)
 	if hostResponse.Code != http.StatusAccepted || service.calls != 2 || service.target.Scope != "all_compatible_enabled_nodes" {
 		t.Fatalf("host status=%d calls=%d body=%s", hostResponse.Code, service.calls, hostResponse.Body.String())
+	}
+
+	queryPath := "/api/v1/clusters/11111111-1111-4111-8111-111111111111/operational-commands/clear-query-log"
+	queryBody := `{"target":{"scope":"node","nodeId":"22222222-2222-4222-8222-222222222222"},"confirmation":"CLEAR_QUERY_LOG"}`
+	queryWithoutCSRF := httptest.NewRequest(http.MethodPost, queryPath, strings.NewReader(queryBody))
+	queryWithoutCSRF.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+	queryWithoutResponse := httptest.NewRecorder()
+	server.mux.ServeHTTP(queryWithoutResponse, queryWithoutCSRF)
+	if queryWithoutResponse.Code != http.StatusForbidden || service.calls != 2 {
+		t.Fatalf("query missing CSRF status=%d calls=%d", queryWithoutResponse.Code, service.calls)
+	}
+	for index, item := range []struct {
+		path string
+		body string
+	}{
+		{queryPath, queryBody},
+		{"/api/v1/clusters/11111111-1111-4111-8111-111111111111/operational-commands/reset-statistics", `{"target":{"scope":"all_compatible_enabled_nodes"},"confirmation":"RESET_STATISTICS"}`},
+	} {
+		request := httptest.NewRequest(http.MethodPost, item.path, strings.NewReader(item.body))
+		request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+		request.AddCookie(&http.Cookie{Name: csrfCookieName, Value: csrf})
+		request.Header.Set(csrfHeader, csrf)
+		request.Header.Set(idempotencyHeader, fmt.Sprintf("77777777-7777-4777-8777-77777777777%d", index))
+		result := httptest.NewRecorder()
+		server.mux.ServeHTTP(result, request)
+		if result.Code != http.StatusAccepted {
+			t.Fatalf("policy operation %s status=%d body=%s", item.path, result.Code, result.Body.String())
+		}
+	}
+	if service.calls != 4 {
+		t.Fatalf("policy operation calls=%d", service.calls)
 	}
 }
 

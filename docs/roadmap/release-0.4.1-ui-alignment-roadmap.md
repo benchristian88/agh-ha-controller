@@ -169,7 +169,10 @@ explicit selected-node/fleet scope, per-node results, and post-clear
 observation. Phase 9C-2 was implemented on 2 August 2026. It adds durable
 host-filter testing with optional client and query-type context, version-aware
 capability exclusions, and bounded node-attributed matched-rule results.
-Query Log clearing and Statistics reset remain in 9C-3.
+Phase 9C-3 was implemented on 2 August 2026. It completes Phase 9C with strongly
+confirmed Query Log clearing and Statistics reset, narrow defaults, explicit
+fleet scope, durable per-node results, and post-command observation. Query Log
+ingestion remains Release 0.6 and Statistics ingestion remains Release 0.5.
 
 ### Deliverables
 

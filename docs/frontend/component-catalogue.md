@@ -62,6 +62,12 @@ optional client, optional query type, exact scope, compatibility exclusions,
 and node-attributed matched rules remain separate from Save Draft and desired
 state.
 
+Phase 9C-3 composes `OperationalCommandDialog`, `PartialSuccessPanel`, and
+`StatusBadge` in the General Settings Query Log and Statistics policy groups.
+Both destructive commands use typed confirmation, narrow selected-node
+defaults, explicit compatible-fleet scope, and durable node-attributed results
+without changing the corresponding desired policy.
+
 ## Shell
 
 - `AppHeader`

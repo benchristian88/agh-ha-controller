@@ -22,3 +22,4 @@ Released schema milestones:
 - `000005_release_0_4_1_dhcp_operations`: durable, idempotent DHCP operational commands and per-node results.
 - `000006_release_0_4_1_dns_operations`: encrypted-input, durable fleet DNS operational commands and per-node results.
 - `000007_release_0_4_1_host_filter_operation`: encrypted-input, durable host-filtering tests and bounded per-node rule results.
+- `000008_release_0_4_1_policy_operations`: confirmed Query Log clear and Statistics reset commands with durable per-node results.

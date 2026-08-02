@@ -120,6 +120,8 @@ func TestDNSOperationsAreNodeAttributedIdempotentAndDoNotChangeDesiredState(t *t
 		keyA      = "20000000-0000-4000-8000-000000000005"
 		keyB      = "20000000-0000-4000-8000-000000000006"
 		keyC      = "20000000-0000-4000-8000-000000000007"
+		keyD      = "20000000-0000-4000-8000-000000000008"
+		keyE      = "20000000-0000-4000-8000-000000000009"
 	)
 	calls := map[string]int{}
 	newNode := func(name string) *httptest.Server {
@@ -137,6 +139,11 @@ func TestDNSOperationsAreNodeAttributedIdempotentAndDoNotChangeDesiredState(t *t
 				}
 				response.Header().Set("Content-Type", "application/json")
 				_, _ = response.Write([]byte(`{"reason":"FilteredBlackList","rules":[{"text":"||ads.example^","filter_list_id":0}]}`))
+			case "/control/querylog_clear", "/control/stats_reset":
+				if request.Method != http.MethodPost {
+					t.Fatalf("policy operation method=%s", request.Method)
+				}
+				response.WriteHeader(http.StatusOK)
 			default:
 				http.NotFound(response, request)
 			}
@@ -170,7 +177,7 @@ func TestDNSOperationsAreNodeAttributedIdempotentAndDoNotChangeDesiredState(t *t
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'insecure_http',true,'v0.107.78','supported',$9,$9);
 			INSERT INTO node_capability_profiles
 				(node_id,product_version,api_compatibility,schema_version,features_json,warnings_json,refreshed_at)
-			VALUES ($1,'v0.107.78','supported',2,'{"test_upstream_dns":true,"test_host_filtering":true,"test_host_filtering_context":true,"cache_clear":true}','[]',$9)`,
+			VALUES ($1,'v0.107.78','supported',2,'{"test_upstream_dns":true,"test_host_filtering":true,"test_host_filtering_context":true,"cache_clear":true,"querylog_clear":true,"stats_reset":true}','[]',$9)`,
 			node.id, clusterID, node.name, node.endpoint, encrypted.Ciphertext, encrypted.Nonce, encrypted.KeyVersion, encrypted.Algorithm, now); err != nil {
 			t.Fatal(err)
 		}
@@ -222,6 +229,34 @@ func TestDNSOperationsAreNodeAttributedIdempotentAndDoNotChangeDesiredState(t *t
 	}
 	if stored.Status != "succeeded" || len(stored.NodeResults) != 2 || stored.NodeResults[0].HostFilterResult == nil || stored.NodeResults[0].HostFilterResult.Rules[0].Text != "||ads.example^" || calls["a/control/filtering/check_host"] != 1 || calls["b/control/filtering/check_host"] != 1 {
 		t.Fatalf("host stored=%#v calls=%#v", stored, calls)
+	}
+	queryLog, err := service.StartQueryLogClear(ctx, actor, clusterID, operations.Target{Scope: "node", NodeID: nodeAID}, operations.ClearQueryLogConfirmation, keyD)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if worked, err := executor.RunOnce(ctx); err != nil || !worked {
+		t.Fatalf("query-log clear worked=%t err=%v", worked, err)
+	}
+	stored, err = service.Operation(ctx, queryLog.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status != "succeeded" || len(stored.NodeResults) != 1 || calls["a/control/querylog_clear"] != 1 || calls["b/control/querylog_clear"] != 0 {
+		t.Fatalf("query-log stored=%#v calls=%#v", stored, calls)
+	}
+	statistics, err := service.StartStatisticsReset(ctx, actor, clusterID, operations.Target{Scope: "all_compatible_enabled_nodes"}, operations.ResetStatisticsConfirmation, keyE)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if worked, err := executor.RunOnce(ctx); err != nil || !worked {
+		t.Fatalf("statistics reset worked=%t err=%v", worked, err)
+	}
+	stored, err = service.Operation(ctx, statistics.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status != "succeeded" || len(stored.NodeResults) != 2 || calls["a/control/stats_reset"] != 1 || calls["b/control/stats_reset"] != 1 || len(observer.nodes) != 4 {
+		t.Fatalf("statistics stored=%#v calls=%#v observations=%#v", stored, calls, observer.nodes)
 	}
 	var drafts, revisions int
 	if err := store.Pool().QueryRow(ctx, `SELECT (SELECT count(*) FROM configuration_drafts WHERE cluster_id=$1),(SELECT count(*) FROM configuration_revisions WHERE cluster_id=$1)`, clusterID).Scan(&drafts, &revisions); err != nil {

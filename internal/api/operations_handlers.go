@@ -71,6 +71,48 @@ func (s *Server) handleTestHostFiltering(response http.ResponseWriter, request *
 	writeJSON(response, operationHTTPStatus(result), result)
 }
 
+func (s *Server) handleClearQueryLog(response http.ResponseWriter, request *http.Request) {
+	var input struct {
+		Target       operations.Target `json:"target"`
+		Confirmation string            `json:"confirmation"`
+	}
+	if err := decodeJSON(response, request, &input); err != nil {
+		s.writeError(response, request, err)
+		return
+	}
+	if s.dnsOperations == nil {
+		s.writeError(response, request, domain.NewError(domain.ErrorCapability, "operational commands are unavailable"))
+		return
+	}
+	result, err := s.dnsOperations.StartQueryLogClear(request.Context(), actor(request.Context()), request.PathValue("clusterId"), input.Target, input.Confirmation, request.Header.Get(idempotencyHeader))
+	if err != nil {
+		s.writeError(response, request, err)
+		return
+	}
+	writeJSON(response, operationHTTPStatus(result), result)
+}
+
+func (s *Server) handleResetStatistics(response http.ResponseWriter, request *http.Request) {
+	var input struct {
+		Target       operations.Target `json:"target"`
+		Confirmation string            `json:"confirmation"`
+	}
+	if err := decodeJSON(response, request, &input); err != nil {
+		s.writeError(response, request, err)
+		return
+	}
+	if s.dnsOperations == nil {
+		s.writeError(response, request, domain.NewError(domain.ErrorCapability, "operational commands are unavailable"))
+		return
+	}
+	result, err := s.dnsOperations.StartStatisticsReset(request.Context(), actor(request.Context()), request.PathValue("clusterId"), input.Target, input.Confirmation, request.Header.Get(idempotencyHeader))
+	if err != nil {
+		s.writeError(response, request, err)
+		return
+	}
+	writeJSON(response, operationHTTPStatus(result), result)
+}
+
 func (s *Server) handleGetDNSOperation(response http.ResponseWriter, request *http.Request) {
 	if s.dnsOperations == nil {
 		s.writeError(response, request, domain.NewError(domain.ErrorCapability, "DNS operational commands are unavailable"))

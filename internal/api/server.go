@@ -65,6 +65,8 @@ type DNSOperationService interface {
 	StartUpstreamTest(context.Context, domain.Actor, string, operations.Target, operations.UpstreamInput, string) (operations.Operation, error)
 	StartHostFilterTest(context.Context, domain.Actor, string, operations.Target, operations.HostFilterInput, string) (operations.Operation, error)
 	StartCacheClear(context.Context, domain.Actor, string, operations.Target, string, string) (operations.Operation, error)
+	StartQueryLogClear(context.Context, domain.Actor, string, operations.Target, string, string) (operations.Operation, error)
+	StartStatisticsReset(context.Context, domain.Actor, string, operations.Target, string, string) (operations.Operation, error)
 	Operation(context.Context, string) (operations.Operation, error)
 	List(context.Context, string, operations.Command, int) ([]operations.Operation, error)
 }
@@ -141,6 +143,8 @@ func (s *Server) routes() {
 	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/test-upstream-dns", s.authenticated(true, http.HandlerFunc(s.handleTestUpstreamDNS)))
 	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/test-host-filtering", s.authenticated(true, http.HandlerFunc(s.handleTestHostFiltering)))
 	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/clear-dns-cache", s.authenticated(true, http.HandlerFunc(s.handleClearDNSCache)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/clear-query-log", s.authenticated(true, http.HandlerFunc(s.handleClearQueryLog)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/operational-commands/reset-statistics", s.authenticated(true, http.HandlerFunc(s.handleResetStatistics)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/operational-commands", s.authenticated(false, http.HandlerFunc(s.handleListDNSOperations)))
 	s.mux.Handle("GET /api/v1/operational-commands/{operationId}", s.authenticated(false, http.HandlerFunc(s.handleGetDNSOperation)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/configuration-inventory", s.authenticated(false, http.HandlerFunc(s.handleConfigurationInventory)))

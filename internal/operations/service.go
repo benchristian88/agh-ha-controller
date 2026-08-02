@@ -52,6 +52,20 @@ func (s *Service) StartCacheClear(ctx context.Context, actor domain.Actor, clust
 	return s.start(ctx, actor, clusterID, target, ClearDNSCache, confirmation, struct{}{}, idempotencyKey)
 }
 
+func (s *Service) StartQueryLogClear(ctx context.Context, actor domain.Actor, clusterID string, target Target, confirmation, idempotencyKey string) (Operation, error) {
+	if confirmation != ClearQueryLogConfirmation {
+		return Operation{}, domain.Validation("confirmation", "does not match the required destructive action")
+	}
+	return s.start(ctx, actor, clusterID, target, ClearQueryLog, confirmation, struct{}{}, idempotencyKey)
+}
+
+func (s *Service) StartStatisticsReset(ctx context.Context, actor domain.Actor, clusterID string, target Target, confirmation, idempotencyKey string) (Operation, error) {
+	if confirmation != ResetStatisticsConfirmation {
+		return Operation{}, domain.Validation("confirmation", "does not match the required destructive action")
+	}
+	return s.start(ctx, actor, clusterID, target, ResetStatistics, confirmation, struct{}{}, idempotencyKey)
+}
+
 func (s *Service) start(ctx context.Context, actor domain.Actor, clusterID string, target Target, command Command, confirmation string, input any, idempotencyKey string) (Operation, error) {
 	if !domain.ValidID(clusterID) {
 		return Operation{}, domain.Validation("clusterId", "must be a valid UUID")
@@ -93,6 +107,10 @@ func (s *Service) start(ctx context.Context, actor domain.Actor, clusterID strin
 		if host, ok := input.(HostFilterInput); ok && (host.Client != "" || host.QueryType != "") {
 			feature = "test_host_filtering_context"
 		}
+	case ClearQueryLog:
+		feature = "querylog_clear"
+	case ResetStatistics:
+		feature = "stats_reset"
 	}
 	selected := make([]domain.Node, 0, len(nodes))
 	excluded := make([]ExcludedNode, 0)
@@ -193,7 +211,7 @@ func (s *Service) Operation(ctx context.Context, id string) (Operation, error) {
 	if err != nil {
 		return Operation{}, err
 	}
-	if operation.Command != TestUpstreamDNS && operation.Command != TestHostFiltering && operation.Command != ClearDNSCache {
+	if !supportedCommand(operation.Command) {
 		return Operation{}, domain.NewError(domain.ErrorNotFound, "operational command was not found")
 	}
 	return operation, nil
@@ -203,13 +221,22 @@ func (s *Service) List(ctx context.Context, clusterID string, command Command, l
 	if !domain.ValidID(clusterID) {
 		return nil, domain.Validation("clusterId", "must be a valid UUID")
 	}
-	if command != "" && command != TestUpstreamDNS && command != TestHostFiltering && command != ClearDNSCache {
+	if command != "" && !supportedCommand(command) {
 		return nil, domain.Validation("command", "is not a supported operational command")
 	}
 	if limit < 1 || limit > 20 {
 		return nil, domain.Validation("limit", "must be between 1 and 20")
 	}
 	return s.repository.ListOperationalCommands(ctx, clusterID, command, limit)
+}
+
+func supportedCommand(command Command) bool {
+	switch command {
+	case TestUpstreamDNS, TestHostFiltering, ClearDNSCache, ClearQueryLog, ResetStatistics:
+		return true
+	default:
+		return false
+	}
 }
 
 func validateHostFilterInput(input *HostFilterInput) error {
@@ -279,11 +306,16 @@ func operationAudit(actor domain.Actor, action string, operation Operation, extr
 }
 
 func commandAuditPrefix(command Command) string {
-	if command == TestUpstreamDNS {
+	switch command {
+	case TestUpstreamDNS:
 		return "dns.test_upstream"
-	}
-	if command == TestHostFiltering {
+	case TestHostFiltering:
 		return "filtering.test_host"
+	case ClearQueryLog:
+		return "querylog.clear"
+	case ResetStatistics:
+		return "statistics.reset"
+	default:
+		return "dns.cache_clear"
 	}
-	return "dns.cache_clear"
 }

@@ -129,6 +129,10 @@ func (e *CommandExecutor) RunOnce(ctx context.Context) (bool, error) {
 				}
 			case ClearDNSCache:
 				commandErr = e.executor.ClearDNSCache(ctx, request)
+			case ClearQueryLog:
+				commandErr = e.executor.ClearQueryLog(ctx, request)
+			case ResetStatistics:
+				commandErr = e.executor.ResetStatistics(ctx, request)
 			default:
 				commandErr = domain.NewError(domain.ErrorCapability, "the operational command is not supported")
 			}
@@ -148,7 +152,7 @@ func (e *CommandExecutor) RunOnce(ctx context.Context) (bool, error) {
 					resolverFailed++
 				}
 			}
-			if operation.Command == ClearDNSCache {
+			if operation.Command == ClearDNSCache || operation.Command == ClearQueryLog || operation.Command == ResetStatistics {
 				snapshot, observationErr := e.observer.Observe(ctx, result.NodeID)
 				if observationErr != nil {
 					result.ObservationStatus, result.ObservationErrorCode = "failed", operationErrorCode(observationErr)
