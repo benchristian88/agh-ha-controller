@@ -12,6 +12,7 @@ import { ControlPlanePage } from "./features/controlplane/ControlPlanePage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { DHCPPage } from "./features/dhcp/DHCPPage";
 import { DNSSettingsPage } from "./features/dns/DNSSettingsPage";
+import { CustomRulesPage } from "./features/filters/CustomRulesPage";
 import { GeneralSettingsPage } from "./features/general/GeneralSettingsPage";
 import { NodesPage } from "./features/nodes/NodesPage";
 import { RewritesPage } from "./features/rewrites/RewritesPage";
@@ -200,6 +201,8 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
             <RewritesPage cluster={selected} />
           ) : route.area === "dhcp" ? (
             <DHCPPage cluster={selected} />
+          ) : route.area === "filters" ? (
+            <CustomRulesPage cluster={selected} />
           ) : (
             <ManagedSettingsPage
               cluster={selected}

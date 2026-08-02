@@ -210,6 +210,20 @@ export const api = {
         body: JSON.stringify({ target, confirmation: "CLEAR_DNS_CACHE" }),
       },
     ),
+  testHostFiltering: (
+    clusterId: string,
+    target: OperationalTarget,
+    input: { hostname: string; client?: string; queryType?: string },
+    idempotencyKey: string,
+  ) =>
+    request<DNSOperationalCommand>(
+      `/api/v1/clusters/${clusterId}/operational-commands/test-host-filtering`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ target, input }),
+      },
+    ),
   dnsOperation: (operationId: string) =>
     request<DNSOperationalCommand>(
       `/api/v1/operational-commands/${operationId}`,

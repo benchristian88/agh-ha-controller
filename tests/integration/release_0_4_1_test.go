@@ -119,6 +119,7 @@ func TestDNSOperationsAreNodeAttributedIdempotentAndDoNotChangeDesiredState(t *t
 		nodeBID   = "20000000-0000-4000-8000-000000000004"
 		keyA      = "20000000-0000-4000-8000-000000000005"
 		keyB      = "20000000-0000-4000-8000-000000000006"
+		keyC      = "20000000-0000-4000-8000-000000000007"
 	)
 	calls := map[string]int{}
 	newNode := func(name string) *httptest.Server {
@@ -130,6 +131,12 @@ func TestDNSOperationsAreNodeAttributedIdempotentAndDoNotChangeDesiredState(t *t
 				_, _ = response.Write([]byte(`{"1.1.1.1":"OK"}`))
 			case "/control/cache_clear":
 				response.WriteHeader(http.StatusOK)
+			case "/control/filtering/check_host":
+				if request.URL.Query().Get("name") != "ads.example" || request.URL.Query().Get("client") != "192.0.2.10" || request.URL.Query().Get("qtype") != "AAAA" {
+					t.Fatalf("host-filter query=%s", request.URL.RawQuery)
+				}
+				response.Header().Set("Content-Type", "application/json")
+				_, _ = response.Write([]byte(`{"reason":"FilteredBlackList","rules":[{"text":"||ads.example^","filter_list_id":0}]}`))
 			default:
 				http.NotFound(response, request)
 			}
@@ -163,7 +170,7 @@ func TestDNSOperationsAreNodeAttributedIdempotentAndDoNotChangeDesiredState(t *t
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'insecure_http',true,'v0.107.78','supported',$9,$9);
 			INSERT INTO node_capability_profiles
 				(node_id,product_version,api_compatibility,schema_version,features_json,warnings_json,refreshed_at)
-			VALUES ($1,'v0.107.78','supported',2,'{"test_upstream_dns":true,"cache_clear":true}','[]',$9)`,
+			VALUES ($1,'v0.107.78','supported',2,'{"test_upstream_dns":true,"test_host_filtering":true,"test_host_filtering_context":true,"cache_clear":true}','[]',$9)`,
 			node.id, clusterID, node.name, node.endpoint, encrypted.Ciphertext, encrypted.Nonce, encrypted.KeyVersion, encrypted.Algorithm, now); err != nil {
 			t.Fatal(err)
 		}
@@ -202,6 +209,20 @@ func TestDNSOperationsAreNodeAttributedIdempotentAndDoNotChangeDesiredState(t *t
 	if stored.Status != "succeeded" || len(stored.NodeResults) != 2 || stored.NodeResults[0].NodeName != "Primary" || stored.NodeResults[0].ResolverResults[0].ResolverID != "upstream-1" || calls["a/control/test_upstream_dns"] != 1 || calls["b/control/test_upstream_dns"] != 1 {
 		t.Fatalf("stored=%#v calls=%#v", stored, calls)
 	}
+	host, err := service.StartHostFilterTest(ctx, actor, clusterID, operations.Target{Scope: "all_compatible_enabled_nodes"}, operations.HostFilterInput{Hostname: "ads.example", Client: "192.0.2.10", QueryType: "AAAA"}, keyC)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if worked, err := executor.RunOnce(ctx); err != nil || !worked {
+		t.Fatalf("host filter worked=%t err=%v", worked, err)
+	}
+	stored, err = service.Operation(ctx, host.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status != "succeeded" || len(stored.NodeResults) != 2 || stored.NodeResults[0].HostFilterResult == nil || stored.NodeResults[0].HostFilterResult.Rules[0].Text != "||ads.example^" || calls["a/control/filtering/check_host"] != 1 || calls["b/control/filtering/check_host"] != 1 {
+		t.Fatalf("host stored=%#v calls=%#v", stored, calls)
+	}
 	var drafts, revisions int
 	if err := store.Pool().QueryRow(ctx, `SELECT (SELECT count(*) FROM configuration_drafts WHERE cluster_id=$1),(SELECT count(*) FROM configuration_revisions WHERE cluster_id=$1)`, clusterID).Scan(&drafts, &revisions); err != nil {
 		t.Fatal(err)
@@ -213,7 +234,7 @@ func TestDNSOperationsAreNodeAttributedIdempotentAndDoNotChangeDesiredState(t *t
 	if err := store.Pool().QueryRow(ctx, `SELECT count(*) FROM operational_commands WHERE cluster_id=$1 AND payload_ciphertext IS NOT NULL`, clusterID).Scan(&payloadRows); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Pool().QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE metadata::text LIKE '%1.1.1.1%' OR metadata::text LIKE '%node-secret%'`).Scan(&auditLeaks); err != nil {
+	if err := store.Pool().QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE metadata::text LIKE '%1.1.1.1%' OR metadata::text LIKE '%ads.example%' OR metadata::text LIKE '%192.0.2.10%' OR metadata::text LIKE '%node-secret%'`).Scan(&auditLeaks); err != nil {
 		t.Fatal(err)
 	}
 	if payloadRows != 0 || auditLeaks != 0 {

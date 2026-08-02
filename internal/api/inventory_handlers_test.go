@@ -155,6 +155,11 @@ func (f *dnsOperationsFake) StartUpstreamTest(_ context.Context, _ domain.Actor,
 	f.target = target
 	return f.result, nil
 }
+func (f *dnsOperationsFake) StartHostFilterTest(_ context.Context, _ domain.Actor, _ string, target operations.Target, _ operations.HostFilterInput, _ string) (operations.Operation, error) {
+	f.calls++
+	f.target = target
+	return f.result, nil
+}
 func (f *dnsOperationsFake) StartCacheClear(_ context.Context, _ domain.Actor, _ string, target operations.Target, _ string, _ string) (operations.Operation, error) {
 	f.calls++
 	f.target = target
@@ -434,6 +439,25 @@ func TestDNSOperationRequiresCSRFAndReturnsQueuedResource(t *testing.T) {
 	server.mux.ServeHTTP(response, with)
 	if response.Code != http.StatusAccepted || service.calls != 1 || service.target.NodeID == "" || !strings.Contains(response.Body.String(), `"status":"queued"`) {
 		t.Fatalf("status=%d calls=%d body=%s", response.Code, service.calls, response.Body.String())
+	}
+
+	hostPath := "/api/v1/clusters/11111111-1111-4111-8111-111111111111/operational-commands/test-host-filtering"
+	hostBody := `{"target":{"scope":"all_compatible_enabled_nodes"},"input":{"hostname":"ads.example","client":"192.0.2.10","queryType":"AAAA"}}`
+	unauthenticated := httptest.NewRequest(http.MethodPost, hostPath, strings.NewReader(hostBody))
+	unauthenticatedResponse := httptest.NewRecorder()
+	server.mux.ServeHTTP(unauthenticatedResponse, unauthenticated)
+	if unauthenticatedResponse.Code != http.StatusUnauthorized || service.calls != 1 {
+		t.Fatalf("unauthenticated status=%d calls=%d", unauthenticatedResponse.Code, service.calls)
+	}
+	hostRequest := httptest.NewRequest(http.MethodPost, hostPath, strings.NewReader(hostBody))
+	hostRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+	hostRequest.AddCookie(&http.Cookie{Name: csrfCookieName, Value: csrf})
+	hostRequest.Header.Set(csrfHeader, csrf)
+	hostRequest.Header.Set(idempotencyHeader, "66666666-6666-4666-8666-666666666666")
+	hostResponse := httptest.NewRecorder()
+	server.mux.ServeHTTP(hostResponse, hostRequest)
+	if hostResponse.Code != http.StatusAccepted || service.calls != 2 || service.target.Scope != "all_compatible_enabled_nodes" {
+		t.Fatalf("host status=%d calls=%d body=%s", hostResponse.Code, service.calls, hostResponse.Body.String())
 	}
 }
 

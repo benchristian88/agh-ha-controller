@@ -83,8 +83,13 @@ func (e *CommandExecutor) RunOnce(ctx context.Context) (bool, error) {
 		return true, e.failAll(ctx, &operation, domain.NewError(domain.ErrorInternal, "the operational command input could not be decrypted"))
 	}
 	var upstream UpstreamInput
+	var hostFilter HostFilterInput
 	if operation.Command == TestUpstreamDNS {
 		if err := json.Unmarshal(payload, &upstream); err != nil {
+			return true, e.failAll(ctx, &operation, domain.NewError(domain.ErrorInternal, "the operational command input could not be decoded"))
+		}
+	} else if operation.Command == TestHostFiltering {
+		if err := json.Unmarshal(payload, &hostFilter); err != nil {
 			return true, e.failAll(ctx, &operation, domain.NewError(domain.ErrorInternal, "the operational command input could not be decoded"))
 		}
 	}
@@ -116,6 +121,12 @@ func (e *CommandExecutor) RunOnce(ctx context.Context) (bool, error) {
 			switch operation.Command {
 			case TestUpstreamDNS:
 				result.ResolverResults, commandErr = e.executor.TestUpstreamDNS(ctx, request, upstream)
+			case TestHostFiltering:
+				var filterResult HostFilterResult
+				filterResult, commandErr = e.executor.TestHostFiltering(ctx, request, hostFilter)
+				if commandErr == nil {
+					result.HostFilterResult = &filterResult
+				}
 			case ClearDNSCache:
 				commandErr = e.executor.ClearDNSCache(ctx, request)
 			default:

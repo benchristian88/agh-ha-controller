@@ -310,7 +310,7 @@ The current free-text ID control directly conflicts with the source catalogue’
 | Validation | No parse/check action or rule-level diagnostics | Missing | Add controller validation or an audited non-mutating node check before publication. |
 | Save | Save Draft is available | Matches | — |
 | Rule count | Not shown | Missing | Show draft count and, separately, observed compiled/status metadata. |
-| Test a host | `/control/filtering/check_host` is not exposed | Missing | Add non-mutating test form with node-attributed results. |
+| Test a host | Controller-mediated `/control/filtering/check_host` is exposed through the durable Phase 9C-2 command | Matches | Hostname, optional client/query type, selected-node/fleet scope, compatibility exclusions, and bounded node-attributed rules are presented without desired-state mutation. |
 | Search within rules | Browser textarea behavior only | Missing | Specialist editor should provide search. |
 | Revision diff | Whole custom-rule arrays participate in semantic revision comparison | Partially implemented | Add line-level diff presentation. |
 

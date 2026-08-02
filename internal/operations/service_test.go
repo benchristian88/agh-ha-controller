@@ -98,6 +98,12 @@ func (dnsExecutorFake) TestUpstreamDNS(_ context.Context, request domain.NodePro
 	}
 	return []ResolverResult{{ResolverID: "upstream-1", Status: "succeeded"}}, nil
 }
+func (dnsExecutorFake) TestHostFiltering(_ context.Context, request domain.NodeProbeRequest, _ HostFilterInput) (HostFilterResult, error) {
+	if strings.Contains(request.BaseURL, "secondary") {
+		return HostFilterResult{}, domain.NewError(domain.ErrorNodeUnreachable, "private network detail")
+	}
+	return HostFilterResult{Matched: true, Reason: "FilteredBlackList", Rules: []MatchedRule{{Text: "||ads.test^", FilterListID: 1}}}, nil
+}
 func (dnsExecutorFake) ClearDNSCache(context.Context, domain.NodeProbeRequest) error { return nil }
 
 type observerFake struct{}
@@ -113,8 +119,8 @@ func operationFixture(t *testing.T) (*Service, *operationRepositoryFake, *auth.C
 		{ID: testNodeB, ClusterID: testClusterID, Name: "Secondary", BaseURL: "http://secondary.test", Enabled: true},
 	}
 	profiles := []inventory.CapabilityProfile{
-		{NodeID: testNodeA, Compatibility: string(domain.CompatibilitySupported), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"test_upstream_dns": true, "cache_clear": true}},
-		{NodeID: testNodeB, Compatibility: string(domain.CompatibilitySupported), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"test_upstream_dns": true, "cache_clear": true}},
+		{NodeID: testNodeA, Compatibility: string(domain.CompatibilitySupported), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"test_upstream_dns": true, "test_host_filtering": true, "test_host_filtering_context": true, "cache_clear": true}},
+		{NodeID: testNodeB, Compatibility: string(domain.CompatibilitySupported), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"test_upstream_dns": true, "test_host_filtering": true, "test_host_filtering_context": true, "cache_clear": true}},
 	}
 	repository := &operationRepositoryFake{nodes: nodes, profiles: profiles, records: map[string]domain.NodeRecord{
 		testNodeA: {Node: nodes[0]}, testNodeB: {Node: nodes[1]},
@@ -212,5 +218,56 @@ func TestRecoverInterruptedDoesNotReplayAnUncertainNodeCommand(t *testing.T) {
 	events, _ := json.Marshal(repository.events)
 	if !strings.Contains(string(events), `"automaticReplay":false`) {
 		t.Fatalf("recovery audit=%s", events)
+	}
+}
+
+func TestHostFilterTestEncryptsInputAuditsRedactedAndReturnsNodeResults(t *testing.T) {
+	service, repository, cipher := operationFixture(t)
+	input := HostFilterInput{Hostname: "private.internal", Client: "secret-client", QueryType: "aaaa"}
+	actor := domain.Actor{UserID: testUserID, RequestID: testRequestID}
+	operation, err := service.StartHostFilterTest(context.Background(), actor, testClusterID, Target{Scope: "all_compatible_enabled_nodes"}, input, testKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plaintext, err := cipher.DecryptPayload(operation.ID, operation.Payload)
+	if err != nil || !strings.Contains(string(plaintext), "private.internal") || !strings.Contains(string(plaintext), `"queryType":"AAAA"`) {
+		t.Fatalf("plaintext=%q err=%v", plaintext, err)
+	}
+	audit, _ := json.Marshal(repository.events)
+	if strings.Contains(string(audit), "private.internal") || strings.Contains(string(audit), "secret-client") || !strings.Contains(string(audit), "filtering.test_host_requested") {
+		t.Fatalf("audit=%s", audit)
+	}
+	duplicate, err := service.StartHostFilterTest(context.Background(), actor, testClusterID, Target{Scope: "all_compatible_enabled_nodes"}, input, testKey)
+	if err != nil || !duplicate.Duplicate || duplicate.ID != operation.ID {
+		t.Fatalf("duplicate=%#v err=%v", duplicate, err)
+	}
+	executor := NewExecutor(repository, credentialFake{}, cipher, dnsExecutorFake{}, observerFake{})
+	if worked, err := executor.RunOnce(context.Background()); err != nil || !worked {
+		t.Fatalf("worked=%t err=%v", worked, err)
+	}
+	if repository.operation.Status != "partial_success" || repository.operation.NodeResults[0].HostFilterResult == nil || repository.operation.NodeResults[0].HostFilterResult.Rules[0].Text != "||ads.test^" || repository.operation.NodeResults[1].ErrorCode != string(domain.ErrorNodeUnreachable) {
+		t.Fatalf("operation=%#v", repository.operation)
+	}
+	terminalAudit, _ := json.Marshal(repository.events)
+	if strings.Contains(string(terminalAudit), "private network detail") || !strings.Contains(string(terminalAudit), "filtering.test_host_partially_succeeded") {
+		t.Fatalf("audit=%s", terminalAudit)
+	}
+}
+
+func TestHostFilterOptionalContextRequiresPatchCapability(t *testing.T) {
+	service, repository, _ := operationFixture(t)
+	repository.profiles[1].Features["test_host_filtering_context"] = false
+	actor := domain.Actor{UserID: testUserID, RequestID: testRequestID}
+	operation, err := service.StartHostFilterTest(context.Background(), actor, testClusterID, Target{Scope: "all_compatible_enabled_nodes"}, HostFilterInput{Hostname: "example.org", QueryType: "A"}, testKey)
+	if err != nil || len(operation.NodeResults) != 1 || len(operation.ExcludedNodes) != 1 {
+		t.Fatalf("operation=%#v err=%v", operation, err)
+	}
+	_, err = service.StartHostFilterTest(context.Background(), actor, testClusterID, Target{Scope: "node", NodeID: testNodeB}, HostFilterInput{Hostname: "example.org", Client: "client"}, "99999999-9999-4999-8999-999999999999")
+	var domainError *domain.Error
+	if !errors.As(err, &domainError) || domainError.Kind != domain.ErrorCapability {
+		t.Fatalf("error=%v", err)
+	}
+	if _, err := service.StartHostFilterTest(context.Background(), actor, testClusterID, Target{Scope: "node", NodeID: testNodeA}, HostFilterInput{Hostname: "https://example.org/path"}, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"); err == nil {
+		t.Fatal("invalid host was accepted")
 	}
 }

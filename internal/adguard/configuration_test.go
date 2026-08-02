@@ -314,6 +314,69 @@ func TestDNSOperationalCommandsMapSafeResultsAndExactPaths(t *testing.T) {
 	}
 }
 
+func TestHostFilteringOperationalCommandMapsAttributedSafeResult(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet || request.URL.Path != "/control/filtering/check_host" || request.URL.Query().Get("name") != "ads.example" || request.URL.Query().Get("client") != "192.0.2.10" || request.URL.Query().Get("qtype") != "AAAA" {
+			t.Fatalf("request=%s %s query=%s", request.Method, request.URL.Path, request.URL.RawQuery)
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"reason":"FilteredBlackList","rules":[{"text":"||ads.example^","filter_list_id":42}],"service_name":"tracking","cname":"safe.example","ip_addrs":["192.0.2.44"]}`))
+	}))
+	defer server.Close()
+	result, err := NewConfigurationReader(NewProbe(time.Second)).TestHostFiltering(context.Background(), probeRequest(server.URL), operations.HostFilterInput{Hostname: "ads.example", Client: "192.0.2.10", QueryType: "AAAA"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Matched || result.Reason != "FilteredBlackList" || len(result.Rules) != 1 || result.Rules[0].Text != "||ads.example^" || result.Rules[0].FilterListID != 42 || result.CanonicalName != "safe.example" {
+		t.Fatalf("result=%#v", result)
+	}
+}
+
+func TestHostFilteringOperationalCommandMapsLegacyRuleAndSafeErrors(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		status   int
+		body     string
+		delay    time.Duration
+		timeout  time.Duration
+		wantRule bool
+		wantKind domain.ErrorKind
+	}{
+		{name: "legacy response", status: http.StatusOK, body: `{"reason":"FilteredBlackList","rule":"||legacy.example^","filter_id":7}`, wantRule: true},
+		{name: "capability", status: http.StatusNotFound, wantKind: domain.ErrorCapability},
+		{name: "invalid json", status: http.StatusOK, body: `{`, wantKind: domain.ErrorNodeResponse},
+		{name: "unsafe rule", status: http.StatusOK, body: `{"rules":[{"text":"unsafe\nrule","filter_list_id":1}]}`, wantKind: domain.ErrorNodeResponse},
+		{name: "invalid address", status: http.StatusOK, body: `{"ip_addrs":["not-an-address"]}`, wantKind: domain.ErrorNodeResponse},
+		{name: "timeout", status: http.StatusOK, body: `{}`, delay: 50 * time.Millisecond, timeout: time.Millisecond, wantKind: domain.ErrorNodeUnreachable},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				if test.delay > 0 {
+					time.Sleep(test.delay)
+				}
+				response.WriteHeader(test.status)
+				_, _ = response.Write([]byte(test.body))
+			}))
+			defer server.Close()
+			timeout := test.timeout
+			if timeout == 0 {
+				timeout = time.Second
+			}
+			result, err := NewConfigurationReader(NewProbe(timeout)).TestHostFiltering(context.Background(), probeRequest(server.URL), operations.HostFilterInput{Hostname: "legacy.example"})
+			if test.wantRule {
+				if err != nil || len(result.Rules) != 1 || result.Rules[0].Text != "||legacy.example^" {
+					t.Fatalf("result=%#v err=%v", result, err)
+				}
+				return
+			}
+			var domainError *domain.Error
+			if !errors.As(err, &domainError) || domainError.Kind != test.wantKind {
+				t.Fatalf("error=%#v want=%s", err, test.wantKind)
+			}
+		})
+	}
+}
+
 func TestOperationalUpstreamStatusMatchesAdGuardCanonicalAddresses(t *testing.T) {
 	for _, test := range []struct {
 		name      string

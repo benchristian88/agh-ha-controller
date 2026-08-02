@@ -79,7 +79,7 @@ func (s *Store) ClaimOperationalCommand(ctx context.Context, at time.Time) (oper
 	var id string
 	err = tx.QueryRow(ctx, `
 		SELECT id FROM operational_commands
-		WHERE status='queued' AND command_type IN ('test_upstream_dns','clear_dns_cache')
+		WHERE status='queued' AND command_type IN ('test_upstream_dns','test_host_filtering','clear_dns_cache')
 		ORDER BY requested_at,id FOR UPDATE SKIP LOCKED LIMIT 1`).Scan(&id)
 	if err == pgx.ErrNoRows {
 		return operations.Operation{}, domain.ErrNoWork
@@ -97,7 +97,7 @@ func (s *Store) ClaimOperationalCommand(ctx context.Context, at time.Time) (oper
 }
 
 func (s *Store) RunningOperationalCommands(ctx context.Context) ([]operations.Operation, error) {
-	rows, err := s.pool.Query(ctx, `SELECT id FROM operational_commands WHERE status='running' AND command_type IN ('test_upstream_dns','clear_dns_cache') ORDER BY requested_at,id`)
+	rows, err := s.pool.Query(ctx, `SELECT id FROM operational_commands WHERE status='running' AND command_type IN ('test_upstream_dns','test_host_filtering','clear_dns_cache') ORDER BY requested_at,id`)
 	if err != nil {
 		return nil, fmt.Errorf("list interrupted operational commands: %w", err)
 	}
@@ -128,8 +128,9 @@ func (s *Store) RunningOperationalCommands(ctx context.Context) ([]operations.Op
 
 func (s *Store) UpdateOperationalCommandNode(ctx context.Context, commandID string, node operations.NodeResult) error {
 	resultBody, err := json.Marshal(struct {
-		UpstreamResults []operations.ResolverResult `json:"upstreamResults,omitempty"`
-	}{node.ResolverResults})
+		UpstreamResults  []operations.ResolverResult  `json:"upstreamResults,omitempty"`
+		HostFilterResult *operations.HostFilterResult `json:"hostFilterResult,omitempty"`
+	}{node.ResolverResults, node.HostFilterResult})
 	if err != nil {
 		return fmt.Errorf("encode operational command node result: %w", err)
 	}
@@ -198,7 +199,7 @@ func (s *Store) operationalCommandByIdempotency(ctx context.Context, userID, key
 }
 
 func (s *Store) ListOperationalCommands(ctx context.Context, clusterID string, command operations.Command, limit int) ([]operations.Operation, error) {
-	query := `SELECT id FROM operational_commands WHERE cluster_id=$1 AND command_type IN ('test_upstream_dns','clear_dns_cache')`
+	query := `SELECT id FROM operational_commands WHERE cluster_id=$1 AND command_type IN ('test_upstream_dns','test_host_filtering','clear_dns_cache')`
 	args := []any{clusterID}
 	if command != "" {
 		query += ` AND command_type=$2 ORDER BY requested_at DESC,id DESC LIMIT $3`
@@ -261,7 +262,8 @@ func (s *Store) loadOperationalCommandNodes(ctx context.Context, operation *oper
 			node.ObservationSnapshotID = *snapshotID
 		}
 		var result struct {
-			UpstreamResults []operations.ResolverResult `json:"upstreamResults"`
+			UpstreamResults  []operations.ResolverResult  `json:"upstreamResults"`
+			HostFilterResult *operations.HostFilterResult `json:"hostFilterResult"`
 		}
 		if len(body) > 0 {
 			if err := json.Unmarshal(body, &result); err != nil {
@@ -269,6 +271,7 @@ func (s *Store) loadOperationalCommandNodes(ctx context.Context, operation *oper
 			}
 		}
 		node.ResolverResults = result.UpstreamResults
+		node.HostFilterResult = result.HostFilterResult
 		operation.NodeResults = append(operation.NodeResults, node)
 	}
 	return rows.Err()

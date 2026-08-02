@@ -76,6 +76,19 @@ type filterStatusResponse struct {
 	WhitelistFilters []filterListResponse `json:"whitelist_filters"`
 }
 
+type filterCheckHostResponse struct {
+	Reason string `json:"reason"`
+	Rules  []struct {
+		Text         string `json:"text"`
+		FilterListID int64  `json:"filter_list_id"`
+	} `json:"rules"`
+	Rule        string   `json:"rule"`
+	FilterID    int64    `json:"filter_id"`
+	ServiceName string   `json:"service_name"`
+	CNAME       string   `json:"cname"`
+	IPAddresses []string `json:"ip_addrs"`
+}
+
 type clientsResponse struct {
 	Clients []clientResponse `json:"clients"`
 }
@@ -230,7 +243,7 @@ type dhcpActiveCheckResponse struct {
 }
 
 func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request domain.NodeProbeRequest, version string) (configuration.Document, inventory.CapabilityProfile, error) {
-	profile := inventory.CapabilityProfile{ProductVersion: version, Compatibility: string(ConfigurationCompatibility(version)), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"dns": false, "cache_toggle": false, "upstream_timeout": false, "test_upstream_dns": false, "cache_clear": false, "filtering": false, "filter_interval_arbitrary": false, "clients": false, "rewrites": false, "rewrite_toggle": false, "blocked_services": false, "safety": false, "safe_search_ecosia": supportsEcosia(version), "query_log": false, "statistics": false, "ignored_lists_toggle": false, "tls": false, "dhcp": false}, Warnings: []string{}}
+	profile := inventory.CapabilityProfile{ProductVersion: version, Compatibility: string(ConfigurationCompatibility(version)), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"dns": false, "cache_toggle": false, "upstream_timeout": false, "test_upstream_dns": false, "cache_clear": false, "filtering": false, "test_host_filtering": false, "test_host_filtering_context": false, "filter_interval_arbitrary": false, "clients": false, "rewrites": false, "rewrite_toggle": false, "blocked_services": false, "safety": false, "safe_search_ecosia": supportsEcosia(version), "query_log": false, "statistics": false, "ignored_lists_toggle": false, "tls": false, "dhcp": false}, Warnings: []string{}}
 	if ConfigurationCompatibility(version) != domain.CompatibilitySupported {
 		profile.Warnings = append(profile.Warnings, "This AdGuard Home version is outside the tested configuration inventory range.")
 		return configuration.Document{}, profile, domain.NewError(domain.ErrorNodeResponse, "the node version is not supported for configuration inventory")
@@ -260,6 +273,8 @@ func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request dom
 		return configuration.Document{}, profile, err
 	}
 	profile.Features["filtering"] = true
+	profile.Features["test_host_filtering"] = true
+	profile.Features["test_host_filtering_context"] = supportsConfigurationPatch(version, 58)
 	profile.Features["filter_interval_arbitrary"] = supportsConfigurationPatch(version, 78)
 	if !supportsSchemaV2(version) {
 		profile.SchemaVersion = configuration.LegacySchemaVersion
@@ -823,6 +838,94 @@ func defaultUpstreamPort(scheme string) string {
 
 func (r *ConfigurationReader) ClearDNSCache(ctx context.Context, request domain.NodeProbeRequest) error {
 	return r.post(ctx, request, "/control/cache_clear", nil)
+}
+
+func (r *ConfigurationReader) TestHostFiltering(ctx context.Context, request domain.NodeProbeRequest, input operations.HostFilterInput) (operations.HostFilterResult, error) {
+	query := url.Values{"name": []string{input.Hostname}}
+	if input.Client != "" {
+		query.Set("client", input.Client)
+	}
+	if input.QueryType != "" {
+		query.Set("qtype", input.QueryType)
+	}
+	var response filterCheckHostResponse
+	if err := r.getOperationalResource(ctx, request, "/control/filtering/check_host", query, &response); err != nil {
+		return operations.HostFilterResult{}, err
+	}
+	if len(response.Rules) > 32 || len(response.IPAddresses) > 32 || len(response.Reason) > 128 || len(response.ServiceName) > 256 || len(response.CNAME) > 253 {
+		return operations.HostFilterResult{}, domain.NewError(domain.ErrorNodeResponse, "the node host-filter response exceeded safe result limits")
+	}
+	if strings.ContainsAny(response.Reason, "\r\n\t") || strings.ContainsAny(response.ServiceName, "\r\n\t") || strings.ContainsAny(response.CNAME, "\r\n\t") {
+		return operations.HostFilterResult{}, domain.NewError(domain.ErrorNodeResponse, "the node host-filter response contained unsafe text")
+	}
+	for _, address := range response.IPAddresses {
+		if _, err := netip.ParseAddr(address); err != nil {
+			return operations.HostFilterResult{}, domain.NewError(domain.ErrorNodeResponse, "the node host-filter response contained an invalid address")
+		}
+	}
+	result := operations.HostFilterResult{Reason: response.Reason, ServiceName: response.ServiceName, CanonicalName: response.CNAME, Rules: []operations.MatchedRule{}, IPAddresses: append([]string(nil), response.IPAddresses...)}
+	for _, rule := range response.Rules {
+		if len(rule.Text) > 2048 || strings.ContainsAny(rule.Text, "\r\n") {
+			return operations.HostFilterResult{}, domain.NewError(domain.ErrorNodeResponse, "the node host-filter response contained an unsafe rule")
+		}
+		result.Rules = append(result.Rules, operations.MatchedRule{Text: rule.Text, FilterListID: rule.FilterListID})
+	}
+	if len(result.Rules) == 0 && response.Rule != "" {
+		if len(response.Rule) > 2048 || strings.ContainsAny(response.Rule, "\r\n") {
+			return operations.HostFilterResult{}, domain.NewError(domain.ErrorNodeResponse, "the node host-filter response contained an unsafe rule")
+		}
+		result.Rules = append(result.Rules, operations.MatchedRule{Text: response.Rule, FilterListID: response.FilterID})
+	}
+	result.Matched = len(result.Rules) > 0 || result.ServiceName != "" || result.CanonicalName != "" || len(result.IPAddresses) > 0
+	return result, nil
+}
+
+func (r *ConfigurationReader) getOperationalResource(ctx context.Context, request domain.NodeProbeRequest, path string, query url.Values, target any) error {
+	transport, err := r.probe.transport(request.CertificatePolicy, request.CustomCAPEM)
+	if err != nil {
+		return err
+	}
+	defer transport.CloseIdleConnections()
+	endpoint, err := configurationEndpoint(request.BaseURL, path)
+	if err != nil {
+		return domain.NewError(domain.ErrorNodeResponse, "the node URL is invalid")
+	}
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return domain.NewError(domain.ErrorNodeResponse, "the node URL is invalid")
+	}
+	parsed.RawQuery = query.Encode()
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
+	if err != nil {
+		return fmt.Errorf("create AdGuard Home operational request: %w", err)
+	}
+	httpRequest.SetBasicAuth(request.Credentials.Username, request.Credentials.Password)
+	httpRequest.Header.Set("Accept", "application/json")
+	client := &http.Client{Transport: transport, Timeout: r.probe.timeout, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
+	response, err := client.Do(httpRequest)
+	if err != nil {
+		return classifyNetworkError(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
+		return domain.NewError(domain.ErrorNodeAuth, "the node rejected its stored credentials")
+	}
+	if response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusNotImplemented {
+		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, maxConfigurationBody))
+		return domain.NewError(domain.ErrorCapability, "the node does not support this operational command")
+	}
+	if response.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, maxConfigurationBody))
+		return domain.NewError(domain.ErrorNodeResponse, "the node operational endpoint returned an unexpected status")
+	}
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxConfigurationBody+1))
+	if err != nil || len(body) > maxConfigurationBody {
+		return domain.NewError(domain.ErrorNodeResponse, "the node operational response could not be read safely")
+	}
+	if err := json.Unmarshal(body, target); err != nil {
+		return domain.NewError(domain.ErrorNodeResponse, "the node returned invalid operational JSON")
+	}
+	return nil
 }
 
 func (r *ConfigurationReader) ResetDHCPLeases(ctx context.Context, request domain.NodeProbeRequest) error {

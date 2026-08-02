@@ -211,10 +211,11 @@ lease changes remain observed-only. A configuration reset does not mutate the
 draft or active revision; its observed mismatch remains subject to the existing
 restore/adopt drift workflow after the maintenance boundary is reviewed.
 
-## DNS operational commands
+## Audited DNS and filtering operational commands
 
 ```text
 POST /api/v1/clusters/{clusterId}/operational-commands/test-upstream-dns
+POST /api/v1/clusters/{clusterId}/operational-commands/test-host-filtering
 POST /api/v1/clusters/{clusterId}/operational-commands/clear-dns-cache
 GET  /api/v1/operational-commands/{operationId}
 GET  /api/v1/clusters/{clusterId}/operational-commands?command={type}&limit=10
@@ -232,9 +233,31 @@ discarded at terminal completion. Results identify resolvers as `upstream-1`,
 `upstream-2`, and so on; raw resolver text and raw AdGuard errors are not
 persisted in result or audit DTOs.
 
+Host-filter tests accept:
+
+```json
+{
+  "target": { "scope": "node", "nodeId": "uuid" },
+  "input": {
+    "hostname": "ads.example",
+    "client": "192.0.2.10",
+    "queryType": "AAAA"
+  }
+}
+```
+
+`client` and `queryType` are optional. Hostname-only checks use the filtering
+capability available throughout the supported inventory range. Contextual
+checks require AdGuard Home v0.107.58 or newer; fleet scope records older nodes
+as capability exclusions and selected-node scope rejects an incompatible
+target before queueing. Results contain only bounded reason, matched rule text
+and filter-list ID, blocked-service name, rewrite CNAME, and IP-address fields.
+The hostname/client input, raw node response, node URL, credentials, and raw
+node error are absent from audit and result resources.
+
 Cache clear requires `CLEAR_DNS_CACHE`. A successful node call is followed by a
 normal configuration observation. Observation failure is reported separately
-and does not change command success. Neither operation mutates a draft,
+and does not change command success. None of these operations mutates a draft,
 revision, deployment, or active-revision pointer.
 
 POST returns HTTP 202 for queued/running resources. Poll the operation URL for

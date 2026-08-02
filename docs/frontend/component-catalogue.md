@@ -56,6 +56,12 @@ Phase 9C-1 composes `OperationalCommandDialog`, `PartialSuccessPanel`, and
 DNS cache clearing. Both commands have explicit selected-node/fleet scope,
 durable node-attributed results, and remain outside desired state.
 
+Phase 9C-2 migrates Custom Filter Rules to its specialist `RuleEditor` page and
+composes the same operational primitives for host-filtering tests. Hostname,
+optional client, optional query type, exact scope, compatibility exclusions,
+and node-attributed matched rules remain separate from Save Draft and desired
+state.
+
 ## Shell
 
 - `AppHeader`

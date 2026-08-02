@@ -38,6 +38,13 @@ func (s *Service) StartUpstreamTest(ctx context.Context, actor domain.Actor, clu
 	return s.start(ctx, actor, clusterID, target, TestUpstreamDNS, "", input, idempotencyKey)
 }
 
+func (s *Service) StartHostFilterTest(ctx context.Context, actor domain.Actor, clusterID string, target Target, input HostFilterInput, idempotencyKey string) (Operation, error) {
+	if err := validateHostFilterInput(&input); err != nil {
+		return Operation{}, err
+	}
+	return s.start(ctx, actor, clusterID, target, TestHostFiltering, "", input, idempotencyKey)
+}
+
 func (s *Service) StartCacheClear(ctx context.Context, actor domain.Actor, clusterID string, target Target, confirmation, idempotencyKey string) (Operation, error) {
 	if confirmation != ClearDNSCacheConfirmation {
 		return Operation{}, domain.Validation("confirmation", "does not match the required destructive action")
@@ -78,8 +85,14 @@ func (s *Service) start(ctx context.Context, actor domain.Actor, clusterID strin
 		profileByNode[profile.NodeID] = profile
 	}
 	feature := "test_upstream_dns"
-	if command == ClearDNSCache {
+	switch command {
+	case ClearDNSCache:
 		feature = "cache_clear"
+	case TestHostFiltering:
+		feature = "test_host_filtering"
+		if host, ok := input.(HostFilterInput); ok && (host.Client != "" || host.QueryType != "") {
+			feature = "test_host_filtering_context"
+		}
 	}
 	selected := make([]domain.Node, 0, len(nodes))
 	excluded := make([]ExcludedNode, 0)
@@ -180,8 +193,8 @@ func (s *Service) Operation(ctx context.Context, id string) (Operation, error) {
 	if err != nil {
 		return Operation{}, err
 	}
-	if operation.Command != TestUpstreamDNS && operation.Command != ClearDNSCache {
-		return Operation{}, domain.NewError(domain.ErrorNotFound, "DNS operational command was not found")
+	if operation.Command != TestUpstreamDNS && operation.Command != TestHostFiltering && operation.Command != ClearDNSCache {
+		return Operation{}, domain.NewError(domain.ErrorNotFound, "operational command was not found")
 	}
 	return operation, nil
 }
@@ -190,13 +203,32 @@ func (s *Service) List(ctx context.Context, clusterID string, command Command, l
 	if !domain.ValidID(clusterID) {
 		return nil, domain.Validation("clusterId", "must be a valid UUID")
 	}
-	if command != "" && command != TestUpstreamDNS && command != ClearDNSCache {
-		return nil, domain.Validation("command", "is not a supported DNS operational command")
+	if command != "" && command != TestUpstreamDNS && command != TestHostFiltering && command != ClearDNSCache {
+		return nil, domain.Validation("command", "is not a supported operational command")
 	}
 	if limit < 1 || limit > 20 {
 		return nil, domain.Validation("limit", "must be between 1 and 20")
 	}
 	return s.repository.ListOperationalCommands(ctx, clusterID, command, limit)
+}
+
+func validateHostFilterInput(input *HostFilterInput) error {
+	input.Hostname = strings.TrimSpace(input.Hostname)
+	input.Client = strings.TrimSpace(input.Client)
+	input.QueryType = strings.ToUpper(strings.TrimSpace(input.QueryType))
+	if input.Hostname == "" || len(input.Hostname) > 253 || strings.ContainsAny(input.Hostname, "\t\r\n /?#") {
+		return domain.Validation("input.hostname", "must be a valid host name without a URL scheme or path")
+	}
+	if len(input.Client) > 256 || strings.ContainsAny(input.Client, "\r\n\t") {
+		return domain.Validation("input.client", "must be at most 256 characters without control characters")
+	}
+	if input.QueryType != "" {
+		allowed := map[string]bool{"A": true, "AAAA": true, "ANY": true, "CAA": true, "CNAME": true, "DNSKEY": true, "DS": true, "HTTPS": true, "MX": true, "NS": true, "PTR": true, "SOA": true, "SRV": true, "SVCB": true, "TXT": true}
+		if !allowed[input.QueryType] {
+			return domain.Validation("input.queryType", "is not a supported DNS query type")
+		}
+	}
+	return nil
 }
 
 func validateUpstreamInput(input UpstreamInput) error {
@@ -249,6 +281,9 @@ func operationAudit(actor domain.Actor, action string, operation Operation, extr
 func commandAuditPrefix(command Command) string {
 	if command == TestUpstreamDNS {
 		return "dns.test_upstream"
+	}
+	if command == TestHostFiltering {
+		return "filtering.test_host"
 	}
 	return "dns.cache_clear"
 }

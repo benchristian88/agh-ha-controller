@@ -512,7 +512,7 @@ export interface DNSOperationalCommand {
   id: string;
   clusterId: string;
   clusterName: string;
-  command: "test_upstream_dns" | "clear_dns_cache";
+  command: "test_upstream_dns" | "test_host_filtering" | "clear_dns_cache";
   target: OperationalTarget;
   status:
     | "queued"
@@ -544,6 +544,14 @@ export interface DNSOperationalCommand {
       status: "succeeded" | "failed";
       errorCode?: string;
     }[];
+    hostFilterResult?: {
+      matched: boolean;
+      reason?: string;
+      rules: { text: string; filterListId: number }[];
+      serviceName?: string;
+      canonicalName?: string;
+      ipAddresses?: string[];
+    };
     observationStatus?: "not_run" | "succeeded" | "failed";
     observationSnapshotId?: string;
     observationErrorCode?: string;

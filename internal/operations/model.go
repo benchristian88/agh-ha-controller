@@ -10,8 +10,9 @@ import (
 type Command string
 
 const (
-	TestUpstreamDNS Command = "test_upstream_dns"
-	ClearDNSCache   Command = "clear_dns_cache"
+	TestUpstreamDNS   Command = "test_upstream_dns"
+	TestHostFiltering Command = "test_host_filtering"
+	ClearDNSCache     Command = "clear_dns_cache"
 
 	ClearDNSCacheConfirmation = "CLEAR_DNS_CACHE"
 )
@@ -37,6 +38,26 @@ type ResolverResult struct {
 	ErrorCode  string `json:"errorCode,omitempty"`
 }
 
+type HostFilterInput struct {
+	Hostname  string `json:"hostname"`
+	Client    string `json:"client,omitempty"`
+	QueryType string `json:"queryType,omitempty"`
+}
+
+type MatchedRule struct {
+	Text         string `json:"text"`
+	FilterListID int64  `json:"filterListId"`
+}
+
+type HostFilterResult struct {
+	Matched       bool          `json:"matched"`
+	Reason        string        `json:"reason,omitempty"`
+	Rules         []MatchedRule `json:"rules"`
+	ServiceName   string        `json:"serviceName,omitempty"`
+	CanonicalName string        `json:"canonicalName,omitempty"`
+	IPAddresses   []string      `json:"ipAddresses,omitempty"`
+}
+
 type ExcludedNode struct {
 	NodeID    string `json:"nodeId"`
 	NodeName  string `json:"nodeName"`
@@ -44,18 +65,19 @@ type ExcludedNode struct {
 }
 
 type NodeResult struct {
-	ID                    string           `json:"id"`
-	NodeID                string           `json:"nodeId"`
-	NodeName              string           `json:"nodeName"`
-	Position              int              `json:"position"`
-	Status                string           `json:"status"`
-	ErrorCode             string           `json:"errorCode,omitempty"`
-	ResolverResults       []ResolverResult `json:"upstreamResults,omitempty"`
-	ObservationStatus     string           `json:"observationStatus,omitempty"`
-	ObservationSnapshotID string           `json:"observationSnapshotId,omitempty"`
-	ObservationErrorCode  string           `json:"observationErrorCode,omitempty"`
-	StartedAt             *time.Time       `json:"startedAt,omitempty"`
-	CompletedAt           *time.Time       `json:"completedAt,omitempty"`
+	ID                    string            `json:"id"`
+	NodeID                string            `json:"nodeId"`
+	NodeName              string            `json:"nodeName"`
+	Position              int               `json:"position"`
+	Status                string            `json:"status"`
+	ErrorCode             string            `json:"errorCode,omitempty"`
+	ResolverResults       []ResolverResult  `json:"upstreamResults,omitempty"`
+	HostFilterResult      *HostFilterResult `json:"hostFilterResult,omitempty"`
+	ObservationStatus     string            `json:"observationStatus,omitempty"`
+	ObservationSnapshotID string            `json:"observationSnapshotId,omitempty"`
+	ObservationErrorCode  string            `json:"observationErrorCode,omitempty"`
+	StartedAt             *time.Time        `json:"startedAt,omitempty"`
+	CompletedAt           *time.Time        `json:"completedAt,omitempty"`
 }
 
 type Operation struct {
@@ -81,6 +103,7 @@ type Operation struct {
 
 type Executor interface {
 	TestUpstreamDNS(context.Context, domain.NodeProbeRequest, UpstreamInput) ([]ResolverResult, error)
+	TestHostFiltering(context.Context, domain.NodeProbeRequest, HostFilterInput) (HostFilterResult, error)
 	ClearDNSCache(context.Context, domain.NodeProbeRequest) error
 }
 
