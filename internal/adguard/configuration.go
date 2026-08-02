@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
@@ -679,17 +680,64 @@ func (r *ConfigurationReader) TestUpstreamDNS(ctx context.Context, request domai
 	}
 	results := make([]operations.ResolverResult, 0, len(input.UpstreamDNS))
 	for index, upstream := range input.UpstreamDNS {
-		value, ok := operationalUpstreamStatus(response, upstream)
+		statuses, ok := operationalUpstreamStatuses(response, upstream)
 		if !ok {
 			return nil, domain.NewError(domain.ErrorNodeResponse, "the node upstream test response omitted a requested resolver")
 		}
+		if len(statuses) == 0 {
+			continue
+		}
 		result := operations.ResolverResult{ResolverID: fmt.Sprintf("upstream-%d", index+1), Status: "succeeded"}
-		if strings.TrimSpace(value) != "OK" {
-			result.Status, result.ErrorCode = "failed", "UPSTREAM_TEST_FAILED"
+		for _, status := range statuses {
+			if strings.TrimSpace(status) != "OK" {
+				result.Status, result.ErrorCode = "failed", "UPSTREAM_TEST_FAILED"
+				break
+			}
 		}
 		results = append(results, result)
 	}
 	return results, nil
+}
+
+func operationalUpstreamStatuses(response map[string]string, requested string) (statuses []string, ok bool) {
+	candidates := operationalResolverCandidates(requested)
+	if len(candidates) == 0 {
+		return nil, true
+	}
+	statuses = make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		status, found := operationalUpstreamStatus(response, candidate)
+		if !found {
+			if len(candidates) == 1 && strings.HasPrefix(strings.ToLower(candidate), "sdns://") && len(response) > 0 {
+				statuses = statuses[:0]
+				for _, returnedStatus := range response {
+					statuses = append(statuses, returnedStatus)
+				}
+				return statuses, true
+			}
+			return nil, false
+		}
+		statuses = append(statuses, status)
+	}
+	return statuses, true
+}
+
+func operationalResolverCandidates(value string) []string {
+	value = strings.TrimSpace(value)
+	if value == "" || strings.HasPrefix(value, "#") {
+		return nil
+	}
+	if strings.HasPrefix(value, "[/") {
+		closingBracket := strings.Index(value, "]")
+		if closingBracket >= 0 {
+			resolvers := strings.TrimSpace(value[closingBracket+1:])
+			if resolvers == "" || resolvers == "#" {
+				return nil
+			}
+			return strings.Fields(resolvers)
+		}
+	}
+	return []string{value}
 }
 
 func operationalUpstreamStatus(response map[string]string, requested string) (status string, ok bool) {
@@ -707,11 +755,20 @@ func operationalUpstreamStatus(response map[string]string, requested string) (st
 
 func canonicalOperationalUpstream(value string) string {
 	value = strings.TrimSpace(value)
+	if !strings.Contains(value, "://") {
+		return canonicalPlainOperationalUpstream(value)
+	}
 	parsed, err := url.Parse(value)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return value
 	}
 	parsed.Scheme = strings.ToLower(parsed.Scheme)
+	if parsed.Scheme == "sdns" {
+		return value
+	}
+	if parsed.Scheme == "h3" {
+		parsed.Scheme = "https"
+	}
 	parsed.User = nil
 	hostname := strings.ToLower(parsed.Hostname())
 	port := parsed.Port()
@@ -726,6 +783,29 @@ func canonicalOperationalUpstream(value string) string {
 		parsed.Host += ":" + port
 	}
 	return parsed.String()
+}
+
+func canonicalPlainOperationalUpstream(value string) string {
+	hostname, port, err := net.SplitHostPort(value)
+	if err != nil {
+		if address, parseErr := netip.ParseAddr(value); parseErr == nil {
+			hostname = address.String()
+		} else {
+			hostname = value
+		}
+		port = ""
+	}
+	hostname = strings.ToLower(hostname)
+	if port == "53" {
+		port = ""
+	}
+	if strings.Contains(hostname, ":") {
+		hostname = "[" + strings.Trim(hostname, "[]") + "]"
+	}
+	if port != "" {
+		hostname += ":" + port
+	}
+	return "udp://" + hostname
 }
 
 func defaultUpstreamPort(scheme string) string {

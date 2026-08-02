@@ -298,8 +298,9 @@ tr:last-child td { border-bottom: 0; }
 .dns-command-targets { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--aghha-space-4); margin-top: var(--aghha-space-5); }
 .dns-command-targets label { display: grid; gap: var(--aghha-space-2); }
 .dns-command-result { margin-bottom: var(--aghha-space-5); padding: var(--aghha-space-5); border: 1px solid var(--aghha-border); border-radius: var(--aghha-radius-lg); background: var(--aghha-surface-raised); }
-.dns-command-result header { display: flex; align-items: center; gap: var(--aghha-space-3); }
+.dns-command-result header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--aghha-space-3); }
 .dns-command-result header h2 { margin: 0; font-size: 1rem; }
+.dns-command-result__dismiss { margin-left: auto; }
 .tag-multi-select { display: grid; gap: var(--aghha-space-3); margin: 0; }
 .tag-multi-select__selected, .client-tag-summary { display: flex; flex-wrap: wrap; gap: var(--aghha-space-2); align-items: center; }
 .tag-chip { display: inline-flex; align-items: center; gap: var(--aghha-space-1); width: fit-content; max-width: 220px; padding: 4px 9px; border: 1px solid var(--aghha-border); border-radius: var(--aghha-radius-pill); background: var(--aghha-info-soft); color: var(--aghha-info); font-size: .75rem; overflow-wrap: anywhere; }

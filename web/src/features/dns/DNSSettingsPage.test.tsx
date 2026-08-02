@@ -565,7 +565,7 @@ describe("DNS Settings", () => {
     expect(await screen.findByText("DNS cache clear result")).not.toBeNull();
   });
 
-  it("restores the last durable command result after remount", async () => {
+  it("restores failed command results and lets the operator dismiss them", async () => {
     mockLoad();
     window.sessionStorage.setItem(
       `aghha-dns-operation:${cluster.id}`,
@@ -577,7 +577,7 @@ describe("DNS Settings", () => {
       clusterName: cluster.name,
       command: "test_upstream_dns",
       target: { scope: "node", nodeId: primary.id },
-      status: "succeeded",
+      status: "failed",
       requestId: "request-restored",
       requestedAt: "2026-08-02T00:00:00Z",
       completedAt: "2026-08-02T00:00:01Z",
@@ -588,15 +588,59 @@ describe("DNS Settings", () => {
           nodeId: primary.id,
           nodeName: primary.name,
           position: 1,
+          status: "failed",
+          errorCode: "NODE_UNREACHABLE",
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<DNSSettingsPage cluster={cluster} />);
+    expect(await screen.findByText("Upstream test result")).not.toBeNull();
+    expect(screen.getAllByText(/NODE_UNREACHABLE/).length).toBeGreaterThan(0);
+    expect(read).toHaveBeenCalledWith("operation-restored");
+    await user.click(screen.getByRole("button", { name: "Dismiss result" }));
+    expect(screen.queryByText("Upstream test result")).toBeNull();
+    expect(
+      window.sessionStorage.getItem(`aghha-dns-operation:${cluster.id}`),
+    ).toBeNull();
+  });
+
+  it("does not restore a completed successful upstream test", async () => {
+    mockLoad();
+    window.sessionStorage.setItem(
+      `aghha-dns-operation:${cluster.id}`,
+      JSON.stringify({ id: "operation-succeeded", upstreams: ["1.1.1.1"] }),
+    );
+    const read = vi.spyOn(api, "dnsOperation").mockResolvedValue({
+      id: "operation-succeeded",
+      clusterId: cluster.id,
+      clusterName: cluster.name,
+      command: "test_upstream_dns",
+      target: { scope: "node", nodeId: primary.id },
+      status: "succeeded",
+      requestId: "request-succeeded",
+      requestedAt: "2026-08-02T00:00:00Z",
+      completedAt: "2026-08-02T00:00:01Z",
+      excludedNodes: [],
+      nodeResults: [
+        {
+          id: "result-succeeded",
+          nodeId: primary.id,
+          nodeName: primary.name,
+          position: 1,
           status: "succeeded",
           upstreamResults: [{ resolverId: "upstream-1", status: "succeeded" }],
         },
       ],
     });
     render(<DNSSettingsPage cluster={cluster} />);
-    expect(await screen.findByText("Upstream test result")).not.toBeNull();
-    expect(screen.getByText("1.1.1.1: succeeded")).not.toBeNull();
-    expect(read).toHaveBeenCalledWith("operation-restored");
+    await waitFor(() =>
+      expect(read).toHaveBeenCalledWith("operation-succeeded"),
+    );
+    expect(screen.queryByText("Upstream test result")).toBeNull();
+    expect(
+      window.sessionStorage.getItem(`aghha-dns-operation:${cluster.id}`),
+    ).toBeNull();
   });
 
   it("renders mobile and themed semantic states plus loading, retryable error, empty, and unsupported drafts", async () => {

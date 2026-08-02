@@ -314,13 +314,46 @@ func TestDNSOperationalCommandsMapSafeResultsAndExactPaths(t *testing.T) {
 	}
 }
 
-func TestOperationalUpstreamStatusMatchesAdGuardCanonicalDoHAddress(t *testing.T) {
-	status, ok := operationalUpstreamStatus(
-		map[string]string{"https://dns10.quad9.net:443/dns-query": "OK"},
-		"https://dns10.quad9.net/dns-query",
-	)
-	if !ok || status != "OK" {
-		t.Fatalf("status=%q ok=%t", status, ok)
+func TestOperationalUpstreamStatusMatchesAdGuardCanonicalAddresses(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		requested string
+		returned  string
+	}{
+		{name: "plain ipv4", requested: "192.168.5.3", returned: "192.168.5.3:53"},
+		{name: "plain ipv6", requested: "2a10:50c0::1:ff", returned: "[2a10:50c0::1:ff]:53"},
+		{name: "plain explicit port", requested: "94.140.14.140:53", returned: "94.140.14.140:53"},
+		{name: "udp hostname", requested: "udp://unfiltered.adguard-dns.com", returned: "unfiltered.adguard-dns.com:53"},
+		{name: "tcp", requested: "tcp://94.140.14.140", returned: "tcp://94.140.14.140:53"},
+		{name: "tcp ipv6", requested: "tcp://[2a10:50c0::1:ff]", returned: "tcp://[2a10:50c0::1:ff]:53"},
+		{name: "tls", requested: "tls://unfiltered.adguard-dns.com", returned: "tls://unfiltered.adguard-dns.com:853"},
+		{name: "quad9 doh", requested: "https://dns10.quad9.net/dns-query", returned: "https://dns10.quad9.net:443/dns-query"},
+		{name: "cloudflare gateway doh", requested: "https://ky7ror94zq.cloudflare-gateway.com/dns-query", returned: "https://ky7ror94zq.cloudflare-gateway.com:443/dns-query"},
+		{name: "http3", requested: "h3://unfiltered.adguard-dns.com/dns-query", returned: "https://unfiltered.adguard-dns.com:443/dns-query"},
+		{name: "quic", requested: "quic://unfiltered.adguard-dns.com", returned: "quic://unfiltered.adguard-dns.com:853"},
+		{name: "stamp", requested: "sdns://AQcAAAAAAAAAEzE5Mi4wLjIuMTo1NDQz", returned: "sdns://AQcAAAAAAAAAEzE5Mi4wLjIuMTo1NDQz"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			status, ok := operationalUpstreamStatus(map[string]string{test.returned: "OK"}, test.requested)
+			if !ok || status != "OK" {
+				t.Fatalf("status=%q ok=%t", status, ok)
+			}
+		})
+	}
+}
+
+func TestOperationalUpstreamStatusesMatchDomainSpecificAndExpandedStampResults(t *testing.T) {
+	statuses, ok := operationalUpstreamStatuses(map[string]string{
+		"94.140.14.140:53":     "OK",
+		"[2a10:50c0::1:ff]:53": "OK",
+	}, "[/example.local/]94.140.14.140 2a10:50c0::1:ff")
+	if !ok || len(statuses) != 2 || statuses[0] != "OK" || statuses[1] != "OK" {
+		t.Fatalf("statuses=%#v ok=%t", statuses, ok)
+	}
+
+	statuses, ok = operationalUpstreamStatuses(map[string]string{"https://stamp.example:443/dns-query": "OK"}, "sdns://opaque-stamp")
+	if !ok || len(statuses) != 1 || statuses[0] != "OK" {
+		t.Fatalf("stamp statuses=%#v ok=%t", statuses, ok)
 	}
 }
 

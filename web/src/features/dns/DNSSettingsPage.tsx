@@ -137,7 +137,18 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
             await new Promise((resolve) => window.setTimeout(resolve, 500));
             result = await api.dnsOperation(value.id as string);
           }
-          if (!cancelled) setCommandResult(result);
+          if (!cancelled) {
+            if (
+              result.command === "test_upstream_dns" &&
+              result.status === "succeeded"
+            ) {
+              window.sessionStorage.removeItem(
+                `aghha-dns-operation:${cluster.id}`,
+              );
+            } else {
+              setCommandResult(result);
+            }
+          }
         } catch {
           window.sessionStorage.removeItem(`aghha-dns-operation:${cluster.id}`);
         }
@@ -291,6 +302,9 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
         result = await api.dnsOperation(result.id);
         setCommandResult(result);
       }
+      if (command === "test" && result.status === "succeeded") {
+        window.sessionStorage.removeItem(`aghha-dns-operation:${cluster.id}`);
+      }
       if (
         command === "cache" &&
         result.nodeResults.some((item) => item.status === "succeeded")
@@ -303,6 +317,12 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
     } finally {
       setCommandBusy(false);
     }
+  }
+
+  function dismissCommandResult() {
+    setCommandResult(undefined);
+    setCommandUpstreams([]);
+    window.sessionStorage.removeItem(`aghha-dns-operation:${cluster.id}`);
   }
 
   const cacheToggleMissing = missingFeature("cache_toggle");
@@ -391,6 +411,7 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
             <CommandResultPanel
               operation={commandResult}
               upstreams={commandUpstreams}
+              onDismiss={dismissCommandResult}
             />
           )}
 
@@ -982,9 +1003,11 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
 function CommandResultPanel({
   operation,
   upstreams,
+  onDismiss,
 }: {
   operation: DNSOperationalCommand;
   upstreams: string[];
+  onDismiss: () => void;
 }) {
   const pending =
     operation.status === "queued" || operation.status === "running";
@@ -1025,6 +1048,15 @@ function CommandResultPanel({
               ? "Upstream test result"
               : "DNS cache clear result"}
           </h2>
+          {!pending && (
+            <button
+              type="button"
+              className="button button--secondary dns-command-result__dismiss"
+              onClick={onDismiss}
+            >
+              Dismiss result
+            </button>
+          )}
         </header>
         <ul className="compact-list">
           {operation.nodeResults.map((node) => (
