@@ -1263,11 +1263,18 @@ ClickHouse remains a deferred option if measured volume and retention requiremen
 ### HA management
 
 - Nodes
-- Configuration
+- Configuration Control
 - Change History
 - Deployments
 - Drift
 - Log Forwarders
+
+The five implemented HA Controller pages follow distinct lifecycle questions:
+Nodes represents managed infrastructure; Configuration Control represents the
+forward-looking mutable draft and publication decision; Deployments represents
+execution events; Drift represents current convergence; Change History
+represents immutable configuration history. Shared APIs and components do not
+justify duplicate task pages.
 
 ### System
 

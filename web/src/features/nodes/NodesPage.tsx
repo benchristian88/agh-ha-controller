@@ -1,18 +1,47 @@
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
 import { StatusBadge } from "../../components/StatusBadge";
 import { api, type NodePayload } from "../../lib/api";
-import type { CertificatePolicy, Cluster, Node } from "../../lib/types";
+import type {
+  CapabilityProfile,
+  CertificatePolicy,
+  Cluster,
+  ConfigurationRevision,
+  ConfigurationSnapshot,
+  DriftEvent,
+  Node,
+} from "../../lib/types";
 
 export function NodesPage({ cluster }: { cluster: Cluster }) {
   const [nodes, setNodes] = useState<Node[]>();
+  const [capabilities, setCapabilities] = useState<CapabilityProfile[]>([]);
+  const [snapshots, setSnapshots] = useState<ConfigurationSnapshot[]>([]);
+  const [revisions, setRevisions] = useState<ConfigurationRevision[]>([]);
+  const [drift, setDrift] = useState<DriftEvent[]>([]);
   const [error, setError] = useState<unknown>();
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<Node>();
 
   const load = useCallback(async () => {
     try {
-      setNodes((await api.nodes(cluster.id)).items);
+      const [nodeResult, inventory, revisionResult, driftResult] =
+        await Promise.all([
+          api.nodes(cluster.id),
+          api.configurationInventory(cluster.id),
+          api.configurationRevisions(cluster.id),
+          api.driftEvents(cluster.id),
+        ]);
+      setNodes(nodeResult.items);
+      setCapabilities(inventory.capabilities);
+      setSnapshots(inventory.snapshots);
+      setRevisions(revisionResult.items);
+      setDrift(driftResult.items);
       setError(undefined);
     } catch (caught) {
       setError(caught);
@@ -22,6 +51,23 @@ export function NodesPage({ cluster }: { cluster: Cluster }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const revisionNumbers = useMemo(
+    () =>
+      new Map(
+        revisions.map((revision) => [revision.id, revision.revisionNumber]),
+      ),
+    [revisions],
+  );
+  const openDriftNodes = useMemo(
+    () =>
+      new Set(
+        drift
+          .filter((item) => item.status === "open")
+          .map((item) => item.nodeId),
+      ),
+    [drift],
+  );
 
   return (
     <>
@@ -75,84 +121,204 @@ export function NodesPage({ cluster }: { cluster: Cluster }) {
         </EmptyState>
       )}
       {nodes !== undefined && nodes.length > 0 && (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Node</th>
-                <th>Status</th>
-                <th>Version</th>
-                <th>Convergence</th>
-                <th>Last seen</th>
-                <th>
-                  <span className="visually-hidden">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {nodes.map((node) => (
-                <tr key={node.id}>
-                  <td>
-                    <strong>{node.name}</strong>
-                    <span className="table-subtitle">{node.baseUrl}</span>
-                  </td>
-                  <td>
-                    <StatusBadge status={node.healthStatus} />
-                  </td>
-                  <td>
-                    {node.version ?? "—"}
-                    <span className="table-subtitle">
-                      {node.compatibilityStatus}
-                    </span>
-                  </td>
-                  <td>
-                    {node.maintenanceMode
-                      ? "Maintenance"
-                      : node.convergenceStatus.replaceAll("_", " ")}
-                  </td>
-                  <td>{formatTime(node.lastSeenAt)}</td>
-                  <td>
-                    <div className="row-actions">
-                      <button
-                        type="button"
-                        className="button button--quiet"
-                        onClick={() => void maintenance(node)}
-                      >
-                        {node.maintenanceMode
-                          ? "Leave maintenance"
-                          : "Maintenance"}
-                      </button>
-                      <button
-                        type="button"
-                        className="button button--quiet"
-                        onClick={() => {
-                          setEditing(node);
-                          setShowAdd(false);
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="button button--quiet"
-                        onClick={() => void test(node)}
-                      >
-                        Test
-                      </button>
-                      <button
-                        type="button"
-                        className="button button--danger"
-                        onClick={() => void remove(node)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </td>
+        <>
+          <section
+            className="convergence-summary"
+            aria-label="Cluster node summary"
+          >
+            <div>
+              <StatusBadge
+                status={
+                  nodes.every(
+                    (node) =>
+                      node.healthStatus === "healthy" ||
+                      node.healthStatus === "disabled",
+                  )
+                    ? "healthy"
+                    : "degraded"
+                }
+              />
+              <strong>
+                {nodes.filter((node) => node.healthStatus === "healthy").length}{" "}
+                of {nodes.length} nodes healthy
+              </strong>
+            </div>
+            <dl>
+              <div>
+                <dt>Healthy</dt>
+                <dd>
+                  {
+                    nodes.filter((node) => node.healthStatus === "healthy")
+                      .length
+                  }
+                </dd>
+              </div>
+              <div>
+                <dt>Degraded</dt>
+                <dd>
+                  {
+                    nodes.filter(
+                      (node) => node.enabled && node.healthStatus === "unknown",
+                    ).length
+                  }
+                </dd>
+              </div>
+              <div>
+                <dt>Unreachable</dt>
+                <dd>
+                  {
+                    nodes.filter((node) => node.healthStatus === "unreachable")
+                      .length
+                  }
+                </dd>
+              </div>
+              <div>
+                <dt>Incompatible</dt>
+                <dd>
+                  {
+                    nodes.filter(
+                      (node) =>
+                        node.healthStatus === "incompatible" ||
+                        node.compatibilityStatus === "unsupported",
+                    ).length
+                  }
+                </dd>
+              </div>
+              <div>
+                <dt>Last observation</dt>
+                <dd>
+                  {latestTime(snapshots.map((snapshot) => snapshot.observedAt))}
+                </dd>
+              </div>
+            </dl>
+          </section>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Node</th>
+                  <th>Status</th>
+                  <th>Version</th>
+                  <th>Capabilities</th>
+                  <th>Active revision</th>
+                  <th>Drift</th>
+                  <th>Latency</th>
+                  <th>Last observation</th>
+                  <th>
+                    <span className="visually-hidden">Actions</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {nodes.map((node) => (
+                  <tr key={node.id}>
+                    <td>
+                      <strong>{node.name}</strong>
+                      <span className="table-subtitle">{node.baseUrl}</span>
+                    </td>
+                    <td>
+                      <StatusBadge status={node.healthStatus} />
+                    </td>
+                    <td>
+                      {node.version ?? "—"}
+                      <span className="table-subtitle">
+                        {node.compatibilityStatus}
+                      </span>
+                    </td>
+                    <td>
+                      {capabilityLabel(
+                        capabilities.find((item) => item.nodeId === node.id),
+                      )}
+                    </td>
+                    <td>
+                      {node.appliedRevisionId ? (
+                        <a
+                          href={`/ha/history?revisionId=${encodeURIComponent(node.appliedRevisionId)}#revision-detail`}
+                        >
+                          #
+                          {revisionNumbers.get(node.appliedRevisionId) ??
+                            "Unknown"}
+                        </a>
+                      ) : (
+                        "Not applied"
+                      )}
+                      <span className="table-subtitle">
+                        {node.maintenanceMode
+                          ? "maintenance"
+                          : node.convergenceStatus.replaceAll("_", " ")}
+                      </span>
+                    </td>
+                    <td>
+                      {openDriftNodes.has(node.id) ||
+                      node.convergenceStatus === "drifted" ? (
+                        <a href="/ha/drift">
+                          <StatusBadge status="drifted" />
+                        </a>
+                      ) : (
+                        <StatusBadge
+                          status={
+                            node.convergenceStatus === "converged"
+                              ? "converged"
+                              : "pending"
+                          }
+                        />
+                      )}
+                    </td>
+                    <td>
+                      {node.latencyMs === undefined
+                        ? "—"
+                        : `${node.latencyMs} ms`}
+                    </td>
+                    <td>
+                      {formatTime(
+                        snapshots.find(
+                          (snapshot) => snapshot.nodeId === node.id,
+                        )?.observedAt ?? node.lastPolledAt,
+                      )}
+                    </td>
+                    <td>
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="button button--quiet"
+                          onClick={() => void maintenance(node)}
+                        >
+                          {node.maintenanceMode
+                            ? "Leave maintenance"
+                            : "Maintenance"}
+                        </button>
+                        <button
+                          type="button"
+                          className="button button--quiet"
+                          onClick={() => {
+                            setEditing(node);
+                            setShowAdd(false);
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="button button--quiet"
+                          onClick={() => void test(node)}
+                        >
+                          Test
+                        </button>
+                        <button
+                          type="button"
+                          className="button button--danger"
+                          onClick={() => void remove(node)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </>
   );
@@ -368,4 +534,18 @@ function formatTime(value?: string): string {
   if (value === undefined) return "Never";
   const date = new Date(value);
   return Number.isNaN(date.valueOf()) ? "Unknown" : date.toLocaleString();
+}
+
+function latestTime(values: string[]): string {
+  const latest = values
+    .map((value) => new Date(value))
+    .filter((value) => !Number.isNaN(value.valueOf()))
+    .sort((left, right) => right.valueOf() - left.valueOf())[0];
+  return latest ? latest.toLocaleString() : "Never";
+}
+
+function capabilityLabel(profile?: CapabilityProfile): string {
+  if (!profile) return "Unknown";
+  const supported = Object.values(profile.features).filter(Boolean).length;
+  return `${profile.compatibility} · ${supported} features`;
 }

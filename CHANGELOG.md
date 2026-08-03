@@ -8,6 +8,12 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Added
 
+- Distinct HA Controller task pages: infrastructure-focused Nodes,
+  forward-looking Configuration Control, execution-focused Deployments,
+  convergence-focused Drift, and immutable Change History.
+- Shared structured semantic comparison presentation for snapshot, revision,
+  and desired-versus-observed contexts, plus explicit advanced adoption
+  ownership under Configuration Control.
 - Release 0.4.1 Phase 10 exact route/redirect and Deployments/Drift focus
   regressions, dedicated redacted Encryption coverage, Axe WCAG structural
   checks, and light/dark visual baselines at 320, 768, 1199, 1200, and 1440
@@ -32,6 +38,11 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Changed
 
+- Record Release 0.4 functional, Docker installation, and native/systemd
+  installation validation as completed by the operator on 3 August 2026.
+- Move revision history/comparison/rollback out of Configuration Control into
+  Change History, and separate deployment execution from continuing drift
+  state without changing backend contracts or lifecycle semantics.
 - Complete Phase 10 route, accessibility, visual, packaging, cleanup, and documentation hardening; preserve all compatibility redirects and desired-state safety boundaries.
 - Replace the superseded broad settings component with a dedicated redacted Encryption inventory page and move all remaining presentation colours to semantic tokens.
 - Default controller, image, installer, and web version is 0.4.1.
@@ -42,8 +53,9 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Fixed
 
-- Make `/ha/drift` focus the drift section and `/ha/deployments` focus the
-  deployment section while retaining the shared control-plane implementation.
+- Remove the remaining accidental same-page behavior for
+  `/ha/configuration`/`/ha/history` and `/ha/deployments`/`/ha/drift` while
+  preserving canonical routes, active navigation, redirects, and Not Found.
 - Raise light-theme semantic foreground contrast to WCAG AA token pairs and
   remove sidebar-era/raw presentation colour aliases.
 - Prevent the rewrites, persistent-clients, and DHCP static-lease editors from crashing on non-secure HTTP origins by using stable local row keys instead of the secure-context-only browser UUID API.

@@ -103,6 +103,18 @@ Save Draft
 
 8. Implement the change as Release 0.4.1 through staged migration rather than a big-bang rewrite.
 
+9. Keep the five HA Controller destinations as distinct task surfaces:
+
+- Nodes owns managed infrastructure, health, compatibility, and availability.
+- Configuration Control owns the mutable-draft approval, validation, publication, and advanced adoption workflow.
+- Deployments owns durable execution events and per-node verification results.
+- Drift owns current convergence incidents, policy, and restore/adopt/maintenance decisions.
+- Change History owns immutable revision history, semantic revision comparison, and deployment-based rollback.
+
+Shared comparison and status primitives may be reused, but canonical navigation
+items must not render the same page merely because their backend data comes
+from the same control-plane service.
+
 ## Consequences
 
 ### Positive
@@ -113,6 +125,7 @@ Save Draft
 - Reusable components for Releases 0.5 and 0.6.
 - Lower risk of future large UI rewrite.
 - Stronger distinction between routine settings and HA lifecycle control.
+- Clear forward-looking, execution, convergence, infrastructure, and historical ownership within HA Controller.
 
 ### Negative
 

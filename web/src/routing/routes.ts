@@ -11,7 +11,8 @@ export type RouteResolution =
   | { kind: "dashboard" }
   | { kind: "nodes" }
   | { kind: "configuration" }
-  | { kind: "control-plane"; focus: "deployments" | "drift" }
+  | { kind: "deployments" }
+  | { kind: "drift" }
   | { kind: "history" }
   | { kind: "blocked-services" }
   | { kind: "blocklists" }
@@ -150,9 +151,9 @@ export function resolveRoute(pathname: string): RouteResolution {
     case "/ha/configuration":
       return { kind: "configuration" };
     case "/ha/deployments":
-      return { kind: "control-plane", focus: "deployments" };
+      return { kind: "deployments" };
     case "/ha/drift":
-      return { kind: "control-plane", focus: "drift" };
+      return { kind: "drift" };
     case "/ha/history":
       return { kind: "history" };
     case "/filters/blocklists":

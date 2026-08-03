@@ -40,7 +40,7 @@ h3 { font-size: 1rem; }
 .eyebrow, .nav-label { color: var(--text-muted); font-size: .72rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; margin-bottom: 6px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
-.app-shell { min-height: 100vh; }
+.app-shell { min-width: 0; min-height: 100vh; overflow-x: hidden; }
 .app-header { position: sticky; top: 0; z-index: 30; min-height: 64px; display: flex; align-items: center; gap: 14px; padding: 8px 18px; background: var(--bg-header); border-bottom: 1px solid var(--border); }
 .brand { flex: 0 0 auto; display: flex; gap: 9px; align-items: center; text-decoration: none; }
 .brand-name { line-height: 1.05; }
@@ -75,7 +75,7 @@ h3 { font-size: 1rem; }
 .context-deployment { min-width: 0; margin-left: auto; }
 .context-deployment a { color: var(--info); text-decoration: none; overflow: hidden; text-overflow: ellipsis; }
 .context-deployment a:hover { text-decoration: underline; }
-.content { padding: 26px; }
+.content { min-width: 0; padding: 26px; }
 .page-container { width: 100%; margin-inline: auto; }
 .page-container--narrow { max-width: 640px; }
 .page-container--standard { max-width: 960px; }
@@ -389,7 +389,8 @@ th[data-align="right"], td[data-align="right"] { text-align: right; }
 .entity-badge--active { border-color: var(--aghha-success); color: var(--aghha-success); background: var(--aghha-success-soft); }
 .entity-badge .status { padding-block: 2px; }
 .convergence-summary { padding: var(--aghha-space-4); border: 1px solid var(--aghha-border); border-radius: var(--aghha-radius-card); background: var(--aghha-card); }
-.convergence-summary > div { display: flex; align-items: center; gap: var(--aghha-space-3); }
+.convergence-summary > div { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--aghha-space-3); }
+.convergence-summary > div strong { min-width: 0; overflow-wrap: anywhere; }
 .convergence-summary dl { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--aghha-space-2); margin: var(--aghha-space-4) 0 0; }
 .convergence-summary dl div { padding: var(--aghha-space-2); border-radius: var(--aghha-radius-control); background: var(--aghha-page-subtle); }
 .convergence-summary dt { color: var(--aghha-text-muted); font-size: .7rem; }

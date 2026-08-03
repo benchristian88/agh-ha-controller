@@ -118,12 +118,23 @@ It should provide:
 - validation status;
 - links to authoring pages;
 - active revision summary;
-- immutable revision history;
-- revision comparison;
 - observation and import/adoption workflow;
 - publication;
 - deployment preview;
-- rollback.
+- links to Change History and Deployments.
 
 The current implementation removes stale schema-v1 wording and the narrow
 duplicate DNS/filter editor.
+
+## HA Controller page responsibilities
+
+- `/ha/nodes`: managed node identity, health, compatibility, availability,
+  observation freshness, applied revision, and convergence indicators.
+- `/ha/configuration`: forward-looking draft review, validation, publication,
+  and advanced observation/import/adoption only.
+- `/ha/deployments`: durable execution history, active progress, ordered
+  per-node tasks, safe errors, cancellation, and verification.
+- `/ha/drift`: current convergence summary, semantic desired-versus-observed
+  incidents, policy, restore, adopt, and maintenance.
+- `/ha/history`: immutable revision history/detail/comparison and deployment of
+  a historical revision as rollback.

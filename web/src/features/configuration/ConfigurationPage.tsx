@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { StructuredDiff } from "../../components/DataDisplay";
 import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
 import { api } from "../../lib/api";
 import type {
@@ -20,16 +21,14 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
   const [draft, setDraft] = useState<ConfigurationDraft>();
   const [revisions, setRevisions] = useState<ConfigurationRevision[]>([]);
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
+  const [validationRun, setValidationRun] = useState(false);
   const [summary, setSummary] = useState("");
-  const [revisionLeft, setRevisionLeft] = useState("");
-  const [revisionRight, setRevisionRight] = useState("");
-  const [revisionDifferences, setRevisionDifferences] =
-    useState<ConfigurationDifference[]>();
   const [left, setLeft] = useState("");
   const [right, setRight] = useState("");
   const [differences, setDifferences] = useState<ConfigurationDifference[]>();
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState("");
+  const adoptionDetails = useRef<HTMLDetailsElement>(null);
   const nodeNames = useMemo(
     () => new Map((nodes ?? []).map((node) => [node.id, node.name])),
     [nodes],
@@ -55,6 +54,13 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    if (
+      window.location.hash === "#advanced-adoption" &&
+      adoptionDetails.current
+    )
+      adoptionDetails.current.open = true;
+  }, []);
 
   async function observe(node: Node) {
     setBusy(node.id);
@@ -73,6 +79,7 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
     try {
       const result = await api.validateConfigurationDraft(cluster.id);
       setIssues(result.issues);
+      setValidationRun(true);
       setError(undefined);
     } catch (caught) {
       setError(caught);
@@ -90,52 +97,8 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
         summary,
       );
       setSummary("");
+      setValidationRun(false);
       await load();
-    } catch (caught) {
-      setError(caught);
-    } finally {
-      setBusy("");
-    }
-  }
-  async function deployRevision(
-    revision: ConfigurationRevision,
-    rollback: boolean,
-  ) {
-    const action = rollback ? "roll back to" : "deploy";
-    setBusy(revision.id);
-    try {
-      const preview = await api.deploymentPreview(cluster.id, revision.id);
-      setIssues(preview.issues);
-      if (!preview.valid) return;
-      const changed =
-        preview.differences.length === 0
-          ? "no semantic changes"
-          : `${preview.differences.length} semantic changes`;
-      if (
-        !window.confirm(
-          `${action} revision ${revision.revisionNumber} (${changed}) to ${preview.nodes.length} nodes using sequential stop-on-failure deployment? Every target is revalidated before the first node changes.`,
-        )
-      )
-        return;
-      if (rollback) await api.rollback(cluster.id, revision.id);
-      else await api.startDeployment(cluster.id, revision.id);
-      window.location.assign("/ha/deployments");
-    } catch (caught) {
-      setError(caught);
-    } finally {
-      setBusy("");
-    }
-  }
-  async function compareRevisions() {
-    if (!revisionLeft || !revisionRight) return;
-    setBusy("compare-revisions");
-    try {
-      const result = await api.compareConfigurationRevisions(
-        revisionLeft,
-        revisionRight,
-      );
-      setRevisionDifferences(result.differences);
-      setError(undefined);
     } catch (caught) {
       setError(caught);
     } finally {
@@ -172,6 +135,7 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
         ),
       );
       setIssues([]);
+      setValidationRun(false);
       setError(undefined);
     } catch (caught) {
       setError(caught);
@@ -220,7 +184,8 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
           <strong>Mutable draft v{draft.version}</strong>
           <br />
           Last saved {new Date(draft.updatedAt).toLocaleString()}. Saving does
-          not change a node; publishing creates an immutable revision.
+          not change a node; publishing creates an immutable revision. The
+          current draft read model does not retain a displayable updater name.
         </div>
       )}
       {draft !== undefined && draft.document.schemaVersion !== 2 && (
@@ -309,6 +274,21 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
                 </ul>
               </div>
             )}
+            {validationRun && issues.length === 0 && (
+              <div className="notice notice--success">
+                <strong>Draft is ready to publish</strong>
+                <p>
+                  Schema, cross-field, capability, target-node, and DHCP safety
+                  validation passed for{" "}
+                  {
+                    nodes.filter(
+                      (node) => node.enabled && !node.maintenanceMode,
+                    ).length
+                  }{" "}
+                  affected nodes.
+                </p>
+              </div>
+            )}
             <label>
               Revision summary
               <input
@@ -327,295 +307,190 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
                 ? "Publishing…"
                 : "Publish immutable revision"}
             </button>
-          </div>
-        </section>
-      )}
-      <section className="section-block">
-        <div className="section-heading">
-          <h2>Revision history</h2>
-          <small>{revisions.length} published</small>
-        </div>
-        {revisions.length === 0 ? (
-          <EmptyState title="No published revisions">
-            <p>
-              Import a node snapshot to create a draft, then validate and
-              publish it.
+            <p className="muted">
+              Publication will create revision #
+              {Math.max(
+                0,
+                ...revisions.map((revision) => revision.revisionNumber),
+              ) + 1}
+              . It will not deploy or activate that revision.
             </p>
-          </EmptyState>
-        ) : (
-          <>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Revision</th>
-                    <th>Summary</th>
-                    <th>Published</th>
-                    <th>State</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {revisions.map((revision) => (
-                    <tr key={revision.id}>
-                      <td>#{revision.revisionNumber}</td>
-                      <td>{revision.summary}</td>
-                      <td>{new Date(revision.createdAt).toLocaleString()}</td>
-                      <td>{revision.active ? "Active" : "Historical"}</td>
-                      <td>
-                        <button
-                          className="button button--secondary"
-                          type="button"
-                          disabled={busy !== ""}
-                          onClick={() =>
-                            void deployRevision(
-                              revision,
-                              Boolean(cluster.activeRevisionId) &&
-                                !revision.active,
-                            )
-                          }
-                        >
-                          {cluster.activeRevisionId && !revision.active
-                            ? "Rollback"
-                            : "Deploy"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="card form-stack">
-              <div className="form-grid">
-                <label>
-                  Earlier revision
-                  <select
-                    value={revisionLeft}
-                    onChange={(event) => setRevisionLeft(event.target.value)}
-                  >
-                    <option value="">Select…</option>
-                    {revisions.map((revision) => (
-                      <option key={revision.id} value={revision.id}>
-                        #{revision.revisionNumber} — {revision.summary}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Later revision
-                  <select
-                    value={revisionRight}
-                    onChange={(event) => setRevisionRight(event.target.value)}
-                  >
-                    <option value="">Select…</option>
-                    {revisions.map((revision) => (
-                      <option key={revision.id} value={revision.id}>
-                        #{revision.revisionNumber} — {revision.summary}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <button
-                className="button button--secondary"
-                type="button"
-                disabled={busy !== "" || !revisionLeft || !revisionRight}
-                onClick={() => void compareRevisions()}
-              >
-                Compare revisions
-              </button>
-              {revisionDifferences !== undefined &&
-                (revisionDifferences.length === 0 ? (
-                  <div className="notice notice--success">
-                    These revisions are semantically equal.
-                  </div>
-                ) : (
-                  <ul>
-                    {revisionDifferences.map((difference) => (
-                      <li
-                        key={`${difference.section}-${difference.field}-${JSON.stringify(difference.left)}-${JSON.stringify(difference.right)}`}
-                      >
-                        <strong>
-                          {difference.section} / {difference.field}
-                        </strong>
-                        : {difference.summary}
-                      </li>
-                    ))}
-                  </ul>
-                ))}
-            </div>
-          </>
-        )}
-      </section>
-      <section className="section-block" id="observations">
-        <div className="section-heading">
-          <h2>Nodes and capabilities</h2>
-          <small>Schema-v2 capability profiles and observations</small>
-        </div>
-        {nodes.length === 0 ? (
-          <EmptyState title="No nodes">
-            <p>Add a node before collecting configuration.</p>
-          </EmptyState>
-        ) : (
-          <div className="node-grid">
-            {nodes.map((node) => {
-              const capability = capabilities.find(
-                (item) => item.nodeId === node.id,
-              );
-              const snapshot = snapshots?.find(
-                (item) => item.nodeId === node.id,
-              );
-              return (
-                <article className="card" key={node.id}>
-                  <div className="node-card__top">
-                    <div>
-                      <h3>{node.name}</h3>
-                      <p className="muted">
-                        {node.version ?? "Version unknown"}
-                      </p>
-                    </div>
-                    <button
-                      className="button button--quiet"
-                      type="button"
-                      disabled={busy !== "" || !node.enabled}
-                      onClick={() => void observe(node)}
-                    >
-                      {busy === node.id ? "Reading…" : "Refresh"}
-                    </button>
-                  </div>
-                  <p>
-                    {snapshot
-                      ? `Last observation: ${snapshot.collectionStatus}`
-                      : "Not observed"}
-                  </p>
-                  {snapshot?.errorCode && (
-                    <p className="error-code">{snapshot.errorCode}</p>
-                  )}
-                  <div className="capability-list">
-                    <span>
-                      DNS: {capability?.features.dns ? "supported" : "unknown"}
-                    </span>
-                    <span>
-                      Filtering:{" "}
-                      {capability?.features.filtering ? "supported" : "unknown"}
-                    </span>
-                  </div>
-                  {capability?.warnings.map((warning) => (
-                    <div className="notice notice--warning" key={warning}>
-                      {warning}
-                    </div>
-                  ))}
-                </article>
-              );
-            })}
           </div>
-        )}
-      </section>
-      {(snapshots?.filter((item) => item.collectionStatus === "succeeded")
-        .length ?? 0) > 0 && (
-        <section className="section-block">
-          <h2>Compare snapshots</h2>
-          <div className="card form-stack">
-            <div className="form-grid">
-              <label>
-                Left snapshot
-                <select value={left} onChange={(e) => setLeft(e.target.value)}>
-                  <option value="">Select…</option>
-                  {snapshots
-                    ?.filter((s) => s.document)
-                    .map((s) => (
-                      <option value={s.id} key={s.id}>
-                        {nodeNames.get(s.nodeId)} —{" "}
-                        {new Date(s.observedAt).toLocaleString()}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label>
-                Right snapshot
-                <select
-                  value={right}
-                  onChange={(e) => setRight(e.target.value)}
-                >
-                  <option value="">Select…</option>
-                  {snapshots
-                    ?.filter((s) => s.document)
-                    .map((s) => (
-                      <option value={s.id} key={s.id}>
-                        {nodeNames.get(s.nodeId)} —{" "}
-                        {new Date(s.observedAt).toLocaleString()}
-                      </option>
-                    ))}
-                </select>
-              </label>
-            </div>
-            <button
-              className="button"
-              type="button"
-              disabled={!left || !right || busy !== ""}
-              onClick={() => void compare()}
-            >
-              Compare
-            </button>
-          </div>
-          {differences !== undefined &&
-            (differences.length === 0 ? (
-              <div className="notice notice--success">
-                The supported configuration is semantically equal.
-              </div>
-            ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Section</th>
-                      <th>Field</th>
-                      <th>Scope</th>
-                      <th>Left</th>
-                      <th>Right</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {differences.map((diff) => (
-                      <tr key={`${diff.section}-${diff.field}-${diff.scope}`}>
-                        <td>{diff.section}</td>
-                        <td>{diff.field}</td>
-                        <td>{diff.scope.replaceAll("_", " ")}</td>
-                        <td>
-                          <code>{formatValue(diff.left)}</code>
-                        </td>
-                        <td>
-                          <code>{formatValue(diff.right)}</code>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
         </section>
       )}
-      <section className="section-block">
-        <h2>Import into draft</h2>
-        <p className="muted">
-          Review a successful snapshot above, then explicitly import it. Import
-          replaces only the mutable inventory draft.
-        </p>
-        <div className="row-actions row-actions--start">
-          {snapshots
-            ?.filter((s) => s.document)
-            .map((snapshot) => (
-              <button
-                type="button"
-                className="button button--secondary"
-                disabled={busy !== ""}
-                key={snapshot.id}
-                onClick={() => void importSnapshot(snapshot)}
-              >
-                Import {nodeNames.get(snapshot.nodeId)}
-              </button>
-            ))}
-        </div>
+      <section className="section-block" id="advanced-adoption">
+        <details ref={adoptionDetails}>
+          <summary>
+            <strong>Advanced configuration adoption</strong>
+          </summary>
+          <div className="form-stack">
+            <p className="muted">
+              Observe nodes, compare supported live configuration, and
+              explicitly adopt a reviewed snapshot into the mutable draft. These
+              actions never publish or deploy.
+            </p>
+            <section className="section-block" id="observations">
+              <div className="section-heading">
+                <h2>Nodes and capabilities</h2>
+                <small>Schema-v2 capability profiles and observations</small>
+              </div>
+              {nodes.length === 0 ? (
+                <EmptyState title="No nodes">
+                  <p>Add a node before collecting configuration.</p>
+                </EmptyState>
+              ) : (
+                <div className="node-grid">
+                  {nodes.map((node) => {
+                    const capability = capabilities.find(
+                      (item) => item.nodeId === node.id,
+                    );
+                    const snapshot = snapshots?.find(
+                      (item) => item.nodeId === node.id,
+                    );
+                    return (
+                      <article className="card" key={node.id}>
+                        <div className="node-card__top">
+                          <div>
+                            <h3>{node.name}</h3>
+                            <p className="muted">
+                              {node.version ?? "Version unknown"}
+                            </p>
+                          </div>
+                          <button
+                            className="button button--quiet"
+                            type="button"
+                            disabled={busy !== "" || !node.enabled}
+                            onClick={() => void observe(node)}
+                          >
+                            {busy === node.id ? "Reading…" : "Refresh"}
+                          </button>
+                        </div>
+                        <p>
+                          {snapshot
+                            ? `Last observation: ${snapshot.collectionStatus}`
+                            : "Not observed"}
+                        </p>
+                        {snapshot?.errorCode && (
+                          <p className="error-code">{snapshot.errorCode}</p>
+                        )}
+                        <div className="capability-list">
+                          <span>
+                            DNS:{" "}
+                            {capability?.features.dns ? "supported" : "unknown"}
+                          </span>
+                          <span>
+                            Filtering:{" "}
+                            {capability?.features.filtering
+                              ? "supported"
+                              : "unknown"}
+                          </span>
+                        </div>
+                        {capability?.warnings.map((warning) => (
+                          <div className="notice notice--warning" key={warning}>
+                            {warning}
+                          </div>
+                        ))}
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+            {(snapshots?.filter((item) => item.collectionStatus === "succeeded")
+              .length ?? 0) > 0 && (
+              <section className="section-block">
+                <h2>Compare snapshots</h2>
+                <div className="card form-stack">
+                  <div className="form-grid">
+                    <label>
+                      Left snapshot
+                      <select
+                        value={left}
+                        onChange={(e) => setLeft(e.target.value)}
+                      >
+                        <option value="">Select…</option>
+                        {snapshots
+                          ?.filter((s) => s.document)
+                          .map((s) => (
+                            <option value={s.id} key={s.id}>
+                              {nodeNames.get(s.nodeId)} —{" "}
+                              {new Date(s.observedAt).toLocaleString()}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <label>
+                      Right snapshot
+                      <select
+                        value={right}
+                        onChange={(e) => setRight(e.target.value)}
+                      >
+                        <option value="">Select…</option>
+                        {snapshots
+                          ?.filter((s) => s.document)
+                          .map((s) => (
+                            <option value={s.id} key={s.id}>
+                              {nodeNames.get(s.nodeId)} —{" "}
+                              {new Date(s.observedAt).toLocaleString()}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  </div>
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={!left || !right || busy !== ""}
+                    onClick={() => void compare()}
+                  >
+                    Compare
+                  </button>
+                </div>
+                {differences !== undefined &&
+                  (differences.length === 0 ? (
+                    <div className="notice notice--success">
+                      The supported configuration is semantically equal.
+                    </div>
+                  ) : (
+                    <StructuredDiff
+                      differences={differences.map((difference, index) => ({
+                        id: `${difference.section}-${difference.field}-${index}`,
+                        section: difference.section,
+                        field: difference.field,
+                        before: difference.left,
+                        after: difference.right,
+                        summary: difference.summary,
+                      }))}
+                      beforeLabel="Left snapshot"
+                      afterLabel="Right snapshot"
+                    />
+                  ))}
+              </section>
+            )}
+            <section className="section-block">
+              <h2>Import into draft</h2>
+              <p className="muted">
+                Review a successful snapshot above, then explicitly import it.
+                Import replaces only the mutable inventory draft.
+              </p>
+              <div className="row-actions row-actions--start">
+                {snapshots
+                  ?.filter((s) => s.document)
+                  .map((snapshot) => (
+                    <button
+                      type="button"
+                      className="button button--secondary"
+                      disabled={busy !== ""}
+                      key={snapshot.id}
+                      onClick={() => void importSnapshot(snapshot)}
+                    >
+                      Import {nodeNames.get(snapshot.nodeId)}
+                    </button>
+                  ))}
+              </div>
+            </section>
+          </div>
+        </details>
       </section>
     </>
   );
@@ -645,9 +520,4 @@ export function formatValidationIssue(
     return `${nodeName}: DNS bind addresses are missing or invalid. Refresh and import this node's latest successful snapshot, then review the shared draft again.`;
   }
   return `${nodeName}: ${issue.message}`;
-}
-
-function formatValue(value: unknown): string {
-  const text = JSON.stringify(value);
-  return text === undefined ? "—" : text;
 }

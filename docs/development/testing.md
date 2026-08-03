@@ -167,3 +167,22 @@ For every released schema:
 - Preserve data.
 - Start application.
 - Run smoke workflow.
+
+## 3 August 2026 HA responsibility separation
+
+The information-architecture split passed 195 frontend tests across 32 files,
+including exact distinct-route resolution, responsibility exclusions, enriched
+Nodes presentation, semantic diff contexts, and Axe structural WCAG A/AA checks
+for Configuration Control, Change History, Deployments, and Drift. TypeScript,
+Biome, the Vite production build, and the production dependency audit also
+passed with zero vulnerabilities.
+
+The complete Go suite and uncached race suite passed, including the existing
+PostgreSQL integration packages through their compiled environment-gated skip
+path. `go vet`, controller/migrator builds, systemd installer shell syntax, and
+`git diff --check` passed. `TEST_DATABASE_URL` is unset and Docker is not
+installed in this workspace, so a PostgreSQL execution run and Compose
+validation were not rerun. No backend or migration changed. New authenticated
+real-browser per-page screenshots and browser-history automation remain
+explicit follow-on work; DOM interaction, keyboard shell, Axe, responsive
+feature regressions, and the existing light/dark baseline suite passed.

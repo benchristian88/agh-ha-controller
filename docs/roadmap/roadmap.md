@@ -262,6 +262,14 @@ Partially completed or validation pending:
 - The full Go race suite, vet, controller build, frontend type/test/lint/production build, shell syntax, production dependency audit, and diff check pass locally. The PostgreSQL migration/authoritative integration workflow compiled but requires `TEST_DATABASE_URL` and remains to be executed for this release in the reference environment; Compose validation was unavailable because this workspace has no Docker CLI.
 - Browser accessibility/visual workflows, real supported-version node write/read-back, DHCP handoff, Docker upgrade, and systemd upgrade remain 0.4 release gates.
 
+Release validation update — 3 August 2026:
+
+- The operator completed Release 0.4 functional validation.
+- Docker installation validation completed successfully.
+- Native/systemd installation validation completed successfully.
+- Release 0.4 is therefore recorded as complete. The preceding 30 July local
+  limitations remain above as historical evidence and are not rewritten.
+
 ### Release 0.4.1 UI alignment — 2 August 2026
 
 - Phases 0–10 implement the approved horizontal navigation, matching mobile
@@ -280,6 +288,29 @@ Partially completed or validation pending:
   supported real-node write/read-back, controlled DHCP handoff/reset, and live
   controller-outage DNS evidence remain external gates. Statistics aggregation
   and combined Query Log ingestion remain Releases 0.5 and 0.6.
+
+### HA Controller responsibility separation — 3 August 2026
+
+Implemented without changing API, database, desired-state, deployment, or
+reconciliation semantics:
+
+- Nodes now owns infrastructure health, compatibility, capabilities, latency,
+  observations, applied revision, drift, maintenance, and node actions.
+- Configuration Control is forward-looking: structured draft summary,
+  validation, immutable publication, and advanced observation/import/adoption.
+- Deployments owns active and historical execution, ordered per-node task
+  state, safe failure details, verification, progress, and cancellation.
+- Drift owns current convergence summary/incidents, semantic comparison,
+  restore/adopt/maintenance, related-resource links, and cluster policy.
+- Change History owns immutable revision list/detail/snapshot, revision
+  comparison, deployment status, and deployment-based rollback.
+- Canonical routes and the `/ha/revisions` compatibility redirect remain
+  unchanged; combined page components were removed.
+
+Deliberately deferred: persisted drift severity/source/acknowledgement, a
+dedicated deployment retry command, actor display-name resolution, nested
+resource routes, and draft-versus-historical comparison. These require domain
+or routing work beyond the information-architecture correction.
 
 Post-implementation correction on 31 July 2026:
 

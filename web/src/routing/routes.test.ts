@@ -25,8 +25,8 @@ describe("canonical route safety", () => {
       "/query-log": "planned",
       "/ha/nodes": "nodes",
       "/ha/configuration": "configuration",
-      "/ha/deployments": "control-plane",
-      "/ha/drift": "control-plane",
+      "/ha/deployments": "deployments",
+      "/ha/drift": "drift",
       "/ha/history": "history",
       "/setup-guide": "planned",
       "/system/users": "planned",
@@ -39,10 +39,8 @@ describe("canonical route safety", () => {
     expect(Object.keys(expectedKinds)).toEqual([...CANONICAL_PATHS]);
     for (const [path, kind] of Object.entries(expectedKinds))
       expect(resolveRoute(path).kind).toBe(kind);
-    expect(resolveRoute("/ha/deployments")).toMatchObject({
-      focus: "deployments",
-    });
-    expect(resolveRoute("/ha/drift")).toMatchObject({ focus: "drift" });
+    expect(resolveRoute("/ha/deployments")).toEqual({ kind: "deployments" });
+    expect(resolveRoute("/ha/drift")).toEqual({ kind: "drift" });
   });
 
   it("renders an explicit not-found result for unknown paths", () => {

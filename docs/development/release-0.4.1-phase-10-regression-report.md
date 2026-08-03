@@ -1,5 +1,11 @@
 # Release 0.4.1 Phase 10 Regression Report
 
+> **Historical Phase 10 evidence.** The route table below accurately records
+> the 2 August 2026 Phase 10 implementation. On 3 August 2026 the combined
+> Configuration Control/Change History and Deployments/Drift presentations were
+> separated. Use `docs/frontend/ui-navigation.md` and the feature ledger for
+> current page ownership; do not rewrite this historical test record.
+
 ## Outcome
 
 Phase 10 hardens the completed Release 0.4.1 UI migration without changing the

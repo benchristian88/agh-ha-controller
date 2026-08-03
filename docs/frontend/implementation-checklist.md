@@ -31,8 +31,18 @@
 - [x] Remove duplicate narrow editor.
 - [x] Add schema-v2 draft summary.
 - [x] Add links to authoring pages.
-- [x] Preserve validation/publication/history/deploy/rollback.
+- [x] Preserve validation/publication while moving immutable history, comparison, and rollback to Change History.
 - [x] Preserve advanced observation/import.
+
+## HA Controller responsibility separation
+
+- [x] Distinct Nodes infrastructure page.
+- [x] Distinct Configuration Control approval/publication page.
+- [x] Distinct Deployments execution page.
+- [x] Distinct Drift convergence page.
+- [x] Distinct Change History immutable-revision page.
+- [x] Shared structured semantic diff presentation.
+- [x] No canonical HA navigation items render the same page.
 
 ## Feature presentation
 

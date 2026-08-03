@@ -11,11 +11,8 @@
 - observations;
 - import/adopt;
 - validation;
-- immutable revisions;
-- compare;
 - publish;
-- deploy;
-- rollback.
+- links to immutable history and deployment.
 
 ### Remove
 
@@ -32,6 +29,19 @@
 - affected nodes;
 - publication readiness;
 - observation/import as an advanced workflow.
+
+## HA Controller responsibility reconciliation — 3 August 2026
+
+- Change History owns immutable revision list/detail, revision comparison, and
+  deployment of a historical immutable revision.
+- Deployments owns active/history/detail execution presentation and per-node
+  verification results.
+- Drift owns current convergence summaries, semantic incident comparison,
+  reconciliation policy, restore, adoption, and maintenance.
+- Nodes owns infrastructure health, compatibility, observation, applied
+  revision, latency, and drift indicators.
+- Configuration Control remains forward-looking and no longer embeds the
+  revision-history or rollback workflow.
 
 ## Blocked Services
 

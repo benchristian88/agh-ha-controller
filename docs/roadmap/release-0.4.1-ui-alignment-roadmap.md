@@ -218,3 +218,13 @@ install and 0.4 upgrade, PostgreSQL migration/persistence, supported real-node
 write/read-back, controlled DHCP handoff/reset, and packaged controller-outage
 checks remain environment-dependent gates and are not marked complete by Phase
 10.
+
+## Post-Phase-10 HA responsibility reconciliation
+
+Implemented on 3 August 2026. The five approved HA Controller navigation items
+now render five distinct task pages. Configuration Control and Change History
+no longer share a page; Deployments and Drift no longer share a page. Existing
+typed controller reads/actions and shared semantic presentation primitives are
+reused. There is no backend API or database migration change, and all schema-v2,
+optimistic concurrency, immutable revision, sequential deployment, verification,
+drift, TLS, and DHCP safety boundaries remain unchanged.
