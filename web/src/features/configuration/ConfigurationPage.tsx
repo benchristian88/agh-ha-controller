@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StructuredDiff } from "../../components/DataDisplay";
-import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
+import {
+  Banner,
+  EmptyState,
+  ErrorState,
+  Loading,
+} from "../../components/Feedback";
 import { api } from "../../lib/api";
 import type {
   CapabilityProfile,
@@ -28,6 +33,8 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
   const [differences, setDifferences] = useState<ConfigurationDifference[]>();
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState("");
+  const [publishedRevision, setPublishedRevision] =
+    useState<ConfigurationRevision>();
   const adoptionDetails = useRef<HTMLDetailsElement>(null);
   const nodeNames = useMemo(
     () => new Map((nodes ?? []).map((node) => [node.id, node.name])),
@@ -91,11 +98,12 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
     if (!draft || !summary.trim()) return;
     setBusy("publish");
     try {
-      await api.publishConfigurationRevision(
+      const published = await api.publishConfigurationRevision(
         cluster.id,
         draft.version,
         summary,
       );
+      setPublishedRevision(published);
       setSummary("");
       setValidationRun(false);
       await load();
@@ -178,6 +186,23 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
       </header>
       {error !== undefined && (
         <ErrorState error={error} retry={() => void load()} />
+      )}
+      {publishedRevision !== undefined && (
+        <Banner
+          tone="success"
+          title={`Revision #${publishedRevision.revisionNumber} published successfully`}
+          actions={
+            <a
+              className="button"
+              href={`/ha/revisions?revisionId=${encodeURIComponent(publishedRevision.id)}`}
+            >
+              Review and deploy revision #{publishedRevision.revisionNumber}
+            </a>
+          }
+        >
+          The immutable revision is ready for review. Publishing has not changed
+          any managed node.
+        </Banner>
       )}
       {draft != null && (
         <div className="notice notice--info">
@@ -308,12 +333,8 @@ export function ConfigurationPage({ cluster }: { cluster: Cluster }) {
                 : "Publish immutable revision"}
             </button>
             <p className="muted">
-              Publication will create revision #
-              {Math.max(
-                0,
-                ...revisions.map((revision) => revision.revisionNumber),
-              ) + 1}
-              . It will not deploy or activate that revision.
+              Publication creates the next immutable revision. It will not
+              deploy or activate that revision.
             </p>
           </div>
         </section>

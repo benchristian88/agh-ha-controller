@@ -104,9 +104,9 @@ Filters
 HA Controller
 ├── Nodes
 ├── Configuration Control
+├── Revisions
 ├── Deployments
-├── Drift
-└── Change History
+└── Drift
 ```
 
 Lower-frequency administration belongs in the user or system menu:
@@ -502,6 +502,13 @@ Table rules:
 - Provide loading, empty, filtered-empty, error, stale, and partial-success states.
 - Use horizontal scrolling or structured mobile rows where necessary.
 - Do not create unique table styling per feature.
+- Operational record details use an adjacent expandable table row with a real
+  disclosure button, `aria-expanded`, and `aria-controls`. Only one row is open
+  per table. Revisions, Deployments, and Drift persist the selected ID in the
+  URL and scroll a valid deep link into view once after loading.
+- Very large secondary data, such as a complete immutable revision document,
+  stays behind an independently operable collapsed disclosure inside the
+  inline detail.
 
 ---
 

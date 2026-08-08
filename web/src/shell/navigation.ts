@@ -38,9 +38,9 @@ export const PRIMARY_NAVIGATION: readonly (NavigationLink | NavigationGroup)[] =
       children: [
         { label: "Nodes", href: "/ha/nodes" },
         { label: "Configuration Control", href: "/ha/configuration" },
+        { label: "Revisions", href: "/ha/revisions" },
         { label: "Deployments", href: "/ha/deployments" },
         { label: "Drift", href: "/ha/drift" },
-        { label: "Change History", href: "/ha/history" },
       ],
     },
     { label: "Setup Guide", href: "/setup-guide" },

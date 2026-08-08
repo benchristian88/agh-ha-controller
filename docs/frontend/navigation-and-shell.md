@@ -29,9 +29,9 @@ Brand | Dashboard | Statistics | Settings ▾ | Filters ▾ | Query Log
 
 - Nodes
 - Configuration Control
+- Revisions
 - Deployments
 - Drift
-- Change History
 
 ## Context row
 
@@ -73,9 +73,9 @@ Required context:
 /query-log                  Query Log
 /ha/nodes                   Nodes
 /ha/configuration           Configuration Control
+/ha/revisions               Configuration Revisions
 /ha/deployments             Deployments
 /ha/drift                   Drift
-/ha/history                 Change History
 /setup-guide                Setup Guide
 ```
 
@@ -121,7 +121,7 @@ It should provide:
 - observation and import/adoption workflow;
 - publication;
 - deployment preview;
-- links to Change History and Deployments.
+- a persistent link to the exact published revision and links to Deployments.
 
 The current implementation removes stale schema-v1 wording and the narrow
 duplicate DNS/filter editor.
@@ -132,9 +132,13 @@ duplicate DNS/filter editor.
   observation freshness, applied revision, and convergence indicators.
 - `/ha/configuration`: forward-looking draft review, validation, publication,
   and advanced observation/import/adoption only.
-- `/ha/deployments`: durable execution history, active progress, ordered
+- `/ha/revisions`: immutable revision history, adjacent inline detail,
+  semantic comparison, deployment preview/confirmation, and deployment of a
+  historical revision as rollback.
+- `/ha/deployments`: one unified durable execution table, active progress, ordered
   per-node tasks, safe errors, cancellation, and verification.
 - `/ha/drift`: current convergence summary, semantic desired-versus-observed
   incidents, policy, restore, adopt, and maintenance.
-- `/ha/history`: immutable revision history/detail/comparison and deployment of
-  a historical revision as rollback.
+
+`/ha/history` redirects to `/ha/revisions` while preserving its query string
+and fragment.

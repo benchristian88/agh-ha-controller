@@ -233,7 +233,7 @@ export function NodesPage({ cluster }: { cluster: Cluster }) {
                     <td>
                       {node.appliedRevisionId ? (
                         <a
-                          href={`/ha/history?revisionId=${encodeURIComponent(node.appliedRevisionId)}#revision-detail`}
+                          href={`/ha/revisions?revisionId=${encodeURIComponent(node.appliedRevisionId)}`}
                         >
                           #
                           {revisionNumbers.get(node.appliedRevisionId) ??

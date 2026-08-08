@@ -99,9 +99,9 @@ HA Controller contains five distinct pages:
 
 - **Nodes** — managed infrastructure, health, compatibility, observation, and convergence.
 - **Configuration Control** — forward-looking draft review, validation, publication, and advanced adoption.
+- **Revisions** — immutable revisions, semantic comparison, deployment preview, and deployment-based rollback.
 - **Deployments** — active and historical execution with ordered per-node verification results.
 - **Drift** — current desired-versus-observed convergence incidents and resolution.
-- **Change History** — immutable revisions, semantic comparison, and deployment-based rollback.
 
 ### Release 0.4.1 interface
 
@@ -162,13 +162,13 @@ The installer builds from source without requiring ripgrep, creates the `aghha` 
 
 ## Authoritative configuration workflow
 
-After adding nodes, use the grouped `/settings/*` and `/filters/*` pages for routine AdGuard Home settings and save the shared draft with optimistic concurrency. Open `/ha/configuration` to review the structured draft change summary, validate every target, and publish an immutable revision. Initial or deliberate adoption remains under Configuration Control's advanced workflow: observe a node, compare it, and import into the mutable draft without publishing or deploying. Use `/ha/history` to inspect or compare immutable revisions and select one for deployment. Execution is asynchronous and visible under `/ha/deployments` with ordered per-node phases, safe errors, and read-back verification. Continuing desired-versus-observed divergence is managed separately under `/ha/drift`.
+After adding nodes, use the grouped `/settings/*` and `/filters/*` pages for routine AdGuard Home settings and save the shared draft with optimistic concurrency. Open `/ha/configuration` to review the structured draft change summary, validate every target, and publish an immutable revision. Publication remains on Configuration Control and links to the exact API-returned revision at `/ha/revisions?revisionId=<id>`; it never deploys automatically. Review the revision inline, load its deployment preview, and explicitly confirm deployment. Execution opens at `/ha/deployments?deploymentId=<id>` with ordered per-node phases, safe errors, and read-back verification. Continuing desired-versus-observed divergence is managed separately under `/ha/drift`, where incidents expand inline and restore opens the exact created deployment. `/ha/history` remains a query-and-fragment-preserving compatibility redirect.
 
 Listener addresses and DNS port are read from AdGuard Home's `/control/status` response and retained as verification-only node overrides. If a draft created by the initial 0.3.0 build reports an empty/invalid listener override, refresh and re-import the named node; repeat for each enabled node that is missing an override. Import replaces the draft's shared values with the selected snapshot, so review and reapply intended shared edits after the final recovery import.
 
 The initial strategy is intentionally sequential and stop-on-failure. Every target is revalidated before the first write. Each changed node is read back and compared semantically. A revision becomes active only after every target succeeds. Cancellation is safe-boundary only, and a controller restart records an interrupted outcome rather than assuming success.
 
-Direct changes against managed values become durable drift events after an active revision exists. Manual leaves the choice to the operator, Alert records a visible alert without mutation, and Enforce creates a targeted verified deployment. Restore desired state, adopt the observation into the draft, or place the node in maintenance from **Drift**. Adoption still requires Configuration Control validation and a new published revision; Change History rollback deploys a historical revision without editing it.
+Direct changes against managed values become durable drift events after an active revision exists. Manual leaves the choice to the operator, Alert records a visible alert without mutation, and Enforce creates a targeted verified deployment. Restore desired state, adopt the observation into the draft, or place the node in maintenance from **Drift**. Adoption still requires Configuration Control validation and a new published revision; Revisions rollback deploys a historical revision without editing it.
 
 Canonical schema v2 covers the Release 0.4 managed surface. AdGuard Home v0.107.53 through the current stable v0.107.78 contract can import and publish schema v2. v0.107.52 remains supported on frozen schema v1 so historical observations, revisions, rollback, and reconciliation continue to work; newer unverified contracts are reported as unknown rather than assumed safe. Existing schema-v1 records are never rewritten. Capability preflight blocks deployment when any required feature was not successfully observed.
 

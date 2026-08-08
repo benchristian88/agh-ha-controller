@@ -8,7 +8,7 @@ import type { Cluster, Node } from "../lib/types";
 import { ConfigurationPage } from "./configuration/ConfigurationPage";
 import { DeploymentsPage } from "./deployments/DeploymentsPage";
 import { DriftPage } from "./drift/DriftPage";
-import { HistoryPage } from "./history/HistoryPage";
+import { RevisionsPage } from "./history/HistoryPage";
 import { NodesPage } from "./nodes/NodesPage";
 
 const cluster: Cluster = {
@@ -138,17 +138,17 @@ describe("HA Controller page responsibilities", () => {
     expect(screen.queryByRole("button", { name: "Rollback" })).toBeNull();
   });
 
-  it("keeps Change History backward-looking", async () => {
+  it("keeps Revisions backward-looking", async () => {
     vi.spyOn(api, "configurationRevisions").mockResolvedValue({ items: [] });
     vi.spyOn(api, "deployments").mockResolvedValue({ items: [] });
 
-    render(<HistoryPage cluster={cluster} />);
+    render(<RevisionsPage cluster={cluster} />);
 
     expect(
-      await screen.findByRole("heading", { name: "Change History" }),
+      await screen.findByRole("heading", { name: "Configuration Revisions" }),
     ).toBeTruthy();
     expect(
-      screen.getByRole("heading", { name: "Revision history" }),
+      screen.getByRole("heading", { name: "Published revisions" }),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Publish/ })).toBeNull();
     expect(screen.queryByText("Import into draft")).toBeNull();
@@ -166,7 +166,7 @@ describe("HA Controller page responsibilities", () => {
       await screen.findByRole("heading", { name: "Deployments" }),
     ).toBeTruthy();
     expect(
-      screen.getByRole("heading", { name: "Deployment history" }),
+      screen.getByRole("heading", { name: "All deployments" }),
     ).toBeTruthy();
     expect(
       screen.queryByRole("heading", { name: "Drift incidents" }),
@@ -206,7 +206,7 @@ describe("HA Controller page responsibilities", () => {
 
     for (const page of [
       <ConfigurationPage key="configuration" cluster={cluster} />,
-      <HistoryPage key="history" cluster={cluster} />,
+      <RevisionsPage key="revisions" cluster={cluster} />,
       <DeploymentsPage key="deployments" cluster={cluster} />,
       <DriftPage key="drift" cluster={cluster} />,
     ]) {

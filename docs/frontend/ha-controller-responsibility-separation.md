@@ -10,11 +10,11 @@ surface:
 |---|---|
 | `/ha/nodes` | Managed infrastructure, health, compatibility, capabilities, observation freshness, applied revision, latency, convergence, and node actions |
 | `/ha/configuration` | Forward-looking schema-v2 draft/change review, whole-draft validation, immutable publication, and advanced observation/import/adoption |
-| `/ha/deployments` | Active and historical execution events, derived progress, ordered per-node tasks, safe failure detail, verification, request correlation, and cancellation |
-| `/ha/drift` | Current convergence summary and semantic incidents, restore/adopt/maintenance, related resources, and separated cluster policy |
-| `/ha/history` | Immutable revision list/detail/snapshot, revision comparison, deployment status, and deployment-based rollback |
+| `/ha/revisions` | Immutable revision list and adjacent inline detail, revision comparison, deployment status, preview/confirmation, and deployment-based rollback |
+| `/ha/deployments` | One unified active and historical execution table with inline ordered per-node tasks, safe failure detail, verification, request correlation, and cancellation |
+| `/ha/drift` | Current convergence summary and inline semantic incidents, restore/adopt/maintenance, related resources, and separated cluster policy |
 
-`/ha/revisions` continues to redirect to `/ha/history`. Unknown paths continue
+`/ha/history` redirects to `/ha/revisions`. Unknown paths continue
 to render Not Found, and trailing-slash redirects retain query strings and
 fragments.
 
@@ -30,7 +30,7 @@ maintenance, TLS redaction, and DHCP safety remain unchanged.
 
 Observation import and drift adoption update only the mutable draft. Both flows
 lead to Configuration Control and still require validation and publication.
-Change History deploys an existing immutable revision and never edits or
+Revisions deploys an existing immutable revision and never edits or
 republishes it.
 
 ## Failure behavior
@@ -47,7 +47,7 @@ republishes it.
 ## Validation
 
 Responsibility tests prove that Configuration Control excludes immutable
-history/rollback, Change History excludes draft publication/import,
+history/rollback, Revisions excludes draft publication/import,
 Deployments does not load drift, and Drift does not load deployment history.
 They also cover the enriched Nodes presentation and Axe structural WCAG A/AA
 checks for the four separated lifecycle pages. Route tests cover each distinct

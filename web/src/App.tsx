@@ -16,13 +16,13 @@ import { DriftPage } from "./features/drift/DriftPage";
 import { EncryptionPage } from "./features/encryption/EncryptionPage";
 import { CustomRulesPage } from "./features/filters/CustomRulesPage";
 import { GeneralSettingsPage } from "./features/general/GeneralSettingsPage";
-import { HistoryPage } from "./features/history/HistoryPage";
+import { RevisionsPage } from "./features/history/HistoryPage";
 import { NodesPage } from "./features/nodes/NodesPage";
 import { RewritesPage } from "./features/rewrites/RewritesPage";
 import { ApiError, api } from "./lib/api";
 import type { Cluster, User } from "./lib/types";
 import { NotFoundPage, PlannedPage } from "./routing/RouteStatePages";
-import { resolveRoute } from "./routing/routes";
+import { preserveRouteState, resolveRoute } from "./routing/routes";
 import { ApplicationShell } from "./shell/ApplicationShell";
 
 type BootState =
@@ -178,8 +178,8 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
       case "configuration":
         content = <ConfigurationPage cluster={selected} />;
         break;
-      case "history":
-        content = <HistoryPage cluster={selected} />;
+      case "revisions":
+        content = <RevisionsPage cluster={selected} />;
         break;
       case "deployments":
         content = <DeploymentsPage cluster={selected} />;
@@ -236,7 +236,7 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
 function RouteRedirect({ to }: { to: string }) {
   useEffect(() => {
     window.location.replace(
-      `${to}${window.location.search}${window.location.hash}`,
+      preserveRouteState(to, window.location.search, window.location.hash),
     );
   }, [to]);
   return <Loading label="Redirecting to the current page…" />;

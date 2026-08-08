@@ -1,26 +1,43 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RevisionBadge, StructuredDiff } from "../../components/DataDisplay";
-import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
+import {
+  DataTable,
+  type DataTableColumn,
+  RevisionBadge,
+  StructuredDiff,
+} from "../../components/DataDisplay";
+import { Banner, ErrorState, Loading } from "../../components/Feedback";
+import { Dialog } from "../../components/Overlays";
 import { PageHeader } from "../../components/Page";
+import { StatusBadge } from "../../components/StatusBadge";
 import { api } from "../../lib/api";
+import { navigateTo } from "../../lib/browserNavigation";
 import type {
   Cluster,
   ConfigurationDifference,
   ConfigurationRevision,
   Deployment,
+  DeploymentPreview,
 } from "../../lib/types";
+import { useQuerySelection } from "../../lib/useQuerySelection";
 
-export function HistoryPage({ cluster }: { cluster: Cluster }) {
+interface DeploymentReview {
+  revision: ConfigurationRevision;
+  preview?: DeploymentPreview;
+  error?: unknown;
+}
+
+export function RevisionsPage({ cluster }: { cluster: Cluster }) {
   const [revisions, setRevisions] = useState<ConfigurationRevision[]>();
   const [deployments, setDeployments] = useState<Deployment[]>([]);
-  const [selectedID, setSelectedID] = useState(
-    () => new URLSearchParams(window.location.search).get("revisionId") ?? "",
-  );
+  const { selectedID, toggle, scrollIntoViewOnce } =
+    useQuerySelection("revisionId");
   const [leftID, setLeftID] = useState("");
   const [rightID, setRightID] = useState("");
   const [differences, setDifferences] = useState<ConfigurationDifference[]>();
   const [detailDifferences, setDetailDifferences] =
     useState<ConfigurationDifference[]>();
+  const [detailError, setDetailError] = useState<unknown>();
+  const [review, setReview] = useState<DeploymentReview>();
   const [busy, setBusy] = useState("");
   const [error, setError] = useState<unknown>();
 
@@ -32,11 +49,6 @@ export function HistoryPage({ cluster }: { cluster: Cluster }) {
       ]);
       setRevisions(revisionResult.items);
       setDeployments(deploymentResult.items);
-      setSelectedID((current) =>
-        revisionResult.items.some((revision) => revision.id === current)
-          ? current
-          : revisionResult.items[0]?.id || "",
-      );
       setError(undefined);
     } catch (caught) {
       setError(caught);
@@ -46,6 +58,8 @@ export function HistoryPage({ cluster }: { cluster: Cluster }) {
   useEffect(() => void load(), [load]);
 
   const selected = revisions?.find((revision) => revision.id === selectedID);
+  const invalidSelection =
+    revisions !== undefined && selectedID !== "" && selected === undefined;
   const preceding = selected
     ? revisions?.find(
         (revision) => revision.revisionNumber === selected.revisionNumber - 1,
@@ -64,21 +78,29 @@ export function HistoryPage({ cluster }: { cluster: Cluster }) {
   useEffect(() => {
     if (!selected || !preceding) {
       setDetailDifferences(undefined);
+      setDetailError(undefined);
       return;
     }
     let current = true;
+    setDetailDifferences(undefined);
+    setDetailError(undefined);
     void api
       .compareConfigurationRevisions(preceding.id, selected.id)
       .then((result) => {
         if (current) setDetailDifferences(result.differences);
       })
       .catch((caught) => {
-        if (current) setError(caught);
+        if (current) setDetailError(caught);
       });
     return () => {
       current = false;
     };
   }, [preceding, selected]);
+
+  useEffect(() => {
+    if (selected)
+      scrollIntoViewOnce(selected.id, revisionSummaryID(selected.id));
+  }, [scrollIntoViewOnce, selected]);
 
   async function compare() {
     if (!leftID || !rightID) return;
@@ -94,209 +116,149 @@ export function HistoryPage({ cluster }: { cluster: Cluster }) {
     }
   }
 
-  async function deploy(revision: ConfigurationRevision) {
-    setBusy(revision.id);
+  async function prepareDeployment(revision: ConfigurationRevision) {
+    setReview({ revision });
+    setBusy(`preview-${revision.id}`);
     try {
       const preview = await api.deploymentPreview(cluster.id, revision.id);
-      if (!preview.valid) {
-        throw new Error(
-          preview.issues.map((issue) => issue.message).join("; ") ||
-            "This revision is not ready to deploy.",
-        );
-      }
-      const rollback = Boolean(cluster.activeRevisionId) && !revision.active;
-      if (
-        !window.confirm(
-          `Deploy immutable revision #${revision.revisionNumber} to ${preview.nodes.length} nodes? This creates a new sequential, verified ${rollback ? "rollback " : ""}deployment and does not modify the revision.`,
-        )
-      )
-        return;
-      if (rollback) await api.rollback(cluster.id, revision.id);
-      else await api.startDeployment(cluster.id, revision.id);
-      window.location.assign("/ha/deployments");
+      setReview({ revision, preview });
     } catch (caught) {
-      setError(caught);
+      setReview({ revision, error: caught });
     } finally {
       setBusy("");
     }
   }
 
+  async function confirmDeployment() {
+    if (!review?.preview?.valid) return;
+    setBusy(`deploy-${review.revision.id}`);
+    try {
+      const isRollback =
+        Boolean(cluster.activeRevisionId) && !review.revision.active;
+      const deployment = isRollback
+        ? await api.rollback(cluster.id, review.revision.id)
+        : await api.startDeployment(cluster.id, review.revision.id);
+      navigateTo(
+        `/ha/deployments?deploymentId=${encodeURIComponent(deployment.id)}`,
+      );
+    } catch (caught) {
+      setReview((current) =>
+        current ? { ...current, error: caught } : current,
+      );
+      setBusy("");
+    }
+  }
+
   if (revisions === undefined && error === undefined)
-    return <Loading label="Loading change history…" />;
+    return <Loading label="Loading configuration revisions…" />;
   if (revisions === undefined)
     return <ErrorState error={error} retry={() => void load()} />;
+
+  const columns: DataTableColumn<ConfigurationRevision>[] = [
+    {
+      id: "revision",
+      header: "Revision",
+      render: (revision) => (
+        <span id={revisionSummaryID(revision.id)}>
+          <RevisionBadge
+            number={revision.revisionNumber}
+            active={revision.active}
+          />
+        </span>
+      ),
+    },
+    {
+      id: "summary",
+      header: "Summary",
+      render: (revision) => revision.summary,
+    },
+    {
+      id: "publisher",
+      header: "Published by",
+      render: (revision) => <code>{shortID(revision.createdBy)}</code>,
+    },
+    {
+      id: "published",
+      header: "Published",
+      render: (revision) => formatTime(revision.createdAt),
+    },
+    {
+      id: "deployment",
+      header: "Deployment",
+      render: (revision) => {
+        const latest = deploymentsByRevision.get(revision.id)?.[0];
+        return latest ? latest.status.replaceAll("_", " ") : "Not yet deployed";
+      },
+    },
+    {
+      id: "actions",
+      header: <span className="visually-hidden">Details</span>,
+      align: "right",
+      render: (revision) => {
+        const expanded = selectedID === revision.id;
+        return (
+          <button
+            className="table-disclosure"
+            type="button"
+            aria-expanded={expanded}
+            aria-controls={revisionDetailID(revision.id)}
+            aria-label={`${expanded ? "Hide" : "View"} revision ${revision.revisionNumber} details`}
+            onClick={() => toggle(revision.id)}
+          >
+            <span aria-hidden="true">{expanded ? "⌃" : "⌄"}</span>
+          </button>
+        );
+      },
+    },
+  ];
 
   return (
     <>
       <PageHeader
         eyebrow="Immutable configuration"
-        title="Change History"
-        description="Review what changed over time, compare immutable revisions, and deploy a historical revision without modifying it."
+        title="Configuration Revisions"
+        description="Review immutable published revisions, compare what changed, and explicitly preview a deployment without modifying revision history."
       />
       {error !== undefined && (
         <ErrorState error={error} retry={() => void load()} />
       )}
+      {invalidSelection && (
+        <Banner tone="warning" title="Revision unavailable">
+          The requested revision is not in this cluster. The revision list
+          remains available.
+        </Banner>
+      )}
       <section className="section-block">
         <div className="section-heading">
-          <h2>Revision history</h2>
+          <h2>Published revisions</h2>
           <small>{revisions.length} published</small>
         </div>
-        {revisions.length === 0 ? (
-          <EmptyState title="No published revisions">
+        <DataTable
+          caption="Published immutable configuration revisions"
+          columns={columns}
+          rows={revisions}
+          rowKey={(revision) => revision.id}
+          expandedRowKey={selected?.id}
+          expandedRowId={(revision) => revisionDetailID(revision.id)}
+          renderExpandedRow={(revision) => (
+            <RevisionDetail
+              revision={revision}
+              preceding={preceding}
+              deployments={deploymentsByRevision.get(revision.id) ?? []}
+              differences={detailDifferences}
+              differenceError={detailError}
+              busy={busy}
+              onDeploy={prepareDeployment}
+            />
+          )}
+          emptyTitle="No published revisions"
+          emptyDescription={
             <p>
               Validate and publish the current draft from Configuration Control.
             </p>
-          </EmptyState>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Revision</th>
-                  <th>Summary</th>
-                  <th>Published by</th>
-                  <th>Published</th>
-                  <th>Deployment</th>
-                  <th>Identifier</th>
-                  <th>
-                    <span className="visually-hidden">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {revisions.map((revision) => {
-                  const revisionDeployments =
-                    deploymentsByRevision.get(revision.id) ?? [];
-                  return (
-                    <tr key={revision.id}>
-                      <td>
-                        <RevisionBadge
-                          number={revision.revisionNumber}
-                          active={revision.active}
-                        />
-                      </td>
-                      <td>{revision.summary}</td>
-                      <td>
-                        <code>{shortID(revision.createdBy)}</code>
-                      </td>
-                      <td>{new Date(revision.createdAt).toLocaleString()}</td>
-                      <td>
-                        {revisionDeployments[0]?.status.replaceAll("_", " ") ??
-                          "Not deployed"}
-                      </td>
-                      <td>
-                        <code>{revision.canonicalHash.slice(0, 12)}</code>
-                      </td>
-                      <td>
-                        <button
-                          className="button button--quiet"
-                          type="button"
-                          onClick={() => setSelectedID(revision.id)}
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+          }
+        />
       </section>
-
-      {selected !== undefined && (
-        <section className="section-block" id="revision-detail">
-          <div className="section-heading">
-            <h2>Revision #{selected.revisionNumber}</h2>
-            <RevisionBadge
-              number={selected.revisionNumber}
-              active={selected.active}
-            />
-          </div>
-          <article className="card form-stack">
-            <dl className="summary-grid">
-              <div>
-                <dt>Operator summary</dt>
-                <dd>{selected.summary}</dd>
-              </div>
-              <div>
-                <dt>Published by</dt>
-                <dd>
-                  <code>{selected.createdBy}</code>
-                </dd>
-              </div>
-              <div>
-                <dt>Published at</dt>
-                <dd>{new Date(selected.createdAt).toLocaleString()}</dd>
-              </div>
-              <div>
-                <dt>Schema</dt>
-                <dd>Version {selected.schemaVersion}</dd>
-              </div>
-              <div>
-                <dt>Publication validation</dt>
-                <dd>Passed whole-draft and capability validation</dd>
-              </div>
-              <div>
-                <dt>Configuration hash</dt>
-                <dd>
-                  <code>{selected.canonicalHash}</code>
-                </dd>
-              </div>
-              <div>
-                <dt>Deployments</dt>
-                <dd>{(deploymentsByRevision.get(selected.id) ?? []).length}</dd>
-              </div>
-            </dl>
-            {(deploymentsByRevision.get(selected.id) ?? []).length > 0 && (
-              <ul>
-                {(deploymentsByRevision.get(selected.id) ?? []).map(
-                  (deployment) => (
-                    <li key={deployment.id}>
-                      <a
-                        href={`/ha/deployments?deploymentId=${encodeURIComponent(deployment.id)}#deployment-detail`}
-                      >
-                        {shortID(deployment.id)} ·{" "}
-                        {deployment.status.replaceAll("_", " ")}
-                      </a>
-                    </li>
-                  ),
-                )}
-              </ul>
-            )}
-            {preceding !== undefined && detailDifferences !== undefined && (
-              <div>
-                <h3>Changed since revision #{preceding.revisionNumber}</h3>
-                <StructuredDiff
-                  differences={toStructured(detailDifferences)}
-                  beforeLabel={`Revision #${preceding.revisionNumber}`}
-                  afterLabel={`Revision #${selected.revisionNumber}`}
-                />
-              </div>
-            )}
-            <div className="row-actions row-actions--start">
-              <button
-                className="button"
-                type="button"
-                disabled={busy !== ""}
-                onClick={() => void deploy(selected)}
-              >
-                {busy === selected.id ? "Preparing…" : "Deploy this revision"}
-              </button>
-              <a className="button button--secondary" href="/ha/deployments">
-                View deployments
-              </a>
-            </div>
-            <details>
-              <summary>Advanced immutable snapshot</summary>
-              <pre className="technical-output">
-                <code>{JSON.stringify(selected.document, null, 2)}</code>
-              </pre>
-            </details>
-          </article>
-        </section>
-      )}
 
       {revisions.length > 1 && (
         <section className="section-block">
@@ -337,7 +299,273 @@ export function HistoryPage({ cluster }: { cluster: Cluster }) {
           </div>
         </section>
       )}
+
+      <DeploymentReviewDialog
+        review={review}
+        busy={busy.startsWith("deploy-")}
+        onClose={() => busy === "" && setReview(undefined)}
+        onConfirm={confirmDeployment}
+      />
     </>
+  );
+}
+
+function RevisionDetail({
+  revision,
+  preceding,
+  deployments,
+  differences,
+  differenceError,
+  busy,
+  onDeploy,
+}: {
+  revision: ConfigurationRevision;
+  preceding?: ConfigurationRevision;
+  deployments: Deployment[];
+  differences?: ConfigurationDifference[];
+  differenceError?: unknown;
+  busy: string;
+  onDeploy: (revision: ConfigurationRevision) => Promise<void>;
+}) {
+  const previousRevision = Boolean(
+    revision.active === false && deployments.length > 0,
+  );
+  return (
+    <article
+      className="inline-operational-detail"
+      aria-labelledby={`revision-${revision.id}-heading`}
+    >
+      <div className="section-heading">
+        <div>
+          <h3 id={`revision-${revision.id}-heading`}>
+            Revision #{revision.revisionNumber}
+          </h3>
+          <p className="muted">{revision.summary}</p>
+        </div>
+        <RevisionBadge
+          number={revision.revisionNumber}
+          active={revision.active}
+        />
+      </div>
+      <dl className="summary-grid">
+        <div>
+          <dt>Published by</dt>
+          <dd>
+            <code>{revision.createdBy}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Published at</dt>
+          <dd>{formatTime(revision.createdAt)}</dd>
+        </div>
+        <div>
+          <dt>Schema</dt>
+          <dd>Version {revision.schemaVersion}</dd>
+        </div>
+        <div>
+          <dt>Publication validation</dt>
+          <dd>Passed whole-draft and capability validation</dd>
+        </div>
+        <div>
+          <dt>Configuration hash</dt>
+          <dd>
+            <code>{revision.canonicalHash}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Deployments</dt>
+          <dd>{deployments.length}</dd>
+        </div>
+      </dl>
+      <section className="inline-detail-section">
+        <h4>Deployment history</h4>
+        {deployments.length === 0 ? (
+          <p className="muted">This revision has not been deployed.</p>
+        ) : (
+          <ul>
+            {deployments.map((deployment) => (
+              <li key={deployment.id}>
+                <a
+                  href={`/ha/deployments?deploymentId=${encodeURIComponent(deployment.id)}`}
+                >
+                  {shortID(deployment.id)} ·{" "}
+                  {deployment.status.replaceAll("_", " ")}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      {preceding !== undefined && (
+        <section className="inline-detail-section">
+          <h4>Changed since revision #{preceding.revisionNumber}</h4>
+          {differenceError !== undefined ? (
+            <ErrorState error={differenceError} />
+          ) : differences === undefined ? (
+            <Loading label="Loading revision differences…" />
+          ) : (
+            <StructuredDiff
+              differences={toStructured(differences)}
+              beforeLabel={`Revision #${preceding.revisionNumber}`}
+              afterLabel={`Revision #${revision.revisionNumber}`}
+            />
+          )}
+        </section>
+      )}
+      <section className="inline-detail-section">
+        <h4>Next action</h4>
+        <p className="muted">
+          Deployment is sequential, stops on failure, and verifies each node
+          before continuing. This immutable revision will not be modified.
+        </p>
+        <div className="row-actions row-actions--start">
+          <button
+            className="button"
+            type="button"
+            disabled={busy !== ""}
+            onClick={() => void onDeploy(revision)}
+          >
+            {busy === `preview-${revision.id}`
+              ? "Preparing preview…"
+              : previousRevision
+                ? "Deploy this previous revision"
+                : "Deploy revision"}
+          </button>
+          <a className="button button--secondary" href="/ha/deployments">
+            View deployments
+          </a>
+        </div>
+      </section>
+      <details className="inline-detail-section">
+        <summary>
+          View full immutable configuration for revision #
+          {revision.revisionNumber}
+        </summary>
+        <pre className="technical-output">
+          <code>{JSON.stringify(revision.document, null, 2)}</code>
+        </pre>
+      </details>
+    </article>
+  );
+}
+
+function DeploymentReviewDialog({
+  review,
+  busy,
+  onClose,
+  onConfirm,
+}: {
+  review?: DeploymentReview;
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const preview = review?.preview;
+  return (
+    <Dialog
+      open={review !== undefined}
+      onClose={onClose}
+      title={
+        review
+          ? `Review deployment of revision #${review.revision.revisionNumber}`
+          : "Review deployment"
+      }
+      description="Publishing has not changed any managed node. Review this preview before starting a new durable deployment."
+      size="large"
+      dismissible={!busy}
+      actions={
+        <>
+          <button
+            className="button button--secondary"
+            type="button"
+            disabled={busy}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            className="button"
+            type="button"
+            disabled={busy || preview?.valid !== true}
+            onClick={() => void onConfirm()}
+          >
+            {busy ? "Starting…" : "Confirm deployment"}
+          </button>
+        </>
+      }
+    >
+      {review?.error !== undefined && <ErrorState error={review.error} />}
+      {review !== undefined &&
+        preview === undefined &&
+        review.error === undefined && (
+          <Loading label="Loading deployment preview…" />
+        )}
+      {preview !== undefined && (
+        <div className="form-stack">
+          <dl className="summary-grid">
+            <div>
+              <dt>Revision</dt>
+              <dd>#{review?.revision.revisionNumber}</dd>
+            </div>
+            <div>
+              <dt>Target nodes</dt>
+              <dd>{preview.nodes.length}</dd>
+            </div>
+            <div>
+              <dt>Strategy</dt>
+              <dd>Sequential</dd>
+            </div>
+            <div>
+              <dt>Failure policy</dt>
+              <dd>Stop on failure</dd>
+            </div>
+            <div>
+              <dt>Read-back verification</dt>
+              <dd>Required before the next node</dd>
+            </div>
+            <div>
+              <dt>Restart required</dt>
+              <dd>{preview.restartRequired ? "Yes" : "No"}</dd>
+            </div>
+          </dl>
+          {preview.issues.length > 0 && (
+            <Banner tone="danger" title="Preview validation failed">
+              <ul>
+                {preview.issues.map((issue) => (
+                  <li key={`${issue.field}-${issue.message}`}>
+                    {issue.field}: {issue.message}
+                  </li>
+                ))}
+              </ul>
+            </Banner>
+          )}
+          <section>
+            <h3>Ordered target nodes</h3>
+            <ol className="progress-list">
+              {preview.nodes.map((node) => (
+                <li key={node.nodeId}>
+                  <strong>
+                    {node.position}. <code>{shortID(node.nodeId)}</code>
+                  </strong>
+                  {node.warning && <p>{node.warning}</p>}{" "}
+                  {!node.valid && (
+                    <StatusBadge status="failed" label="Validation failed" />
+                  )}
+                </li>
+              ))}
+            </ol>
+          </section>
+          <section>
+            <h3>Configuration differences</h3>
+            <StructuredDiff
+              differences={toStructured(preview.differences)}
+              beforeLabel="Current intended state"
+              afterLabel={`Revision #${review?.revision.revisionNumber}`}
+            />
+          </section>
+        </div>
+      )}
+    </Dialog>
   );
 }
 
@@ -377,7 +605,18 @@ function toStructured(differences: ConfigurationDifference[]) {
     summary: difference.summary,
   }));
 }
-
+function revisionSummaryID(id: string) {
+  return `revision-summary-${id}`;
+}
+function revisionDetailID(id: string) {
+  return `revision-detail-${id}`;
+}
 function shortID(value: string): string {
   return value.length > 12 ? `${value.slice(0, 8)}…` : value;
 }
+function formatTime(value?: string): string {
+  return value ? new Date(value).toLocaleString() : "—";
+}
+
+// Compatibility for low-risk downstream imports while the route and UI use Revisions.
+export const HistoryPage = RevisionsPage;

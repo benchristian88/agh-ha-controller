@@ -13,7 +13,7 @@ export type RouteResolution =
   | { kind: "configuration" }
   | { kind: "deployments" }
   | { kind: "drift" }
-  | { kind: "history" }
+  | { kind: "revisions" }
   | { kind: "blocked-services" }
   | { kind: "blocklists" }
   | { kind: "allowlists" }
@@ -43,9 +43,9 @@ export const CANONICAL_PATHS = [
   "/query-log",
   "/ha/nodes",
   "/ha/configuration",
+  "/ha/revisions",
   "/ha/deployments",
   "/ha/drift",
-  "/ha/history",
   "/setup-guide",
   "/system/users",
   "/system/audit",
@@ -60,7 +60,7 @@ export const LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
   "/settings/services": "/filters/blocked-services",
   "/settings/privacy": "/settings/general",
   "/settings/infrastructure": "/settings/encryption",
-  "/ha/revisions": "/ha/history",
+  "/ha/history": "/ha/revisions",
 };
 
 const settingsRoutes: Readonly<
@@ -154,8 +154,8 @@ export function resolveRoute(pathname: string): RouteResolution {
       return { kind: "deployments" };
     case "/ha/drift":
       return { kind: "drift" };
-    case "/ha/history":
-      return { kind: "history" };
+    case "/ha/revisions":
+      return { kind: "revisions" };
     case "/filters/blocklists":
       return { kind: "blocklists" };
     case "/filters/allowlists":
@@ -167,4 +167,12 @@ export function resolveRoute(pathname: string): RouteResolution {
     default:
       return { kind: "not-found" };
   }
+}
+
+export function preserveRouteState(
+  pathname: string,
+  search: string,
+  hash: string,
+): string {
+  return `${pathname}${search}${hash}`;
 }

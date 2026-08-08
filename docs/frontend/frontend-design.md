@@ -35,9 +35,17 @@ surfaces remain assigned to Releases 0.5 and 0.6 respectively.
 The 3 August 2026 HA responsibility pass retains the same navigation but gives
 each HA route one task: Nodes for infrastructure, Configuration Control for
 forward-looking draft approval/publication and advanced adoption, Deployments
-for execution, Drift for current convergence, and Change History for immutable
+for execution, Drift for current convergence, and Revisions for immutable
 revision comparison and rollback. Shared controller APIs and semantic diff
 primitives remain implementation reuse, not a reason to render duplicate pages.
+
+The 9 August 2026 revision-lifecycle pass makes `/ha/revisions` canonical and
+retains `/ha/history` as a compatibility redirect. Publishing remains on
+Configuration Control with a persistent exact-revision handoff. Revisions,
+Deployments, and Drift use query-backed adjacent table details; deployment
+requires preview and confirmation, and the resulting durable deployment opens
+by exact ID. ADR-0027 supersedes ADR-0026 only for this route terminology and
+interaction presentation.
 
 ## Release 0.2 implementation
 
