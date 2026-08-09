@@ -42,6 +42,26 @@ func (r Range) Duration() time.Duration {
 
 func SupportedRanges() []Range { return []Range{Range24Hours, Range7Days, Range30Days} }
 
+const (
+	ErrorRangeExceedsNodeRetention = "STATISTICS_RANGE_EXCEEDS_NODE_RETENTION"
+	ErrorStatisticsDisabled        = "STATISTICS_DISABLED"
+)
+
+type SourceConfig struct {
+	Enabled   bool
+	Retention time.Duration
+}
+
+func RangesWithinRetention(retention time.Duration) []Range {
+	ranges := make([]Range, 0, len(SupportedRanges()))
+	for _, value := range SupportedRanges() {
+		if value.Duration() <= retention {
+			ranges = append(ranges, value)
+		}
+	}
+	return ranges
+}
+
 type RankedValue struct {
 	Key   string  `json:"key"`
 	Value float64 `json:"value"`
@@ -95,9 +115,13 @@ type PollAttempt struct {
 }
 
 type NodeAttempt struct {
-	NodeID      string
-	Status      string
-	ErrorCode   string
-	RangeErrors map[Range]string
-	CompletedAt time.Time
+	NodeID              string
+	Status              string
+	ErrorCode           string
+	RangeErrors         map[Range]string
+	StartedAt           time.Time
+	CompletedAt         time.Time
+	LastSuccessAt       *time.Time
+	CollectedRanges     int
+	ConsecutiveFailures int
 }

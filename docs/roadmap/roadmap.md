@@ -348,8 +348,8 @@ New follow-on dependencies:
 
 ## Release 0.5 — Cluster statistics
 
-**Current status (9 August 2026): Implemented; controlled PostgreSQL, real-node,
-packaged browser, Docker, and systemd release validation remains.**
+**Current status (9 August 2026): Complete and validated. Release 0.7 preserves
+the aggregation contract and adds operational health/bounded cleanup only.**
 
 ### Outcomes
 
@@ -390,11 +390,13 @@ Implemented in the repository:
 
 Deliberately deferred:
 
-- custom ranges; and
-- all combined Query Log ingestion, search, retention, and event-derived
-  statistics, which remain Release 0.6 or later.
+- custom ranges and query-derived statistics remain future work. Combined Query
+  Log ingestion was subsequently completed and validated in Release 0.6.
 
 ## Release 0.6 — Combined query log via API polling
+
+**Current status (9 August 2026): Complete and validated. Release 0.7 preserves
+search/filter/pagination semantics and adds operational health only.**
 
 ### Outcomes
 
@@ -405,85 +407,101 @@ Deliberately deferred:
 - Cursor-based polling.
 - Deduplication.
 - Combined query-event table.
-- Filters by node, client, domain, status, and time.
+- Filters by node, client, domain, and status with cursor/time navigation.
 - Retention configuration.
 - Ingestion lag reporting.
+- Structured query detail and explicit partial/gap coverage.
+- Draft-only contextual allow, block, rewrite, and client-search handoffs.
 
 ### Exit criteria
 
 - Duplicate events are controlled.
 - Polling resumes after controller restart.
 - Node attribution is preserved.
+- Automated backend/frontend checks and packaged validation pass before the
+  release is marked complete.
 
-## Release 0.7 — Forwarder preview
-
-### Outcomes
-
-- High-fidelity query events can be delivered without API polling limitations.
-
-### Scope
-
-- Go forwarder.
-- File rotation detection.
-- Persistent checkpoint.
-- Batch upload.
-- Compression.
-- Local disk spool.
-- Authentication.
-- Forwarder health UI.
-
-## Release 0.8 — Production query ingestion
+## Release 0.7 — Operational Hardening & Observability
 
 ### Outcomes
 
-- Forwarder becomes the preferred ingestion mode.
-- Statistics can be computed from central raw events.
+- Operators can determine whether Atlas collectors, storage, jobs, and
+  integrations are healthy without querying PostgreSQL or reading logs first.
 
 ### Scope
 
-- At-least-once delivery.
-- Controller deduplication.
-- Backpressure.
-- Upgrade compatibility.
-- Hourly and daily rollups.
-- Raw-event retention controls.
-- Polling fallback.
+- Coherent operational-health states and aggregation.
+- Authenticated Operational Status API and Administration page.
+- Node connectivity versus full-observation freshness.
+- Statistics and Query Log per-node health, lag, gaps, and coverage.
+- Background worker, retry/recovery, retention, PostgreSQL, and storage health.
+- Distinct liveness/readiness semantics and opt-in protected Prometheus metrics.
+- Bounded Statistics cleanup, database maintenance, backup/restore guidance.
+- Agentless-by-default architecture decision.
 
-## Release 0.9 — Operational HA
+## Release 0.8 — HA Operations & Lifecycle
 
 ### Outcomes
 
-- Routine maintenance and node upgrades can be managed safely.
+- Atlas coordinates and observes operation of the DNS service as a highly
+  available platform without becoming its traffic path.
 
 ### Scope
 
-- Maintenance mode.
-- Rolling deployment controls.
-- Node drain guidance.
-- Upgrade readiness.
-- Expanded health probes.
-- Alert integrations.
-- Backup and restore validation.
+- Active DNS service probes, failed-node awareness, and HA health history.
+- Planned maintenance and technically appropriate drain/return workflows.
+- Certificate-expiry and upgrade-readiness warnings.
+- Rolling AdGuard Home upgrades with compatibility preflight and post-upgrade
+  DNS/API/configuration validation.
+- Operational notifications and maintenance coordination.
 
-## Release 1.0 — Community production release
+Keepalived, dnsdist, and other failover integrations remain optional pending
+product/architecture review. Atlas coordinates rather than carrying DNS.
+
+## Release 0.9 — Product and Release Hardening
 
 ### Outcomes
 
-- Stable installation and upgrade experience.
-- Complete operator documentation.
-- Supported configuration and compatibility matrix.
+- The implemented 0.x product is ready to become a 1.0 release candidate.
 
 ### Scope
 
-- Debian installation.
-- Hardened published Docker Compose artifacts (source-build Compose delivered in 0.1.1).
-- Proxmox LXC installer.
-- Upgrade and rollback tooling.
-- Backup and restore documentation.
-- Security hardening.
-- Performance testing.
-- Public API documentation.
-- Contribution and release governance.
+- Clean install and supported upgrade/migration validation.
+- Backup, restore, disaster recovery, security, session, authorization, and
+  audit review.
+- Accessibility, responsive/browser polish, performance/load validation, and
+  error-message quality.
+- Onboarding, Setup Guide, packaging, licensing, compatibility/support/
+  deprecation policy, and API stability review.
+- Docker and native/systemd installation parity.
+
+Avoid large new feature areas in 0.9.
+
+## Release 1.0 — Stable Supported Release
+
+### Outcomes
+
+- Atlas DNS is a stable supported product, not primarily a feature release.
+
+### Scope
+
+- Stable configuration schema, documented controller API, and database
+  migration/upgrade guarantees.
+- Tested Docker and native/systemd deployments.
+- Documented compatibility, backup/disaster recovery, security, support, and
+  troubleshooting boundaries.
+- Accessibility/UX baseline, repeatable artifacts, full regression suite, and
+  completed installation/upgrade validation.
+
+## Future / conditional — Optional local Query Log forwarder
+
+**Status: Deferred / evidence-triggered. No release assigned.**
+
+Investigate only if measurements show sustained API ingestion lag, material
+event loss, unacceptable node load, a near-real-time requirement, much larger
+fleets, a DNS platform without an adequate API, or a demonstrated need for
+local buffering through long controller outages. Any proposal needs a fresh
+security and lifecycle review under ADR-0029.
 
 ## Future releases
 
@@ -492,7 +510,6 @@ Deliberately deferred:
 - Multiple clusters and sites.
 - Controller high availability.
 - MSP multi-tenancy.
-- Remote collector architecture.
 - Enhanced DHCP coordination.
 - Automated node upgrade orchestration.
 - Notifications and external alerting.

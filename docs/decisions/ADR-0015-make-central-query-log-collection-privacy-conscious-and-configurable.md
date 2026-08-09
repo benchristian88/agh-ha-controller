@@ -41,6 +41,24 @@ Treat raw query collection as an explicit, visible feature with configurable ret
 - User-facing documentation must reflect the selected model.
 - AI coding agents must treat this ADR as a constraint, not a suggestion, while its status is Accepted.
 
+## Release 0.6 implementation
+
+API polling is the first implementation of this decision. Collection is an
+explicit controller setting, enabled by default for the Release 0.6 product
+outcome, and can be disabled without deleting retained events. Central retention
+defaults to seven days and is independently bounded between one hour and 90
+days. The UI states both the observational/privacy boundary and partial
+coverage. Normalization excludes credentials, node URLs, raw payloads, and
+mutable display-name enrichment from identity; diagnostic bundles exclude raw
+events by default.
+
+The source API has no event ID. Atlas therefore uses a node-scoped SHA-256
+fingerprint plus occurrence ordinal and an overlapping `older_than` polling
+window. This deliberately preserves indistinguishable legitimate repeats and
+documents that perfect identity cannot be recovered after source reordering or
+node-local retention. The later file forwarder may improve fidelity without
+changing the central event or privacy boundary.
+
 ## Review triggers
 
 Review this decision when:

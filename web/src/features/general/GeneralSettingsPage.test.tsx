@@ -328,7 +328,9 @@ describe("General Settings", () => {
       ),
     ).not.toBeNull();
     expect(
-      screen.getByText(/Cluster statistics aggregation arrives in Release 0.5/),
+      screen.getByText(
+        /central query-event retention is configured separately/i,
+      ),
     ).not.toBeNull();
     expect(
       screen.getByRole("button", { name: "Clear Query Log" }),

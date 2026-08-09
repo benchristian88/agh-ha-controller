@@ -102,25 +102,59 @@ The complete Phase 10 evidence, route table, deletion inventory, and known
 issues are in
 `docs/development/release-0.4.1-phase-10-regression-report.md`.
 
-## Release 0.5 statistics aggregation
+## Release 0.5 statistics aggregation — complete and validated
 
 | Feature | Status | Implementation and evidence | Remaining release validation |
 |---|---|---|---|
-| Exact-range collection | Implemented; automated checks pass | Immediate/configurable interval worker, 24h/7d/30d `recent` reads, four-node concurrency, request timeouts, maintenance and v0.107.72–v0.107.78 capability gates, safe durable attempts | Controlled multi-node live contract and outage/restart exercise |
-| Durable telemetry model | Implemented; migration added | Append-only `000009` separates poll evidence, immutable normalized snapshots, and overlap-safe hourly/daily node buckets; 32/400-day cleanup | PostgreSQL 0.4.1-to-0.5 upgrade and retention exercise |
-| Correct aggregation | Implemented; unit checks pass | Additive sums, aggregate percentages, query-weighted processing time, response-weighted upstream latency, stable normalization/sort, chronological series, explicit freshness/coverage | Reconcile API totals against two real nodes |
-| Statistics API and UI | Implemented; local checks pass | Authenticated presentation-ready cluster/node API; global scope, fixed ranges, summary metrics, accessible SVG chart, ranked panels, node coverage, and compact dashboard summary | Packaged responsive/browser accessibility smoke |
-| Security and privacy boundary | Implemented | Direct bounded controller reads; no DNS proxy, query-log dependency, raw response persistence, secret/URL logging, or browser-to-node calls | Production log redaction scan |
+| Exact-range collection | Complete and validated | Immediate/configurable interval worker, retention-aware eligible 24h/7d/30d `recent` reads, four-node concurrency, request timeouts, maintenance and v0.107.72–v0.107.78 capability gates, safe durable attempts | Operator evidence reproduced the 24h-retention boundary; regression coverage added |
+| Durable telemetry model | Complete and validated | Append-only `000009` separates poll evidence, immutable normalized snapshots, and overlap-safe hourly/daily node buckets; 32/400-day cleanup | Operator-confirmed working |
+| Correct aggregation | Complete and validated | Additive sums, aggregate percentages, query-weighted processing time, response-weighted upstream latency, stable normalization/sort, chronological series, explicit freshness/coverage | Operator-confirmed working |
+| Statistics API and UI | Complete and validated | Authenticated presentation-ready cluster/node API; global scope, fixed ranges, summary metrics, accessible SVG chart, ranked panels, node coverage, and compact dashboard summary | Operator-confirmed working |
+| Security and privacy boundary | Complete and validated | Direct bounded controller reads; no DNS proxy, query-log dependency, raw response persistence, secret/URL logging, or browser-to-node calls | Operator-confirmed working |
 
 Custom ranges and Query Log ingestion remain deliberately deferred. Detailed
 behavior and operator recovery are documented in
 `docs/backend/statistics-aggregation.md` and `docs/operations/runbook.md`.
 
+## Release 0.6 combined Query Log — complete and validated
+
+| Feature | Status | Implementation and evidence | Remaining release validation |
+|---|---|---|---|
+| Central ingestion | Complete and validated | Immediate/configurable worker, four-node bound, source `older_than` paging, durable checkpoints/attempts, overlap, safe errors, reset/retention/cursor gap evidence | Operator-confirmed working |
+| Identity and storage | Complete and validated | Normalized cluster/node events, SHA-256 stable-field fingerprint plus occurrence ordinal, node-scoped uniqueness, batch insert, bounded seven-day default cleanup, no credentials/raw payload | Operator-confirmed working |
+| Query API | Complete and validated | Authenticated cluster/node scope, parameterized domain/client search, status/type/client filters, bounded timestamp/UUID keyset cursor, detail, explicit coverage/freshness | Operator-confirmed working |
+| Query Log UI | Complete and validated | Canonical route, mandatory Node column, responsive table, debounced search, filters, previous/next cursor stack, conservative refresh/new-record notice, structured detail, partial/disabled/gap states | Operator-confirmed working |
+| Contextual configuration | Complete and validated | Allow/block proposals enter Custom Filter Rules; rewrite opens validated prefilled dialog; client uses safe search; all remain mutable-draft-only | Operator-confirmed working |
+| Privacy boundary | Complete and validated | Node anonymisation preserved, same-origin authenticated controller reads, bounded normalization, no routine event logging/support bundle inclusion, independent collection and retention | Fine-grained RBAC remains future scope before multiple roles |
+
+API polling cannot recover events already removed by node-local retention and
+cannot derive a perfect stable identity for completely indistinguishable
+records because AdGuard Home supplies no event ID. These limitations are
+represented conservatively. ADR-0029 makes any higher-fidelity forwarder
+conditional on measured need rather than assigning it a release. See
+`docs/backend/query-ingestion.md`, ADR-0015, and the operations runbook.
+
+## Release 0.7 operational hardening and observability
+
+| Feature | Status | Implementation and evidence | Remaining release validation |
+|---|---|---|---|
+| Operational health model/API | Implemented; automated checks pass | Shared eight-state model; authenticated cluster-scoped `/operational-status`; overall aggregation; safe bounded payload | Packaged PostgreSQL outage and multi-cluster browser exercise |
+| Operational Status UI | Implemented; frontend checks pass | Administration route, core services, observation/Statistics/Query Log tables, known gaps, workers, storage/retention, loading/error/degraded states | Packaged mobile/desktop light/dark browser captures |
+| Collector and observation health | Implemented | Existing 0.5/0.6 freshness reused; node reachability separated from immutable full observation; attempts/checkpoints remain restart source of truth | Controlled stale/failure/recovery run against two nodes |
+| Worker health and backoff | Implemented; unit checks pass | Process-local bounded tracker, running/last success/failure/streak/next run/duration, reset on recovery; deployment/command exponential backoff capped at 30s | Shutdown and repeated real database failure exercise |
+| Database/storage/retention | Implemented | PostgreSQL ping/schema/pool/size, relation estimates, retained bounds, worker cleanup state; Statistics deletes bounded to 10,000 per dataset/pass | Large-table query-plan and retention exercise |
+| Liveness/readiness/metrics | Implemented | Public minimal `/health`; database-aware `/ready`; opt-in minimum-32-character bearer-protected Prometheus worker counters/gauges with bounded labels | Deployment-network access-policy smoke |
+| Dashboard integration | Implemented | Compact controller, Statistics, and Query Log state linking to full status | Packaged responsive browser smoke |
+| Agentless-by-default | Accepted | ADR-0029 keeps native API ingestion standard and moves the forwarder to evidence-triggered future scope | Revisit only after measured trigger |
+
+Release 0.7 does not add an agent, local spool, machine credentials, notification
+platform, controller HA, node upgrade automation, or DNS traffic handling.
+
 ## Deliberately deferred
 
 - Field-level drift ignore rules, selectable partial-deployment recovery, parallel/rolling strategies, scheduled maintenance windows, and intra-mutation automatic retries: later operational work.
 - TLS certificate/key mutation: deferred pending controller-managed secret references; 0.4 provides redacted modelling only.
-- Custom statistics ranges and query-log ingestion: later work; fixed-range statistics are implemented in 0.5 and node-local telemetry policy remains managed configuration.
+- Custom statistics ranges and query-derived analytics/rollups: later work; fixed-range statistics are implemented in 0.5, API-polled query ingestion in 0.6, and node-local telemetry policy remains managed configuration.
 - Additional local-user management, password change/recovery, durable or distributed login throttling, OIDC, and RBAC: follow-on security scope.
 - Automated backup/restore tooling and an audit export: later operational releases; the supported recovery path remains manual.
 - Proxmox community installer, signed/prebuilt artifacts, and automated upgrade/rollback remain later release work.
@@ -128,7 +162,9 @@ behavior and operator recovery are documented in
 ## Known limitations
 
 - Release 0.1 supports one initial administrator and has no account-management screen.
-- Health work is in-process and intentionally not represented as durable jobs; only its latest result is durable.
+- Process worker state is in-memory and becomes unknown after restart; durable
+  collector attempts, checkpoints, observations, deployments, and drift remain
+  the restart source of truth.
 - The built React directory is installed alongside the Go binary rather than embedded in it.
 - `insecure_http` exists for explicit homelab compatibility and exposes node credentials to that management network; it is never selected implicitly.
 - Repeatable automated packaged-host backup/restore and live DNS-outage evidence remain follow-on improvements after the operator accepted the 0.1/0.1.1 production validation.

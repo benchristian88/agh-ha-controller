@@ -18,7 +18,7 @@ Architecture Decision Records capture durable decisions and their rationale.
 | [ADR-0012](ADR-0012-support-enforce-alert-and-manual-reconciliation-policies.md) | Accepted | Support Enforce, Alert, and Manual reconciliation policies |
 | [ADR-0013](ADR-0013-start-with-local-authentication-and-add-oidc-later.md) | Accepted | Start with local authentication and add OIDC later |
 | [ADR-0014](ADR-0014-use-debian-lxc-and-systemd-as-the-reference-deployment.md) | Accepted | Use Debian LXC and systemd as the reference deployment |
-| [ADR-0015](ADR-0015-make-central-query-log-collection-privacy-conscious-and-configurable.md) | Accepted | Make central query-log collection privacy-conscious and configurable |
+| [ADR-0015](ADR-0015-make-central-query-log-collection-privacy-conscious-and-configurable.md) | Accepted; implemented in 0.6 | Make central query-log collection privacy-conscious and configurable |
 | [ADR-0016](ADR-0016-make-node-management-capability-aware-and-version-aware.md) | Accepted | Make node management capability-aware and version-aware |
 | [ADR-0017](ADR-0017-use-a-monorepo-and-documentation-first-delivery-model.md) | Accepted | Use a monorepo and documentation-first delivery model |
 | [ADR-0018](ADR-0018-defer-controller-ha-until-after-the-single-controller-product-is-stable.md) | Accepted | Defer controller HA until after the single-controller product is stable |
@@ -32,3 +32,4 @@ Architecture Decision Records capture durable decisions and their rationale.
 | [ADR-0026](ADR-0026-adopt-adguard-v2-inspired-ui-language.md) | Accepted | Adopt an AdGuard Home v2-inspired operator model |
 | [ADR-0027](ADR-0027-use-query-backed-inline-details-for-the-ha-revision-lifecycle.md) | Accepted | Use query-backed inline details for the HA revision lifecycle |
 | [ADR-0028](ADR-0028-aggregate-exact-node-statistics-in-the-controller.md) | Accepted | Aggregate exact node statistics in the controller |
+| [ADR-0029](ADR-0029-remain-agentless-by-default.md) | Accepted | Remain agentless by default and defer a local Query Log forwarder until evidence requires it |

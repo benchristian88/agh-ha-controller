@@ -19,7 +19,9 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 	"github.com/benchristian88/agh-ha-controller/internal/jobs"
+	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
 	"github.com/benchristian88/agh-ha-controller/internal/operations"
+	"github.com/benchristian88/agh-ha-controller/internal/querylog"
 	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
 	"github.com/benchristian88/agh-ha-controller/internal/version"
 )
@@ -78,15 +80,33 @@ func run() error {
 		return err
 	}
 	reconciler := controlplane.NewReconciler(store, controlplaneService, inventoryService, logger)
-	healthPoller := jobs.NewHealthPoller(store, credentialCipher, probe, configuration.NodeHealthInterval, logger)
+	workerHealth := operationalhealth.NewTracker()
+	for _, worker := range []string{"node_connectivity", "statistics_collection", "statistics_retention", "query_log_collection", "query_log_retention", "deployment", "operational_commands", "drift_reconciliation", "session_cleanup"} {
+		workerHealth.Register(worker, (worker == "query_log_collection" || worker == "query_log_retention") && !configuration.QueryLogCollection)
+	}
+	healthPoller := jobs.NewHealthPoller(store, credentialCipher, probe, configuration.NodeHealthInterval, logger, workerHealth)
 	statisticsService := telemetry.NewService(store, configuration.StatisticsPollInterval, configuration.NodeRequestTimeout)
-	statisticsPoller := jobs.NewStatisticsPoller(store, credentialCipher, configurationAdapter, configuration.StatisticsPollInterval, configuration.NodeRequestTimeout, logger)
+	statisticsPoller := jobs.NewStatisticsPoller(store, credentialCipher, configurationAdapter, configuration.StatisticsPollInterval, configuration.NodeRequestTimeout, logger, workerHealth)
+	queryLogService := querylog.NewService(store, configuration.QueryLogPollInterval, querylog.Options{
+		CollectionEnabled: configuration.QueryLogCollection,
+		Retention:         configuration.QueryLogRetention,
+	})
+	operationalService := operationalhealth.NewService(store, workerHealth, operationalhealth.Options{
+		NodeInterval: configuration.NodeHealthInterval, RequestTimeout: configuration.NodeRequestTimeout,
+		StatisticsInterval: configuration.StatisticsPollInterval, QueryLogInterval: configuration.QueryLogPollInterval,
+		StatisticsRetention: 400 * 24 * time.Hour, QueryLogRetention: configuration.QueryLogRetention,
+		QueryLogEnabled: configuration.QueryLogCollection,
+	})
 	go healthPoller.Run(rootContext)
 	go statisticsPoller.Run(rootContext)
-	go jobs.RunDeploymentExecutor(rootContext, deploymentExecutor, logger)
-	go jobs.RunOperationalCommandExecutor(rootContext, operationExecutor, logger)
-	go jobs.RunReconciler(rootContext, reconciler, configuration.NodeHealthInterval, logger)
-	go jobs.RunSessionCleanup(rootContext, store, logger)
+	if configuration.QueryLogCollection {
+		queryLogPoller := jobs.NewQueryLogPoller(store, credentialCipher, configurationAdapter, configuration.QueryLogPollInterval, configuration.NodeRequestTimeout, configuration.QueryLogRetention, logger, workerHealth)
+		go queryLogPoller.Run(rootContext)
+	}
+	go jobs.RunDeploymentExecutor(rootContext, deploymentExecutor, logger, workerHealth)
+	go jobs.RunOperationalCommandExecutor(rootContext, operationExecutor, logger, workerHealth)
+	go jobs.RunReconciler(rootContext, reconciler, configuration.NodeHealthInterval, logger, workerHealth)
+	go jobs.RunSessionCleanup(rootContext, store, logger, workerHealth)
 
 	apiServer := controllerapi.NewServer(
 		authService, management, inventoryService, store, store, logger,
@@ -96,6 +116,9 @@ func run() error {
 	)
 	apiServer.SetDNSOperations(operationService)
 	apiServer.SetStatistics(statisticsService)
+	apiServer.SetQueryLog(queryLogService)
+	apiServer.SetOperationalHealth(operationalService)
+	apiServer.SetMetrics(workerHealth, configuration.MetricsToken)
 	httpServer := &http.Server{
 		Addr:              configuration.HTTPAddress,
 		Handler:           apiServer.Handler(),

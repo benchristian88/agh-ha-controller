@@ -55,7 +55,9 @@ render distinct execution and convergence pages, and Revisions no longer
 renders Configuration Control. They continue to share typed controller APIs
 and semantic presentation primitives. Release 0.5 subsequently replaces the
 Statistics planned state with the complete fixed-range, global-scope
-experience; Query Log remains the explicit Release 0.6 planned state.
+experience. Release 0.6 replaces the Query Log planned state with a combined,
+node-attributed, global-scope experience whose contextual actions hand off to
+existing Filters and Settings draft workflows.
 
 ## Route migrations
 

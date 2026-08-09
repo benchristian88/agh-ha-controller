@@ -11,6 +11,7 @@ export type RouteResolution =
   | { kind: "dashboard" }
   | { kind: "nodes" }
   | { kind: "statistics" }
+  | { kind: "query-log" }
   | { kind: "configuration" }
   | { kind: "deployments" }
   | { kind: "drift" }
@@ -24,6 +25,7 @@ export type RouteResolution =
       heading: readonly [title: string, description: string];
     }
   | { kind: "audit" }
+  | { kind: "operational-status" }
   | { kind: "planned"; title: string; release?: string }
   | { kind: "redirect"; to: string }
   | { kind: "not-found" };
@@ -50,6 +52,7 @@ export const CANONICAL_PATHS = [
   "/setup-guide",
   "/system/users",
   "/system/audit",
+  "/system/operational-status",
   "/system/settings",
   "/system/backups",
   "/system/about",
@@ -121,7 +124,6 @@ const settingsRoutes: Readonly<
 const plannedRoutes: Readonly<
   Record<string, { title: string; release?: string }>
 > = {
-  "/query-log": { title: "Query Log", release: "Release 0.6" },
   "/setup-guide": { title: "Setup Guide" },
   "/system/users": { title: "Users" },
   "/system/settings": { title: "System Settings" },
@@ -148,6 +150,8 @@ export function resolveRoute(pathname: string): RouteResolution {
       return { kind: "dashboard" };
     case "/statistics":
       return { kind: "statistics" };
+    case "/query-log":
+      return { kind: "query-log" };
     case "/ha/nodes":
       return { kind: "nodes" };
     case "/ha/configuration":
@@ -166,6 +170,8 @@ export function resolveRoute(pathname: string): RouteResolution {
       return { kind: "blocked-services" };
     case "/system/audit":
       return { kind: "audit" };
+    case "/system/operational-status":
+      return { kind: "operational-status" };
     default:
       return { kind: "not-found" };
   }

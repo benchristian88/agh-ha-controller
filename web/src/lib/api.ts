@@ -21,7 +21,10 @@ import type {
   DNSOperationalCommand,
   DriftEvent,
   Node,
+  OperationalStatus,
   OperationalTarget,
+  QueryEvent,
+  QueryEventPage,
   StatisticsReport,
   ValidationIssue,
 } from "./types";
@@ -141,6 +144,10 @@ export const api = {
       refreshedAt: string;
       staleAfterSeconds: number;
     }>(`/api/v1/clusters/${clusterId}/nodes`),
+  operationalStatus: (clusterId: string) =>
+    request<OperationalStatus>(
+      `/api/v1/clusters/${clusterId}/operational-status`,
+    ),
   statistics: (clusterId: string, range: string, nodeId = "") => {
     const query = new URLSearchParams({ range, limit: "10" });
     if (nodeId !== "") query.set("nodeId", nodeId);
@@ -148,6 +155,33 @@ export const api = {
       `/api/v1/clusters/${clusterId}/statistics?${query.toString()}`,
     );
   },
+  queryEvents: (
+    clusterId: string,
+    input: {
+      nodeId?: string;
+      cursor?: string;
+      limit?: number;
+      search?: string;
+      status?: string;
+      queryType?: string;
+      client?: string;
+    } = {},
+  ) => {
+    const query = new URLSearchParams({ limit: String(input.limit ?? 50) });
+    if (input.nodeId) query.set("nodeId", input.nodeId);
+    if (input.cursor) query.set("cursor", input.cursor);
+    if (input.search) query.set("search", input.search);
+    if (input.status) query.set("status", input.status);
+    if (input.queryType) query.set("queryType", input.queryType);
+    if (input.client) query.set("client", input.client);
+    return request<QueryEventPage>(
+      `/api/v1/clusters/${clusterId}/query-events?${query.toString()}`,
+    );
+  },
+  queryEvent: (clusterId: string, eventId: string) =>
+    request<QueryEvent>(
+      `/api/v1/clusters/${clusterId}/query-events/${eventId}`,
+    ),
   createNode: (clusterId: string, input: NodePayload) =>
     request<Node>(`/api/v1/clusters/${clusterId}/nodes`, {
       method: "POST",

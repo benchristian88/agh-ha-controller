@@ -49,6 +49,11 @@ Common coverage reasons:
 
 - `STATISTICS_EXACT_RANGE_UNSUPPORTED`: upgrade the node to a tested
   v0.107.72–v0.107.78 contract, or accept its explicit exclusion;
+- `STATISTICS_RANGE_EXCEEDS_NODE_RETENTION`: the selected 7d or 30d range is
+  longer than this node's configured statistics interval; increase node-local
+  retention through a reviewed configuration revision only if that history is
+  required;
+- `STATISTICS_DISABLED`: statistics are disabled on the node;
 - `NODE_MAINTENANCE`: leave maintenance only when normal polling is intended;
 - `STATISTICS_TIMEOUT` or `NODE_UNREACHABLE`: verify management-network access
   and the configured timeout;
@@ -67,6 +72,11 @@ credentials, node URLs, and raw responses are not logged.
 PostgreSQL retains snapshots, attempts, and hourly buckets for 32 days and
 daily rollups for 400 days. Include these tables in normal PostgreSQL backups;
 no separate telemetry volume exists.
+
+A node configured for 24 hours is expected to collect only `24h`; that is a
+healthy collector pass. The 7d and 30d views remain unavailable for that node
+with the retention reason above. `NODE_INVALID_RESPONSE` for those longer
+ranges is not expected after the retention-aware correction.
 
 ## Release 0.1.1 installation checks
 
@@ -156,6 +166,39 @@ It must exclude:
 - Node credentials.
 - TLS private keys.
 - Raw query logs by default.
+
+## Release 0.6 Query Log operations
+
+The controller polls immediately after startup and every
+`QUERY_LOG_POLL_INTERVAL` (default 30 seconds), up to four nodes concurrently.
+Use `/query-log` coverage to distinguish unsupported nodes, node-local logging
+disabled, maintenance, stale collection, request failure, and known gaps. DNS
+continues on every node during controller or ingestion failure.
+
+Runtime controls are `QUERY_LOG_COLLECTION_ENABLED`, `QUERY_LOG_POLL_INTERVAL`,
+and `QUERY_LOG_RETENTION`. The seven-day retention default is independent of
+the node-local policy in General Settings. Disabling collection preserves
+retained events until normal expiry. After changing systemd configuration,
+restart the service; for Compose, recreate the controller container.
+
+Investigate repeated gaps by comparing poll interval and DNS volume with the
+10,000-record per-node pass bound, checking node-local retention/clear history,
+and checking time synchronization. `QUERY_LOG_SOURCE_WINDOW_TRUNCATED` means
+poll capacity was insufficient; shorten the interval. A retention gap or reset
+cannot be reconstructed through the node API. `QUERY_LOG_CURSOR_STALLED` or
+malformed-record gaps should be captured with node/controller versions, never
+with credentials or raw household query history.
+
+The DNS root question `.` is valid and is ingested without creating a
+malformed-record gap. For a continuing `QUERY_LOG_MALFORMED_RECORD`, search the
+safe controller warning for `node_id` and `invalid_records`; never paste the
+raw page. A later successful gap-free pass clears the checkpoint gap, while
+previously retained valid events remain unchanged.
+
+Monitor PostgreSQL database/index size and autovacuum. Budget roughly 1–3 GiB
+per million events including indexes and headroom, then validate against actual
+traffic. Cleanup is bounded to 10,000 events and attempts per pass; failure is
+logged and retried on the next poll without stopping ingestion.
 The 29 July 2026 production validation completed both Docker and systemd installs successfully. A non-fatal `make: rg: no such file or directory` message on systemd came from Make source discovery; Release 0.2 uses portable `find` and does not require ripgrep for installation.
 
 ## Release 0.2 configuration inventory checks
@@ -202,3 +245,30 @@ open Release 0.4 completion gate.
 7. Change a schema-v2 managed setting directly and confirm drift; change only TLS status or a dynamic lease and confirm no drift.
 
 If a v2 deployment is blocked, inspect the node capability profile and successful current observation. Do not bypass the gate: upgrade the node, restore endpoint access, refresh, and re-import. TLS changes must be made in the native node UI while the node is in maintenance, followed by refresh and deliberate adoption.
+
+## Release 0.7 Operational Status
+
+Use **Administration -> Operational Status** before querying PostgreSQL or
+searching logs. Connectivity and full observation are separate: a node API may
+be reachable while its configuration snapshot is stale. Statistics and Query
+Log reuse their established freshness rules and known source gaps are explicit.
+
+For a failed collector, check the safe code, last success, lag, failure streak,
+and next attempt. Confirm maintenance and compatibility, then inspect logs for
+the same subsystem/node ID. Logs must not contain credentials, query contents,
+or raw responses. Healthy-node polls continue when another node fails.
+
+Retention failures are separate worker states and do not stop collection.
+Statistics and Query Log deletion are bounded to 10,000 rows per dataset/pass.
+Check free disk, locks, autovacuum, and PostgreSQL logs; do not routinely run
+`VACUUM FULL`. A successful run clears the worker failure streak.
+
+- `/health` is process liveness and does not fail for stale collectors.
+- `/ready` is PostgreSQL-aware readiness and is the Docker health check.
+- `/api/v1/clusters/{clusterId}/operational-status` is authenticated detail.
+- `/metrics` is disabled by default. Configure a random minimum-32-character
+  `METRICS_BEARER_TOKEN`, restart, use it as the Prometheus bearer token, and
+  restrict port 8080 with host or reverse-proxy policy.
+
+PostgreSQL sizes are metadata estimates: monitor trends, autovacuum and index
+growth, run normal `ANALYZE`, and test backup/restore duration as data grows.

@@ -17,7 +17,9 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/controlplane"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
+	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
 	"github.com/benchristian88/agh-ha-controller/internal/operations"
+	"github.com/benchristian88/agh-ha-controller/internal/querylog"
 	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
 )
 
@@ -76,6 +78,15 @@ type StatisticsService interface {
 	Statistics(context.Context, string, telemetry.Range, string, int) (telemetry.Report, error)
 }
 
+type QueryLogService interface {
+	List(context.Context, querylog.ListRequest) (querylog.Page, error)
+	Detail(context.Context, string, string) (querylog.Event, error)
+}
+
+type OperationalHealthService interface {
+	Status(context.Context, string) (operationalhealth.Status, error)
+}
+
 type Server struct {
 	auth           *auth.Service
 	management     *domain.ManagementService
@@ -88,6 +99,10 @@ type Server struct {
 	dhcpOperations DHCPOperationService
 	dnsOperations  DNSOperationService
 	statistics     StatisticsService
+	queryLog       QueryLogService
+	operational    OperationalHealthService
+	metrics        *operationalhealth.Tracker
+	metricsToken   string
 	controlplane   *controlplane.Service
 	audit          AuditReader
 	health         HealthChecker
@@ -99,8 +114,13 @@ type Server struct {
 	mux            *http.ServeMux
 }
 
-func (s *Server) SetDNSOperations(service DNSOperationService) { s.dnsOperations = service }
-func (s *Server) SetStatistics(service StatisticsService)      { s.statistics = service }
+func (s *Server) SetDNSOperations(service DNSOperationService)          { s.dnsOperations = service }
+func (s *Server) SetStatistics(service StatisticsService)               { s.statistics = service }
+func (s *Server) SetQueryLog(service QueryLogService)                   { s.queryLog = service }
+func (s *Server) SetOperationalHealth(service OperationalHealthService) { s.operational = service }
+func (s *Server) SetMetrics(tracker *operationalhealth.Tracker, token string) {
+	s.metrics, s.metricsToken = tracker, token
+}
 
 func NewServer(authService *auth.Service, management *domain.ManagementService, inventoryService *inventory.Service, audit AuditReader, health HealthChecker, logger *slog.Logger, secureCookies bool, publicBaseURL string, healthInterval time.Duration, webDist string, controlplanes ...*controlplane.Service) *Server {
 	var controlplaneService *controlplane.Service
@@ -124,6 +144,7 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /health", s.handleHealth)
 	s.mux.HandleFunc("GET /ready", s.handleReady)
+	s.mux.HandleFunc("GET /metrics", s.handleMetrics)
 	s.mux.HandleFunc("GET /api/v1/setup/status", s.handleSetupStatus)
 	s.mux.HandleFunc("POST /api/v1/setup", s.handleSetup)
 	s.mux.HandleFunc("POST /api/v1/auth/login", s.handleLogin)
@@ -136,6 +157,9 @@ func (s *Server) routes() {
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/nodes", s.authenticated(false, http.HandlerFunc(s.handleListNodes)))
 	s.mux.Handle("POST /api/v1/clusters/{clusterId}/nodes", s.authenticated(true, http.HandlerFunc(s.handleCreateNode)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/statistics", s.authenticated(false, http.HandlerFunc(s.handleStatistics)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/query-events", s.authenticated(false, http.HandlerFunc(s.handleQueryEvents)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/query-events/{eventId}", s.authenticated(false, http.HandlerFunc(s.handleQueryEventDetail)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/operational-status", s.authenticated(false, http.HandlerFunc(s.handleOperationalStatus)))
 	s.mux.Handle("GET /api/v1/nodes/{nodeId}", s.authenticated(false, http.HandlerFunc(s.handleGetNode)))
 	s.mux.Handle("PATCH /api/v1/nodes/{nodeId}", s.authenticated(true, http.HandlerFunc(s.handleUpdateNode)))
 	s.mux.Handle("DELETE /api/v1/nodes/{nodeId}", s.authenticated(true, http.HandlerFunc(s.handleDeleteNode)))

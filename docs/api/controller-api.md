@@ -1,6 +1,6 @@
 # Controller API
 
-## Release 0.5 contract
+## Release 0.6 contract
 
 The controller serves its browser UI and JSON API from the same origin. JSON routes are versioned under:
 
@@ -86,7 +86,39 @@ that missing nodes contributed zero traffic.
 Only controller-collected normalized statistics are returned. The route does
 not read query logs, call nodes synchronously, expose node credentials/URLs, or
 return raw AdGuard Home payloads. Responses retain the API-wide `no-store`
-cache policy.
+cache policy. Node coverage uses `STATISTICS_RANGE_EXCEEDS_NODE_RETENTION` when
+the selected fixed range is longer than that node's configured statistics
+interval; this is an explicit unavailable range, not a zero contribution or an
+unhealthy eligible-range poll.
+
+## Query-event routes
+
+```text
+GET /api/v1/clusters/{clusterId}/query-events
+GET /api/v1/clusters/{clusterId}/query-events/{eventId}
+```
+
+Both reads require the existing authenticated administrator session and are
+strictly cluster-scoped. The list accepts optional `nodeId`, `cursor`, `search`,
+`status`, `queryType`, and exact `client`, plus `limit=1..100` (default 50).
+Search is bounded to 256 characters and matches normalized domain, client
+identifier, or centrally available display name using parameterized SQL. A node
+filter is rejected unless that node belongs to the path cluster.
+
+Results are ordered by `(timestamp DESC, id DESC)`. `nextCursor` is an opaque
+base64url controller cursor containing a version, source timestamp, and UUID;
+clients must not inspect or modify it. Changing any filter resets the cursor.
+The response contains normalized events, observed query-type/status options,
+generation time, and node-attributed coverage including explicit global
+collection state, stale/unsupported/maintenance/logging-disabled/error/gap
+counts, configured `retentionSeconds`, per-node evidence, and common
+current-through time. It never returns
+node URLs, credentials, raw node payloads, or internal database details.
+
+The detail route verifies both cluster and event UUID and returns the same
+stable controller-domain event shape with bounded rules and answers. Neither
+route contacts an AdGuard Home node synchronously. API-wide `no-store`, request
+IDs, safe errors, and session authorization apply.
 
 ## Node routes
 
@@ -316,6 +348,25 @@ GET /health  # process liveness; does not require PostgreSQL
 GET /ready   # PostgreSQL connectivity and mutation readiness
 ```
 
+Stale or failed optional collectors do not fail liveness. PostgreSQL loss
+fails readiness.
+
+Authenticated detailed status is cluster-scoped:
+
+```text
+GET /api/v1/clusters/{clusterId}/operational-status
+```
+
+It returns presentation-ready overall, database/pool/storage, connectivity,
+observation, Statistics, Query Log, gap, retention, and worker states with safe
+codes and bounded arrays. It never returns raw errors, stack traces,
+credentials, node URLs, query contents, or client identifiers.
+
+`GET /metrics` returns 404 unless `METRICS_BEARER_TOKEN` is configured and
+requires that bearer token when enabled. Metrics use bounded worker labels.
+
 ## Later contracts
 
-Statistics and query-event contracts begin in 0.5 and 0.6.
+Statistics and query-event contracts began in 0.5 and 0.6. Full notification
+delivery, HA lifecycle automation, and mutable system settings remain later
+contracts.

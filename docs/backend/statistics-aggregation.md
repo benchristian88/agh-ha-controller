@@ -8,13 +8,23 @@ proxies DNS, mutates AdGuard Home statistics, or reads query-log events.
 The combined controller process starts the statistics worker after PostgreSQL,
 credentials, and the node adapter are ready. It runs one immediate pass, then
 runs at `STATISTICS_POLL_INTERVAL` (default `1h`). Up to four nodes are polled
-concurrently. A node's three range reads are sequential and bounded by
+concurrently. A node's eligible range reads are sequential and bounded by
 `NODE_REQUEST_TIMEOUT`; the next pass starts only after the current pass ends.
 
 Eligible nodes are enabled, outside maintenance, and report a tested
-v0.107.72–v0.107.78 version with exact `recent` statistics support. Each
-eligible node is asked for `24h`, `7d`, and `30d`. A node can contribute to a
-shorter range even when its own retention is too short for a longer range.
+v0.107.72–v0.107.78 version with exact `recent` statistics support. Before
+requesting data, the worker reads that node's current `stats/config` interval.
+It requests only the fixed `24h`, `7d`, and `30d` ranges that fit within the
+node-local retention boundary; AdGuard Home rejects a `recent` value greater
+than that interval. A 24-hour node therefore has one eligible range, and a
+successful `1/1` pass is operationally healthy rather than partial.
+
+Longer fixed ranges remain explicit on the Statistics API. When a requested
+range exceeds a node's retention, that node is missing with
+`STATISTICS_RANGE_EXCEEDS_NODE_RETENTION`; Atlas does not manufacture longer
+history from a shorter snapshot. `expected_ranges` on durable poll attempts is
+the number eligible for that node during that pass, while `range_errors` also
+records the safe reason for configured-but-ineligible ranges.
 
 The first data normally appears after the startup pass completes; operators do
 not need to wait one full polling interval. The snapshot reflects the history
@@ -61,10 +71,12 @@ partial rather than silently dropping their known totals.
 
 ## Failure and gap behavior
 
-Authentication, TLS, timeout, network, capability, and invalid-response
-failures become stable attempt error codes. The worker logs node IDs and safe
-codes, never secrets or response bodies. A failure in one node or range does
-not stop other nodes or already successful ranges.
+Authentication, TLS, timeout, network, capability, invalid-configuration, and
+invalid-response failures become stable attempt error codes. The worker logs
+only node IDs, ranges, and safe codes for range failures, never secrets, URLs,
+ranked values, or response bodies. A failure in one node or eligible range does
+not stop other nodes or already successful ranges. A configured retention
+boundary is not a failed request and does not degrade collector health.
 
 Maintenance creates a `maintenance` attempt and no node request. Versions
 without exact-range support create an `unsupported` attempt. Disabled nodes

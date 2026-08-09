@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLoad(t *testing.T) {
@@ -24,6 +25,20 @@ func TestLoad(t *testing.T) {
 	}
 	if configuration.StatisticsPollInterval.String() != "1h0m0s" {
 		t.Fatalf("StatisticsPollInterval = %v", configuration.StatisticsPollInterval)
+	}
+	if !configuration.QueryLogCollection || configuration.QueryLogPollInterval.String() != "30s" || configuration.QueryLogRetention != 7*24*time.Hour {
+		t.Fatalf("unexpected query-log defaults: enabled=%v interval=%v retention=%v", configuration.QueryLogCollection, configuration.QueryLogPollInterval, configuration.QueryLogRetention)
+	}
+}
+
+func TestLoadRejectsUnsafeQueryLogBounds(t *testing.T) {
+	t.Setenv("PUBLIC_BASE_URL", "http://localhost:8080")
+	t.Setenv("DATABASE_URL", "postgres://example.invalid/test")
+	t.Setenv("SESSION_SECRET", base64.StdEncoding.EncodeToString([]byte(strings.Repeat("s", 48))))
+	t.Setenv("CREDENTIAL_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString([]byte("12345678901234567890123456789012")))
+	t.Setenv("QUERY_LOG_RETENTION", "2400h")
+	if _, err := Load(); err == nil {
+		t.Fatal("Load accepted excessive query-log retention")
 	}
 }
 
@@ -54,5 +69,16 @@ func TestLoadRejectsPlaceholderSessionSecret(t *testing.T) {
 	t.Setenv("CREDENTIAL_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString([]byte("12345678901234567890123456789012")))
 	if _, err := Load(); err == nil {
 		t.Fatal("Load accepted a non-base64 session secret")
+	}
+}
+
+func TestLoadRejectsShortMetricsToken(t *testing.T) {
+	t.Setenv("PUBLIC_BASE_URL", "http://localhost:8080")
+	t.Setenv("DATABASE_URL", "postgres://example.invalid/test")
+	t.Setenv("SESSION_SECRET", base64.StdEncoding.EncodeToString([]byte(strings.Repeat("s", 48))))
+	t.Setenv("CREDENTIAL_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString([]byte("12345678901234567890123456789012")))
+	t.Setenv("METRICS_BEARER_TOKEN", "too-short")
+	if _, err := Load(); err == nil {
+		t.Fatal("Load accepted a short metrics bearer token")
 	}
 }

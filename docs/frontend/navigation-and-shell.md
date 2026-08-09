@@ -102,6 +102,7 @@ Required context:
 Lower-frequency controller administration:
 
 - Users
+- Operational Status
 - Audit Log
 - System Settings
 - Backups

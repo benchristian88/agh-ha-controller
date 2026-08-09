@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
 )
 
 type HealthStore interface {
@@ -31,13 +32,18 @@ type HealthPoller struct {
 	concurrency int
 	logger      *slog.Logger
 	now         func() time.Time
+	health      *operationalhealth.Tracker
 }
 
-func NewHealthPoller(store HealthStore, decrypter CredentialDecrypter, probe StatusProbe, interval time.Duration, logger *slog.Logger) *HealthPoller {
-	return &HealthPoller{
+func NewHealthPoller(store HealthStore, decrypter CredentialDecrypter, probe StatusProbe, interval time.Duration, logger *slog.Logger, trackers ...*operationalhealth.Tracker) *HealthPoller {
+	poller := &HealthPoller{
 		store: store, decrypter: decrypter, probe: probe, interval: interval,
 		concurrency: 4, logger: logger, now: time.Now,
 	}
+	if len(trackers) > 0 {
+		poller.health = trackers[0]
+	}
+	return poller
 }
 
 func (p *HealthPoller) Run(ctx context.Context) {
@@ -69,9 +75,15 @@ func (p *HealthPoller) PollNow(ctx context.Context, nodeID string) error {
 }
 
 func (p *HealthPoller) poll(ctx context.Context) {
+	if p.health != nil {
+		p.health.Start("node_connectivity", p.now().UTC().Add(p.interval))
+	}
 	records, err := p.store.PollableNodes(ctx)
 	if err != nil {
-		p.logger.Error("node health polling could not load nodes", "error", err)
+		p.logger.Error("node health polling could not load nodes", "subsystem", "node_connectivity", "error", err, "retry_in", p.interval)
+		if p.health != nil {
+			p.health.Failure("node_connectivity", "NODE_LIST_FAILED", p.now().UTC().Add(p.interval))
+		}
 		return
 	}
 	semaphore := make(chan struct{}, p.concurrency)
@@ -91,6 +103,9 @@ func (p *HealthPoller) poll(ctx context.Context) {
 		}()
 	}
 	group.Wait()
+	if p.health != nil {
+		p.health.Success("node_connectivity", p.now().UTC().Add(p.interval))
+	}
 }
 
 func (p *HealthPoller) pollNode(ctx context.Context, record domain.NodeRecord) {

@@ -28,13 +28,12 @@
 
 ## Observability
 
-- Prometheus metrics.
 - Webhook alerts.
 - Email alerts.
-- Query ingestion lag.
 - Node response-time trends.
-- Database growth estimates.
-- Forwarder spool alerts.
+- Broader HTTP/database/collector Prometheus metrics beyond the bounded worker
+  metrics delivered in 0.7.
+- Conditional forwarder investigation only after an ADR-0029 trigger.
 
 ## Security
 

@@ -68,7 +68,9 @@ HA Controller
 Setup Guide
 ```
 
-Release 0.5 owns Statistics functionality and Release 0.6 owns the combined Query Log. Release 0.5 now implements its dedicated route; Query Log remains clearly labelled as planned. Neither may silently fall through to Dashboard.
+Release 0.5 owns Statistics functionality and Release 0.6 owns the combined
+Query Log. Both now implement dedicated, scope-aware routes and neither may
+silently fall through to Dashboard.
 
 ## Product rules
 

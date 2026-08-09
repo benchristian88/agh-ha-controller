@@ -2,13 +2,13 @@
 
 # Product Design Document
 
-**Document version:** 0.2.0
+**Document version:** 0.7.0
 
-**Product stage:** Release 0.1 implementation; external validation pending
+**Product stage:** Release 0.7 implementation; final external validation pending
 
 **Status:** Living source of truth
 
-**Last updated:** 27 July 2026
+**Last updated:** 9 August 2026
 **Intended audience:** Product owner, maintainers, contributors, AI coding agents, security reviewers, and future commercial partners
 
 ---
@@ -22,6 +22,16 @@ It is intentionally broader than a conventional software specification. It combi
 This document is authoritative for product intent. More specialised documents under `docs/` remain authoritative for detailed implementation contracts when they are more specific. Architecture Decision Records under `docs/decisions/` explain why major choices were made.
 
 Release 0.1 implementation details and validation status are recorded in `docs/product/feature-ledger.md` and the Release 0.1 reconciliation section of `docs/roadmap/roadmap.md`. ADR-0021 resolves the runtime and security choices that were open in the original baseline.
+
+**Release 0.7 roadmap amendment:** Releases 0.5 Statistics and 0.6 Query Log
+are complete and validated. ADR-0029 makes Atlas agentless by default and
+supersedes every older fixed-release forwarder reference in this accumulated
+design document. Release 0.7 is Operational Hardening & Observability; 0.8 is
+HA Operations & Lifecycle; 0.9 is Product and Release Hardening; 1.0 is the
+Stable Supported Release. A local Query Log forwarder has no release assignment
+and is investigated only after measured API-ingestion failure. The current
+canonical roadmap is `docs/roadmap/roadmap.md`; historical forwarder sections
+below are retained as superseded design history, not active scope.
 
 Release 0.1.1 adds git-based Debian/systemd and Docker Compose installation while preserving the systemd reference topology and the same controller/database boundaries. ADR-0022 records the decision to bring supported Docker installation forward.
 
@@ -1987,37 +1997,29 @@ Schema v2 extends the existing desired/observed/revision pipeline; it is not a s
 - lag reporting;
 - restart-safe ingestion.
 
-## 93. Release 0.7 — Forwarder preview
+## 93. Release 0.7 — Operational Hardening & Observability
 
-- Go forwarder;
-- rotation detection;
-- checkpoint;
-- batching and compression;
-- local spool;
-- authentication;
-- health UI.
+- operational health API and Administration page;
+- collector, observation, worker, retention, database, and storage health;
+- retry/backoff and bounded cleanup hardening;
+- liveness/readiness clarification and protected metrics;
+- agentless-by-default decision.
 
-## 94. Release 0.8 — Production ingestion
+## 94. Release 0.8 — HA Operations & Lifecycle
 
-- at-least-once delivery;
-- deduplication;
-- backpressure;
-- rollups from events;
-- retention controls;
-- polling fallback;
-- upgrade compatibility.
+- DNS service probes and failed-node awareness;
+- planned maintenance and drain/return workflows where appropriate;
+- certificate/upgrade readiness and rolling upgrades;
+- post-upgrade DNS/API/configuration validation;
+- operational notifications and coordination.
 
-## 95. Release 0.9 — Operational HA
+## 95. Release 0.9 — Product and Release Hardening
 
-- maintenance workflows;
-- rolling controls;
-- node replacement;
-- upgrade readiness;
-- alerts;
-- backup/restore validation;
-- expanded health probes.
+- install/upgrade/migration/backup/disaster-recovery validation;
+- security, authorization, audit, accessibility, browser, and performance review;
+- onboarding, documentation, packaging, licensing, and API/support policy.
 
-## 96. Release 1.0 — Community production release
+## 96. Release 1.0 — Stable Supported Release
 
 - Debian installation;
 - hardened and published Docker Compose artifacts;
@@ -4213,7 +4215,7 @@ Release 0.4 does not ingest statistics or query events into the controller. Thos
 - Polling resumes after controller restart.
 - Node attribution is preserved.
 
-## Release 0.7 — Forwarder preview
+## Superseded historical plan — Release 0.7 forwarder preview
 
 ### Outcomes
 
@@ -4230,7 +4232,7 @@ Release 0.4 does not ingest statistics or query events into the controller. Thos
 - Authentication.
 - Forwarder health UI.
 
-## Release 0.8 — Production query ingestion
+## Superseded historical plan — Release 0.8 production query ingestion
 
 ### Outcomes
 
@@ -4247,7 +4249,7 @@ Release 0.4 does not ingest statistics or query events into the controller. Thos
 - Raw-event retention controls.
 - Polling fallback.
 
-## Release 0.9 — Operational HA
+## Superseded historical plan — Release 0.9 operational HA
 
 ### Outcomes
 

@@ -127,6 +127,26 @@ func (r *ConfigurationReader) ReadStatistics(ctx context.Context, request domain
 	}, nil
 }
 
+// ReadStatisticsConfig returns the node-local retention boundary used to
+// select exact ranges.  AdGuard Home rejects a recent window greater than this
+// interval, so callers must inspect it before requesting statistics.
+func (r *ConfigurationReader) ReadStatisticsConfig(ctx context.Context, request domain.NodeProbeRequest) (telemetry.SourceConfig, error) {
+	var response policyResponse
+	if err := r.get(ctx, request, "/control/stats/config", &response); err != nil {
+		return telemetry.SourceConfig{}, err
+	}
+	const (
+		minimum = int64(time.Hour / time.Millisecond)
+		maximum = int64(365 * 24 * time.Hour / time.Millisecond)
+	)
+	if response.IntervalMillis < 0 || response.IntervalMillis > maximum ||
+		(response.IntervalMillis != 0 && response.IntervalMillis < minimum) ||
+		(response.Enabled && response.IntervalMillis == 0) {
+		return telemetry.SourceConfig{}, domain.NewError(domain.ErrorNodeResponse, "the node statistics configuration used an invalid retention interval")
+	}
+	return telemetry.SourceConfig{Enabled: response.Enabled, Retention: time.Duration(response.IntervalMillis) * time.Millisecond}, nil
+}
+
 type dnsInfoResponse struct {
 	UpstreamDNS        []string `json:"upstream_dns"`
 	BootstrapDNS       []string `json:"bootstrap_dns"`

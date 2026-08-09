@@ -102,7 +102,8 @@ export function StatisticsPage({ cluster }: { cluster: Cluster }) {
           {report.coverage.unsupportedNodes > 0 &&
             ` ${report.coverage.unsupportedNodes} do not support exact range collection.`}
           {report.coverage.staleNodes > 0 &&
-            ` ${report.coverage.staleNodes} have stale data.`}
+            ` ${report.coverage.staleNodes} have stale data.`}{" "}
+          <a href="/system/operational-status">View collector health</a>
         </div>
       )}
 
@@ -112,6 +113,7 @@ export function StatisticsPage({ cluster }: { cluster: Cluster }) {
             The controller has not collected a usable exact-range snapshot for
             this scope. Check node coverage below or wait for the next poll.
           </p>
+          <a href="/system/operational-status">View collector health</a>
         </EmptyState>
       ) : (
         <>

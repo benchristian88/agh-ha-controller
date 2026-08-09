@@ -122,6 +122,37 @@ The UI must clearly show:
 - Who can access it.
 - Whether raw events or aggregates are stored.
 
+Release 0.6 exposes normalized raw events only through authenticated,
+cluster-scoped controller APIs and the same-origin UI. The controller preserves
+node anonymisation exactly as received and does not attempt reversal. Event
+rows exclude administrative credentials, node URLs, full source payloads, and
+unrelated configuration. Routine logs include node IDs, safe status/error codes,
+and inserted counts—not query names, clients, answers, credentials, or response
+bodies. Search is length-validated and parameterized.
+
+The single local administrator role is the current authorization boundary;
+fine-grained Query Log RBAC remains later scope and must be introduced before
+multi-role access. Existing Query Log clear commands remain separately
+confirmed, CSRF-protected, durable, and audited. Retention cleanup is not a
+node-clear operation. Query events remain excluded from normal diagnostic and
+support bundles unless a future explicit redacted export is designed.
+
+## Release 0.7 operational diagnostics
+
+Detailed `/api/v1/clusters/{clusterId}/operational-status` data requires the
+existing authenticated administrator session and cluster validation. It
+contains stable safe codes and aggregate metadata, never raw worker errors,
+stack traces, node URLs, credentials, query contents, or client identifiers.
+
+`/health` and `/ready` remain intentionally minimal and unauthenticated for
+orchestrator checks. `/metrics` returns 404 unless an operator configures a
+minimum-32-character `METRICS_BEARER_TOKEN`; enabled scrapes require that bearer
+token and should also be limited by host firewall or reverse-proxy policy. The
+token is runtime-secret material and is never logged or returned.
+
+ADR-0029 keeps Atlas agentless by default. Release 0.7 adds no node daemon,
+machine credential, remote-shell privilege, or local DNS-host spool.
+
 ## Threats to consider
 
 - Compromised controller.

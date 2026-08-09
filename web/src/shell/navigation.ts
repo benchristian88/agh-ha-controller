@@ -47,6 +47,7 @@ export const PRIMARY_NAVIGATION: readonly (NavigationLink | NavigationGroup)[] =
   ];
 
 export const ADMINISTRATION_NAVIGATION: readonly NavigationLink[] = [
+  { label: "Operational Status", href: "/system/operational-status" },
   { label: "Users", href: "/system/users" },
   { label: "Audit Log", href: "/system/audit" },
   { label: "System Settings", href: "/system/settings" },

@@ -40,7 +40,17 @@ accessible SVG activity lines, ranked domain/client/upstream panels, and a
 node-attributed coverage table share the existing responsive card/table/status
 language. Loading, unavailable, partial, stale, unsupported, maintenance, and
 refresh-error states are textual. The dashboard adds only a compact 24-hour
-summary and remains primarily a health surface. Query Log remains planned.
+summary and remains primarily a health surface.
+
+## Release 0.6 Query Log
+
+`/query-log` reuses persistent cluster/node scope for a dense node-attributed
+table, debounced server search, observed status/type filters, exact client
+filter, keyset pagination, conservative refresh, and structured inline detail.
+Coverage makes stale, unsupported, disabled, failed, and known-gap nodes
+explicit. Context actions enter the existing Custom Rules, Rewrites, Clients,
+Nodes, and Configuration Control routes and never bypass draft/revision/deploy
+separation. Full behavior and responsive states are in `query-log.md`.
 
 The 3 August 2026 HA responsibility pass retains the same navigation but gives
 each HA route one task: Nodes for infrastructure, Configuration Control for
@@ -100,7 +110,7 @@ Do not copy source code, trademarks beyond nominative product references, or pro
 - Change history
 - Deployments
 - Drift
-- Log forwarders
+- Operational Status
 
 ### System
 
@@ -159,7 +169,7 @@ For each node:
 - Drift detected.
 - Drift corrected.
 - Node became unreachable.
-- Forwarder lag increased.
+- Collector lag increased or a known ingestion gap was detected.
 
 ### Query log preview
 

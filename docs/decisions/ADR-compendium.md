@@ -1249,3 +1249,22 @@ all results. Maintenance and unsupported nodes remain explicit. The pipeline
 does not proxy DNS, mutate nodes, persist raw responses, or consume query logs.
 Full rationale, retention, normalization, and failure behavior are recorded in
 standalone ADR-0028.
+
+---
+
+# ADR-0029: Remain agentless by default
+
+**Status:** Accepted
+
+**Date:** 2026-08-09
+
+**Related release:** 0.7
+
+Use native AdGuard Home APIs as the standard Statistics and Query Log
+integration. The proven 0.5/0.6 API collectors remain supported and Release
+0.7 delivers their operational health rather than a node-local forwarder. A
+forwarder has no assigned release and requires measured sustained lag, event
+loss, unacceptable API load, near-real-time latency, much larger fleet scale,
+an inadequate platform API, or demonstrated outage buffering need. Release
+0.7 adds no agent enrolment, machine credentials, spool, packaging, or
+lifecycle. Full rationale and triggers are in standalone ADR-0029.

@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS query_events_source_timestamp_retention_idx;
+DROP INDEX IF EXISTS statistics_snapshots_collected_at_idx;
