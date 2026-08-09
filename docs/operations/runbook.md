@@ -272,3 +272,40 @@ Check free disk, locks, autovacuum, and PostgreSQL logs; do not routinely run
 
 PostgreSQL sizes are metadata estimates: monitor trends, autovacuum and index
 growth, run normal `ANALYZE`, and test backup/restore duration as data grows.
+
+## HA maintenance and guided upgrade
+
+Open **HA -> HA Operations**, then the target node. Confirm at least one other
+fresh DNS-serving node remains, no deployment is active, and the target is not
+the observed active DHCP server. Resolve DHCP ownership first. A single-node
+system requires the displayed break-glass phrase and will have no verified DNS
+redundancy; schedule an outage accordingly.
+
+After entering maintenance, perform the platform-owned work. For
+native/systemd, use the supported OS/package or AdGuard Home procedure and keep
+its rollback artifact. For Docker, pin and replace the image through the
+operator's Compose/container workflow and keep the previous image tag. Atlas
+does not run either command. Home Assistant add-on/custom/unknown installs have
+no supported Atlas upgrade workflow in 0.8.
+
+For a guided upgrade, record the target version, complete the external work,
+then select **Validate upgrade**. Atlas checks a fresh authenticated version,
+API, capability/configuration observation, active DNS over configured
+protocols, active-revision convergence/no drift, DHCP, non-expired TLS, and
+configured collectors. A failure is durable and leaves maintenance enabled.
+Repair or use the platform rollback, refresh evidence, and start a new guided
+operation; never clear maintenance in the database.
+
+An upstream update indicator is informational until its version enters Atlas's
+explicit tested compatibility range. A capability error is a release boundary,
+not a prompt to bypass validation.
+
+If HA shows a failed DNS node while API is healthy, query the configured host,
+port, name, and UDP/TCP path from the controller network. Check AdGuard listener
+bindings/firewall and the latest configuration observation. Expected failures
+during maintenance are retained but their webhook delivery is suppressed.
+
+Certificate warnings use 30/7-day thresholds. Rotate certificate/key material
+outside Atlas, then refresh observation; Atlas never stores or installs it.
+Release checks are cached six hours, so a stale upstream result does not alter
+the explicit Atlas compatibility profile.

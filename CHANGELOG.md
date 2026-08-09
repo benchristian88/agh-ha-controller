@@ -4,6 +4,26 @@ All notable changes to AGH HA Controller will be documented in this file.
 
 The project intends to follow Semantic Versioning once the first public release is made.
 
+## 0.8.0 - Unreleased
+
+### Added
+
+- Independent UDP/TCP DNS service probes, N-node HA capacity, bounded probe
+  retention, and transition-only operational history.
+- Preflighted planned maintenance, DHCP and deployment safety, typed
+  break-glass handling, and validated return-to-service.
+- Redacted certificate-expiry classification, cached AdGuard Home release
+  awareness, installation-type classification, and durable guided upgrades.
+- Encrypted generic webhooks with transition deduplication, maintenance-aware
+  suppression, bounded retry, and safe payloads.
+- HA Operations, Node Detail, Dashboard, and Operational Status integration.
+
+### Changed
+
+- Release 0.7 Operational Status remains the controller/integration-health
+  source and now exposes DNS and redundancy as independent dimensions.
+- Default controller, image, installer, and web version is 0.8.0.
+
 ## 0.6.0 - Unreleased
 
 ### Added

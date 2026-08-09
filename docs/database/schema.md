@@ -7,6 +7,14 @@ the released node/observation/Statistics/Query Log/control-plane records and
 PostgreSQL metadata; no parallel health table is introduced. Statistics
 retention deletes are bounded in repository queries.
 
+Migration `000012_release_0_8_ha_operations` adds per-node lifecycle/probe
+settings, immutable DNS probe results, HA transition events, guided upgrade
+operations, an upstream release cache, encrypted notification channels, and
+bounded delivery attempts. Desired configuration, observed configuration,
+deployment results, and lifecycle evidence remain separate. One partial unique
+index prevents concurrent active upgrades for a node; channel/event uniqueness
+prevents duplicate notification delivery.
+
 ## Release 0.6 combined Query Log
 
 Migration `000010_release_0_6_query_log` installs the trusted `pg_trgm`

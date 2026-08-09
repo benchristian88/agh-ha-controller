@@ -31,6 +31,11 @@ describe("DashboardPage", () => {
     vi.spyOn(api, "operationalStatus").mockResolvedValue({
       summary: { state: "healthy", message: "All systems operational." },
       api: "healthy",
+      ha: {
+        state: "healthy",
+        servingDnsNodes: 2,
+        totalNodes: 2,
+      },
       statistics: { state: "healthy" },
       queryLog: { state: "healthy" },
     } as OperationalStatus);
@@ -47,7 +52,7 @@ describe("DashboardPage", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Controller health" }),
+      await screen.findByRole("heading", { name: "HA and controller health" }),
     ).toBeTruthy();
     expect(screen.getByRole("heading", { name: "DNS activity" })).toBeTruthy();
     const summaryGrid = container.querySelector(".dashboard-summary-grid");

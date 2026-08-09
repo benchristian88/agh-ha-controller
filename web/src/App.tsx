@@ -16,6 +16,8 @@ import { DriftPage } from "./features/drift/DriftPage";
 import { EncryptionPage } from "./features/encryption/EncryptionPage";
 import { CustomRulesPage } from "./features/filters/CustomRulesPage";
 import { GeneralSettingsPage } from "./features/general/GeneralSettingsPage";
+import { HAOperationsPage } from "./features/ha-operations/HAOperationsPage";
+import { NodeLifecyclePage } from "./features/ha-operations/NodeLifecyclePage";
 import { RevisionsPage } from "./features/history/HistoryPage";
 import { NodesPage } from "./features/nodes/NodesPage";
 import { OperationalStatusPage } from "./features/operational-status/OperationalStatusPage";
@@ -177,6 +179,14 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
         break;
       case "nodes":
         content = <NodesPage cluster={selected} />;
+        break;
+      case "ha-operations":
+        content = <HAOperationsPage cluster={selected} />;
+        break;
+      case "node-lifecycle":
+        content = (
+          <NodeLifecyclePage cluster={selected} nodeId={route.nodeId} />
+        );
         break;
       case "statistics":
         content = <StatisticsPage cluster={selected} />;

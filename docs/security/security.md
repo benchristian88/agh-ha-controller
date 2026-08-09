@@ -172,3 +172,18 @@ machine credential, remote-shell privilege, or local DNS-host spool.
 Loss of the encryption key means encrypted node credentials cannot be recovered.
 
 Backups must include the key, stored separately and securely.
+
+## Release 0.8 lifecycle and notification security
+
+DNS probes contain only an operator-selected test name/type and expected RCODE;
+results persist protocol state, latency, family, safe code, and time—not answer
+data or client traffic. Loopback/unspecified implicit targets are rejected.
+Maintenance, settings, channel, and upgrade mutations are authenticated,
+CSRF-protected, optimistic where state is mutable, and audited. Break-glass is
+an exact deliberate phrase, and active DHCP ownership blocks maintenance.
+
+Webhook destinations are HTTPS-only, AES-256-GCM encrypted with the existing
+external key boundary, and write-only. Delivery payloads and logs omit the
+destination, credentials, raw node errors, query data, and certificate/key
+material. Retry is bounded and disabled channels are not claimed. Guided
+upgrades execute no remote command and failed checks keep the node isolated.

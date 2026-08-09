@@ -702,6 +702,8 @@ export interface OperationalStatus {
     }[];
   };
   nodes: OperationalNodeHealth[];
+  dnsService: OperationalCollectionHealth;
+  ha: HASummary;
   observation: OperationalCollectionHealth;
   statistics: OperationalCollectionHealth;
   queryLog: OperationalCollectionHealth;
@@ -719,6 +721,165 @@ export interface OperationalStatus {
     runsTotal: number;
     failuresTotal: number;
   }[];
+}
+
+export interface HASummary {
+  state: "healthy" | "degraded" | "at_risk";
+  totalNodes: number;
+  servingDnsNodes: number;
+  apiReachableNodes: number;
+  convergedNodes: number;
+  maintenanceNodes: number;
+  certificateWarnings: number;
+  updateAvailableNodes: number;
+  message: string;
+  nodes: {
+    nodeId: string;
+    dnsStatus:
+      | "healthy"
+      | "failed"
+      | "stale"
+      | "maintenance"
+      | "disabled"
+      | "unknown";
+    udpStatus: "healthy" | "failed" | "disabled" | "unknown";
+    tcpStatus: "healthy" | "failed" | "disabled" | "unknown";
+    dnsProbedAt?: string;
+    errorCode?: string;
+  }[];
+}
+
+export interface DNSProbeResult {
+  id: string;
+  clusterId: string;
+  nodeId: string;
+  status: "healthy" | "failed";
+  udpStatus: "healthy" | "failed" | "disabled";
+  tcpStatus: "healthy" | "failed" | "disabled";
+  responseCode?: number;
+  latencyMs?: number;
+  addressFamily?: "ipv4" | "ipv6";
+  errorCode?: string;
+  probedAt: string;
+}
+
+export interface LifecycleSettings {
+  nodeId: string;
+  dnsProbeHost: string;
+  dnsProbePort: number;
+  dnsProbeName: string;
+  dnsProbeType: "A" | "AAAA" | "NS";
+  expectedRcode: number;
+  probeUdp: boolean;
+  probeTcp: boolean;
+  installationType:
+    | "native_systemd"
+    | "docker"
+    | "home_assistant_addon"
+    | "custom"
+    | "unknown";
+  recordVersion: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CertificateHealth {
+  nodeId: string;
+  nodeName: string;
+  subject?: string;
+  issuer?: string;
+  notAfter?: string;
+  daysRemaining?: number;
+  state: "healthy" | "warning" | "critical" | "expired" | "unknown";
+  observedAt?: string;
+}
+
+export interface VersionHealth {
+  nodeId: string;
+  nodeName: string;
+  installedVersion: string;
+  latestVersion?: string;
+  compatibility: string;
+  installationType: LifecycleSettings["installationType"];
+  upgradeSupport: "guided" | "unsupported";
+  updateAvailable: boolean;
+  releaseCheckStale: boolean;
+}
+
+export interface HAEvent {
+  id: string;
+  clusterId: string;
+  nodeId?: string;
+  eventType: string;
+  severity: "info" | "warning" | "critical";
+  summary: string;
+  details: Record<string, unknown>;
+  occurredAt: string;
+}
+
+export interface MaintenancePreflight {
+  nodeId: string;
+  allowed: boolean;
+  breakGlassRequired: boolean;
+  healthyDnsNodesRemaining: number;
+  expectedRedundancy: string;
+  activeDeployment: boolean;
+  openDrift: boolean;
+  activeDhcp: boolean;
+  checks: LifecycleCheck[];
+}
+
+export interface LifecycleCheck {
+  name: string;
+  status: "pass" | "warning" | "fail";
+  required: boolean;
+  errorCode?: string;
+  message: string;
+}
+
+export interface NodeLifecycle {
+  generatedAt: string;
+  settings: LifecycleSettings;
+  dns?: DNSProbeResult;
+  certificate: CertificateHealth;
+  version: VersionHealth;
+  events: HAEvent[];
+}
+
+export interface UpgradeOperation {
+  id: string;
+  clusterId: string;
+  nodeId: string;
+  fromVersion: string;
+  targetVersion: string;
+  installationType: LifecycleSettings["installationType"];
+  mode: "guided";
+  status:
+    | "planned"
+    | "maintenance"
+    | "awaiting_operator"
+    | "validating"
+    | "succeeded"
+    | "failed"
+    | "cancelled";
+  preflight: Record<string, unknown>;
+  validation: Record<string, unknown>;
+  errorCode?: string;
+  errorSummary?: string;
+  startedAt: string;
+  completedAt?: string;
+}
+
+export interface NotificationChannel {
+  id: string;
+  clusterId: string;
+  name: string;
+  channelType: "webhook";
+  enabled: boolean;
+  destinationSet: boolean;
+  recordVersion: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type OperationalTarget =

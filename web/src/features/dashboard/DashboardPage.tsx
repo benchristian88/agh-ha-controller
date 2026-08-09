@@ -90,7 +90,7 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
               <header className="dashboard-summary-card__header">
                 <div>
                   <p className="eyebrow">Controller operations</p>
-                  <h2>Controller health</h2>
+                  <h2>HA and controller health</h2>
                 </div>
                 <StatusBadge status={operational.summary.state} />
               </header>
@@ -101,6 +101,17 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
                 <div>
                   <dt>API</dt>
                   <dd className="operational-value">{operational.api}</dd>
+                </div>
+                <div>
+                  <dt>HA redundancy</dt>
+                  <dd className="operational-value">{operational.ha.state}</dd>
+                </div>
+                <div>
+                  <dt>DNS service</dt>
+                  <dd className="operational-value">
+                    {operational.ha.servingDnsNodes} /{" "}
+                    {operational.ha.totalNodes}
+                  </dd>
                 </div>
                 <div>
                   <dt>Statistics</dt>
@@ -121,6 +132,9 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
                   href="/system/operational-status"
                 >
                   View operational status
+                </a>
+                <a className="button button--secondary" href="/ha/operations">
+                  Open HA operations
                 </a>
               </footer>
             </article>

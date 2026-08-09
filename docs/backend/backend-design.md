@@ -125,3 +125,11 @@ cancellably to 30 seconds; fixed-schedule collectors remain isolated per node.
 - Node transport, TLS, authentication, and payload failures have different stable error codes.
 - Poll failures retain the prior successful `last_seen_at`, set `last_polled_at`, and expose a safe error code.
 - Controller shutdown cancels workers and gracefully drains HTTP; it performs no node mutation.
+
+Release 0.8 adds a separate active-DNS health repository/service boundary. A
+four-node bounded worker records samples and state transitions without allowing
+one failure to stop other probes. Maintenance and upgrade services reuse the
+existing transactional node management boundary for optimistic/audited state
+changes, then persist separate lifecycle events. Notifications are derived from
+durable events, encrypted at rest, bounded, idempotent per channel/event, and
+suppressed for expected maintenance DNS failures.

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/haoperations"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 	"github.com/benchristian88/agh-ha-controller/internal/querylog"
 	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
@@ -20,6 +21,10 @@ type Repository interface {
 	LatestStatisticsAttempts(context.Context, string, string) ([]telemetry.NodeAttempt, error)
 	QueryLogCheckpoints(context.Context, string, string) ([]querylog.Checkpoint, error)
 	OperationalDatabase(context.Context, time.Duration, time.Duration) (Database, error)
+}
+
+type HAReader interface {
+	Summary(context.Context, string) (haoperations.HASummary, error)
 }
 
 type Options struct {
@@ -37,7 +42,10 @@ type Service struct {
 	tracker    *Tracker
 	options    Options
 	now        func() time.Time
+	ha         HAReader
 }
+
+func (s *Service) SetHAOperations(reader HAReader) { s.ha = reader }
 
 func NewService(repository Repository, tracker *Tracker, options Options) *Service {
 	return &Service{repository: repository, tracker: tracker, options: options, now: time.Now}
@@ -77,6 +85,15 @@ func (s *Service) Status(ctx context.Context, clusterID string) (Status, error) 
 	if err != nil {
 		return Status{}, err
 	}
+	dnsProbes := []haoperations.DNSProbeResult{}
+	if repository, ok := s.repository.(interface {
+		LatestDNSProbes(context.Context, string) ([]haoperations.DNSProbeResult, error)
+	}); ok {
+		dnsProbes, err = repository.LatestDNSProbes(ctx, clusterID)
+		if err != nil {
+			return Status{}, err
+		}
+	}
 	database, dbErr := s.repository.OperationalDatabase(ctx, s.options.StatisticsRetention, s.options.QueryLogRetention)
 	if dbErr != nil {
 		database.State, database.ErrorCode = Failed, "DATABASE_UNAVAILABLE"
@@ -85,11 +102,59 @@ func (s *Service) Status(ctx context.Context, clusterID string) (Status, error) 
 	now := s.now().UTC()
 	status := Status{GeneratedAt: now, ClusterID: clusterID, API: Healthy, Database: database, Workers: s.tracker.Snapshot()}
 	status.Nodes = nodeHealth(nodes, now, maxDuration(3*s.options.NodeInterval, time.Minute))
+	status.DNSService = dnsServiceHealth(nodes, dnsProbes, now, maxDuration(3*s.options.NodeInterval, 2*time.Minute), s.options.NodeInterval)
+	if s.ha != nil {
+		status.HA, _ = s.ha.Summary(ctx, clusterID)
+	}
 	status.Observation = observationHealth(nodes, snapshots, successfulSnapshots, profiles, now, maxDuration(3*s.options.NodeInterval+s.options.RequestTimeout, 2*time.Minute), s.options.NodeInterval)
 	status.Statistics = statisticsHealth(nodes, attempts, now, maxDuration(2*s.options.StatisticsInterval+s.options.RequestTimeout, 3*time.Hour), s.options.StatisticsInterval)
 	status.QueryLog = queryLogHealth(nodes, checkpoints, now, maxDuration(3*s.options.QueryLogInterval, 2*time.Minute), s.options.QueryLogInterval, s.options.QueryLogEnabled)
 	status.Summary = aggregate(status)
 	return status, nil
+}
+
+func dnsServiceHealth(nodes []domain.Node, probes []haoperations.DNSProbeResult, now time.Time, staleAfter, interval time.Duration) CollectionSummary {
+	byNode := map[string]haoperations.DNSProbeResult{}
+	for _, probe := range probes {
+		byNode[probe.NodeID] = probe
+	}
+	result := CollectionSummary{Nodes: []NodeSubsystem{}}
+	for _, node := range nodes {
+		item := NodeSubsystem{NodeID: node.ID, NodeName: node.Name}
+		if !node.Enabled {
+			item.State = Paused
+		} else {
+			result.ExpectedNodes++
+			item.counted = true
+			probe, ok := byNode[node.ID]
+			switch {
+			case node.MaintenanceMode:
+				item.State = Maintenance
+			case !ok:
+				item.State = Unknown
+			default:
+				item.LastAttemptAt = &probe.ProbedAt
+				item.NextScheduledAt = timePointer(probe.ProbedAt.Add(interval))
+				item.ErrorCode = probe.ErrorCode
+				if probe.Status == "healthy" {
+					item.State = Healthy
+					item.LastSuccessAt = &probe.ProbedAt
+				} else {
+					item.State = Failed
+				}
+				if now.Sub(probe.ProbedAt) > staleAfter {
+					item.State = Stale
+				}
+				if probe.LatencyMS != nil {
+					lag := int64(*probe.LatencyMS)
+					item.LagSeconds = &lag
+				}
+			}
+		}
+		result.Nodes = append(result.Nodes, item)
+	}
+	finishCollection(&result)
+	return result
 }
 
 func nodeHealth(nodes []domain.Node, now time.Time, staleAfter time.Duration) []NodeSubsystem {
@@ -349,7 +414,7 @@ func aggregate(status Status) Summary {
 			summary.State, summary.ActionRequired = Degraded, true
 		}
 	}
-	for _, state := range []State{status.Observation.State, status.Statistics.State, status.QueryLog.State} {
+	for _, state := range []State{status.DNSService.State, status.Observation.State, status.Statistics.State, status.QueryLog.State} {
 		if state == Degraded || state == Failed || state == Stale {
 			summary.State, summary.ActionRequired = Degraded, true
 		}
@@ -376,7 +441,7 @@ func maxDuration(a, b time.Duration) time.Duration {
 func timePointer(value time.Time) *time.Time { value = value.UTC(); return &value }
 
 func (s Status) ValidateBounded() error {
-	if len(s.Nodes) > 1000 || len(s.Observation.Nodes) > 1000 || len(s.Statistics.Nodes) > 1000 || len(s.QueryLog.Nodes) > 1000 || len(s.Workers) > 100 {
+	if len(s.Nodes) > 1000 || len(s.DNSService.Nodes) > 1000 || len(s.Observation.Nodes) > 1000 || len(s.Statistics.Nodes) > 1000 || len(s.QueryLog.Nodes) > 1000 || len(s.Workers) > 100 {
 		return fmt.Errorf("operational status node payload is not bounded")
 	}
 	return nil

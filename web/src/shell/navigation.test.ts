@@ -42,6 +42,7 @@ describe("application navigation", () => {
     if (!group || !isNavigationGroup(group)) return;
     expect(group.children).toEqual([
       { label: "Nodes", href: "/ha/nodes" },
+      { label: "HA Operations", href: "/ha/operations" },
       { label: "Configuration Control", href: "/ha/configuration" },
       { label: "Revisions", href: "/ha/revisions" },
       { label: "Deployments", href: "/ha/deployments" },

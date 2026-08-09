@@ -28,7 +28,6 @@
 
 ## Observability
 
-- Webhook alerts.
 - Email alerts.
 - Node response-time trends.
 - Broader HTTP/database/collector Prometheus metrics beyond the bounded worker
@@ -51,7 +50,8 @@
 
 - Automated PostgreSQL backup.
 - Restore verification.
-- Upgrade preflight checks.
+- Automated node package/container upgrades and rollback after an authenticated
+  execution-boundary ADR; Release 0.8 provides guided coordination only.
 - Diagnostic bundle with redaction.
 - Proxmox installation script.
 - Docker health checks.

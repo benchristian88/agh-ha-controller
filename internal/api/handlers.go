@@ -294,14 +294,27 @@ func (s *Server) handleTestNode(response http.ResponseWriter, request *http.Requ
 
 func (s *Server) handleNodeMaintenance(response http.ResponseWriter, request *http.Request) {
 	var input struct {
-		Enabled       bool `json:"enabled"`
-		RecordVersion int  `json:"recordVersion"`
+		Enabled       bool   `json:"enabled"`
+		RecordVersion int    `json:"recordVersion"`
+		BreakGlass    bool   `json:"breakGlass"`
+		Confirmation  string `json:"confirmation"`
 	}
 	if err := decodeJSON(response, request, &input); err != nil {
 		s.writeError(response, request, err)
 		return
 	}
-	node, err := s.management.SetNodeMaintenance(request.Context(), actor(request.Context()), request.PathValue("nodeId"), input.Enabled, input.RecordVersion)
+	var node domain.Node
+	var err error
+	if s.haOperations != nil && input.Enabled {
+		node, err = s.haOperations.EnterMaintenance(request.Context(), actor(request.Context()), request.PathValue("nodeId"), input.RecordVersion, input.BreakGlass, input.Confirmation)
+	} else if s.haOperations != nil {
+		_, err = s.haOperations.ReturnToService(request.Context(), actor(request.Context()), request.PathValue("nodeId"), input.RecordVersion)
+		if err == nil {
+			node, err = s.management.Node(request.Context(), request.PathValue("nodeId"))
+		}
+	} else {
+		node, err = s.management.SetNodeMaintenance(request.Context(), actor(request.Context()), request.PathValue("nodeId"), input.Enabled, input.RecordVersion)
+	}
 	if err != nil {
 		s.writeError(response, request, err)
 		return

@@ -59,6 +59,8 @@ export function OperationalStatusPage({ cluster }: { cluster: Cluster }) {
 
       <section className="metrics" aria-label="Overall controller health">
         <Metric label="Controller" value={status.summary.state} />
+        <Metric label="HA redundancy" value={status.ha.state} />
+        <Metric label="DNS service" value={status.dnsService.state} />
         <Metric
           label="Nodes"
           value={`${status.summary.healthyNodes} / ${status.summary.expectedNodes} healthy`}
@@ -92,6 +94,10 @@ export function OperationalStatusPage({ cluster }: { cluster: Cluster }) {
         </dl>
       </section>
 
+      <CollectionSection
+        title="DNS service health"
+        collection={status.dnsService}
+      />
       <CollectionSection
         title="Node observation"
         collection={status.observation}

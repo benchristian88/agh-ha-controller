@@ -302,3 +302,14 @@ The following are explicitly out of scope for the initial releases:
 - Controller high availability.
 - Multi-tenant MSP administration.
 - Kubernetes-first deployment.
+
+## Release 0.8 HA operations boundary
+
+The combined controller process gains an `haoperations` service, DNS probe,
+upstream release, notification delivery, and transition workers. They call node
+DNS listeners and HTTPS APIs from the management plane and persist evidence in
+PostgreSQL. No request from a DNS client enters Atlas, no DNS listener is
+published by Atlas, and nodes continue serving if every controller worker is
+stopped. ADR-0030 defines maintenance, return-to-service, and guided-upgrade
+failure behavior. Optional failover products such as Keepalived or dnsdist are
+neither required nor managed in Release 0.8.

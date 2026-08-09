@@ -217,7 +217,9 @@ Deliberately deferred without changing roadmap history:
 
 ## Release 0.4 — Broader AdGuard Home coverage
 
-**Current status (30 July 2026): Implemented; reference-node, browser, migration-upgrade, and packaged-install release validation pending.**
+**Current status (3 August 2026): Complete — functionality, Docker, and
+native/systemd installation validation were completed by the operator. The
+historical implementation notes below retain their original pending gates.**
 
 ### Outcomes
 
@@ -423,6 +425,8 @@ search/filter/pagination semantics and adds operational health only.**
 
 ## Release 0.7 — Operational Hardening & Observability
 
+**Current status (9 August 2026): Complete and validated by the operator.**
+
 ### Outcomes
 
 - Operators can determine whether Atlas collectors, storage, jobs, and
@@ -441,6 +445,9 @@ search/filter/pagination semantics and adds operational health only.**
 
 ## Release 0.8 — HA Operations & Lifecycle
 
+**Current status (9 August 2026): Implemented; real-node, PostgreSQL migration,
+packaged browser, Docker, and native/systemd release gates remain pending.**
+
 ### Outcomes
 
 - Atlas coordinates and observes operation of the DNS service as a highly
@@ -458,7 +465,7 @@ search/filter/pagination semantics and adds operational health only.**
 Keepalived, dnsdist, and other failover integrations remain optional pending
 product/architecture review. Atlas coordinates rather than carrying DNS.
 
-## Release 0.9 — Product and Release Hardening
+## Release 0.9 — Productisation, Backup & Upgrade Readiness / Feature Freeze
 
 ### Outcomes
 
@@ -466,14 +473,30 @@ product/architecture review. Atlas coordinates rather than carrying DNS.
 
 ### Scope
 
-- Clean install and supported upgrade/migration validation.
-- Backup, restore, disaster recovery, security, session, authorization, and
-  audit review.
-- Accessibility, responsive/browser polish, performance/load validation, and
-  error-message quality.
-- Onboarding, Setup Guide, packaging, licensing, compatibility/support/
-  deprecation policy, and API stability review.
-- Docker and native/systemd installation parity.
+- Automated scheduled PostgreSQL/runtime-secret backup, restore verification,
+  disaster recovery, and supported Atlas upgrade/rollback tooling.
+- Product backup/restore UI and CLI with downloadable checksummed archives,
+  version/compatibility metadata, and post-restore verification. Required
+  control-plane data is separated from optional Statistics/Query Log history.
+- Atlas Controller update awareness from a cached official release source,
+  release notes and exact guided host commands. Docker does not gain a mounted
+  socket; one-click self-update remains deferred without safe rollback.
+- Reproducible release artifacts, checksums, SBOM/signing decisions, clean
+  installation and migration validation, and Docker/native-systemd parity.
+- Final logo/compact mark, favicon, Apple/Android/PWA icons including maskable
+  192/512 assets, web manifest, standalone metadata, and login/header branding.
+- State-backed in-product Setup Guide from install and first/redundant node
+  through observe/adopt/publish/deploy and Statistics/Query Log/HA confirmation.
+- Rationalised controller settings for General, Data, Backup & Restore,
+  Updates, Operations, and Security, exposing only genuine operator controls.
+- About surface with build/version/commit/date/schema, licensing,
+  repository/docs, compatibility, and independent AdGuard Home attribution.
+- Onboarding and Setup Guide, diagnostics/redaction, compatibility/support/
+  deprecation policy, licensing decision, and API/schema stability review.
+- RBAC/session/authentication/security/audit review, accessibility and
+  responsive/browser polish, performance/load validation, and error quality.
+- Feature freeze: close acceptance gaps and defects without opening broad new
+  control-plane feature areas.
 
 Avoid large new feature areas in 0.9.
 
