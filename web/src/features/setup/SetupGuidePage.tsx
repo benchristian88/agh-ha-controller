@@ -139,15 +139,18 @@ export function SetupGuidePage({ cluster }: { cluster: Cluster }) {
             key={step.label}
             className={step.complete ? "setup-guide__complete" : ""}
           >
-            <span aria-hidden="true">{step.complete ? "✓" : "○"}</span>
-            <div>
-              <span className="sr-only">
-                {step.complete ? "Complete: " : "Incomplete: "}
+            <span className="setup-guide__mark" aria-hidden="true">
+              {step.complete ? "✓" : "×"}
+            </span>
+            <div className="setup-guide__detail">
+              <span className="setup-guide__status">
+                {step.complete ? "Complete" : "Incomplete"}
               </span>
-              <strong>{step.label}</strong>
-              <br />
-              <a href={step.href}>{step.action}</a>
+              <strong className="setup-guide__label">{step.label}</strong>
             </div>
+            <a className="setup-guide__action" href={step.href}>
+              {step.action}
+            </a>
           </li>
         ))}
       </ol>

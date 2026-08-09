@@ -83,7 +83,10 @@ export function UsersPage({ currentUser }: { currentUser: User }) {
         title="Create administrator"
         description="The password is hashed immediately and is never returned, logged, or shown again."
       >
-        <form className="form-stack" onSubmit={(event) => void create(event)}>
+        <form
+          className="form-stack settings-group-content"
+          onSubmit={(event) => void create(event)}
+        >
           <Field label="Display name" htmlFor="new-user-name" required>
             <input
               id="new-user-name"
@@ -130,42 +133,50 @@ export function UsersPage({ currentUser }: { currentUser: User }) {
         {users === undefined && !error ? (
           <Loading label="Loading users…" />
         ) : (
-          users?.map((user) => (
-            <article className="settings-group" key={user.id}>
-              <header className="settings-group__header">
-                <div>
-                  <h3>{user.displayName}</h3>
-                  <p className="muted">{user.email} · Administrator</p>
+          <div className="user-list">
+            {users?.map((user) => (
+              <article className="user-card" key={user.id}>
+                <header className="user-card__summary">
+                  <div>
+                    <h3>{user.displayName}</h3>
+                    <p className="muted">{user.email} · Administrator</p>
+                  </div>
+                  <span
+                    className={`status ${
+                      user.enabled ? "status--healthy" : ""
+                    }`}
+                  >
+                    {user.enabled ? "Enabled" : "Disabled"}
+                  </span>
+                </header>
+                <div className="user-card__details">
+                  <p className="user-card__metadata">
+                    Created {new Date(user.createdAt).toLocaleString()} · Last
+                    login{" "}
+                    {user.lastLoginAt
+                      ? new Date(user.lastLoginAt).toLocaleString()
+                      : "Never"}
+                  </p>
+                  <button
+                    className={
+                      user.enabled
+                        ? "button button--danger"
+                        : "button button--secondary"
+                    }
+                    type="button"
+                    disabled={user.id === currentUser.id && user.enabled}
+                    onClick={() => void toggle(user)}
+                  >
+                    {user.enabled ? "Disable" : "Enable"}
+                  </button>
                 </div>
-                <span>{user.enabled ? "Enabled" : "Disabled"}</span>
-              </header>
-              <div className="settings-group__body">
-                <p>
-                  Created {new Date(user.createdAt).toLocaleString()} · Last
-                  login{" "}
-                  {user.lastLoginAt
-                    ? new Date(user.lastLoginAt).toLocaleString()
-                    : "Never"}
-                </p>
-                <button
-                  className={
-                    user.enabled
-                      ? "button button--danger"
-                      : "button button--secondary"
-                  }
-                  type="button"
-                  disabled={user.id === currentUser.id && user.enabled}
-                  onClick={() => void toggle(user)}
-                >
-                  {user.enabled ? "Disable" : "Enable"}
-                </button>
                 {user.id === currentUser.id && user.enabled && (
-                  <p className="field__help">
+                  <p className="field__help user-card__help">
                     Sign in as another administrator before disabling this
                     account.
                   </p>
                 )}
-                <details>
+                <details className="user-card__password">
                   <summary>Reset password</summary>
                   <form
                     className="form-stack"
@@ -185,9 +196,9 @@ export function UsersPage({ currentUser }: { currentUser: User }) {
                     </button>
                   </form>
                 </details>
-              </div>
-            </article>
-          ))
+              </article>
+            ))}
+          </div>
         )}
       </SettingsGroup>
     </PageContainer>

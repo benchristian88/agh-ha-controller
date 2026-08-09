@@ -87,32 +87,38 @@ export function UpdatesPage() {
           >
             <SettingRow
               title="Installation type"
-              control={<span>{status.installationType}</span>}
+              control={
+                <span className="settings-group-copy">
+                  {status.installationType}
+                </span>
+              }
             />
-            <p>{status.updateMethod}</p>
-            {status.updateCommand && (
-              <>
-                <pre>
-                  <code>{status.updateCommand}</code>
-                </pre>
-                <button
-                  className="button button--secondary"
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(
-                        status.updateCommand ?? "",
-                      );
-                      setCopied(true);
-                    } catch (caught) {
-                      setError(caught);
-                    }
-                  }}
-                >
-                  {copied ? "Copied" : "Copy update instructions"}
-                </button>
-              </>
-            )}
+            <div className="settings-group-content update-instructions">
+              <p className="settings-group-copy">{status.updateMethod}</p>
+              {status.updateCommand && (
+                <>
+                  <pre>
+                    <code>{status.updateCommand}</code>
+                  </pre>
+                  <button
+                    className="button button--secondary"
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          status.updateCommand ?? "",
+                        );
+                        setCopied(true);
+                      } catch (caught) {
+                        setError(caught);
+                      }
+                    }}
+                  >
+                    {copied ? "Copied" : "Copy update instructions"}
+                  </button>
+                </>
+              )}
+            </div>
             <SettingRow
               title="Migration and compatibility"
               description="Only the target release notes and tested compatibility matrix establish a supported path; development metadata is never treated as a release guarantee."

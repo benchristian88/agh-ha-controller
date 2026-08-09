@@ -49,38 +49,40 @@ export function AboutPage() {
         </SettingsGroup>
       )}
       <SettingsGroup title="Project">
-        <p>
-          AGH HA Controller is an independent project. It is not AdGuard Home
-          and is not an official AdGuard product.
-        </p>
-        <p>
-          Supported managed configuration: AdGuard Home v0.107.52 on schema v1
-          and reviewed v0.107.53–v0.107.78 contracts on schema v2. PostgreSQL 17
-          and Debian 13/systemd or Docker Compose v2 are the current reference
-          platforms.
-        </p>
-        <p>
-          <a
-            href="https://github.com/benchristian88/agh-ha-controller"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Repository
-          </a>{" "}
-          ·{" "}
-          <a
-            href="https://github.com/benchristian88/agh-ha-controller/tree/dev/docs"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Documentation
-          </a>
-        </p>
-        <p>
-          <strong>Licence:</strong> no final licence has been selected; the
-          repository remains unlicensed pending the documented legal and
-          commercial decision.
-        </p>
+        <div className="settings-group-content about-project">
+          <p>
+            AGH HA Controller is an independent project. It is not AdGuard Home
+            and is not an official AdGuard product.
+          </p>
+          <p>
+            Supported managed configuration: AdGuard Home v0.107.52 on schema v1
+            and reviewed v0.107.53–v0.107.78 contracts on schema v2. PostgreSQL
+            17 and Debian 13/systemd or Docker Compose v2 are the current
+            reference platforms.
+          </p>
+          <p>
+            <a
+              href="https://github.com/benchristian88/agh-ha-controller"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Repository
+            </a>{" "}
+            ·{" "}
+            <a
+              href="https://github.com/benchristian88/agh-ha-controller/tree/dev/docs"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Documentation
+            </a>
+          </p>
+          <p>
+            <strong>Licence:</strong> no final licence has been selected; the
+            repository remains unlicensed pending the documented legal and
+            commercial decision.
+          </p>
+        </div>
       </SettingsGroup>
     </PageContainer>
   );

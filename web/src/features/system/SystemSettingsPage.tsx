@@ -64,7 +64,7 @@ export function SystemSettingsPage() {
         />
       </SettingsGroup>
       <SettingsGroup title="Backup & Restore">
-        <p>
+        <p className="settings-group-content settings-group-action">
           <a className="button button--secondary" href="/system/backups">
             Open Backup & Restore
           </a>
@@ -86,21 +86,21 @@ export function SystemSettingsPage() {
             </label>
           }
         />
-        <p>
+        <p className="settings-group-content settings-group-action">
           <a className="button button--secondary" href="/system/updates">
             Open Updates
           </a>
         </p>
       </SettingsGroup>
       <SettingsGroup title="Operations">
-        <p>
+        <p className="settings-group-content settings-group-copy">
           Operational thresholds and worker evidence are available from{" "}
           <a href="/system/operational-status">Operational Status</a>. Node
           lifecycle settings remain node-specific.
         </p>
       </SettingsGroup>
       <SettingsGroup title="Security">
-        <p>
+        <p className="settings-group-content settings-group-copy">
           Secure HTTP-only sessions, CSRF protection, Argon2id passwords,
           AES-256-GCM credential envelopes, passphrase-encrypted backups, and
           server-side administrator enforcement are active architecture
