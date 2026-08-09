@@ -20,6 +20,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 	"github.com/benchristian88/agh-ha-controller/internal/jobs"
 	"github.com/benchristian88/agh-ha-controller/internal/operations"
+	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
 	"github.com/benchristian88/agh-ha-controller/internal/version"
 )
 
@@ -78,7 +79,10 @@ func run() error {
 	}
 	reconciler := controlplane.NewReconciler(store, controlplaneService, inventoryService, logger)
 	healthPoller := jobs.NewHealthPoller(store, credentialCipher, probe, configuration.NodeHealthInterval, logger)
+	statisticsService := telemetry.NewService(store, configuration.StatisticsPollInterval, configuration.NodeRequestTimeout)
+	statisticsPoller := jobs.NewStatisticsPoller(store, credentialCipher, configurationAdapter, configuration.StatisticsPollInterval, configuration.NodeRequestTimeout, logger)
 	go healthPoller.Run(rootContext)
+	go statisticsPoller.Run(rootContext)
 	go jobs.RunDeploymentExecutor(rootContext, deploymentExecutor, logger)
 	go jobs.RunOperationalCommandExecutor(rootContext, operationExecutor, logger)
 	go jobs.RunReconciler(rootContext, reconciler, configuration.NodeHealthInterval, logger)
@@ -91,6 +95,7 @@ func run() error {
 		controlplaneService,
 	)
 	apiServer.SetDNSOperations(operationService)
+	apiServer.SetStatistics(statisticsService)
 	httpServer := &http.Server{
 		Addr:              configuration.HTTPAddress,
 		Handler:           apiServer.Handler(),

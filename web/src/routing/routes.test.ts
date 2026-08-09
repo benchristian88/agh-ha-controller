@@ -16,7 +16,7 @@ describe("canonical route safety", () => {
   it("keeps the complete canonical route table stable", () => {
     const expectedKinds = {
       "/": "dashboard",
-      "/statistics": "planned",
+      "/statistics": "statistics",
       "/settings/general": "settings",
       "/settings/dns": "settings",
       "/settings/encryption": "settings",

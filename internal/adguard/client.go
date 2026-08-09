@@ -203,6 +203,14 @@ func supportsSchemaV2(version string) bool {
 	return supportsEcosia(version)
 }
 
+// SupportsRecentStatistics reports whether the tested AdGuard Home API can
+// return an exact caller-selected recent window. Earlier supported versions
+// expose statistics, but not the range control required for honest 24h/7d/30d
+// aggregation.
+func SupportsRecentStatistics(version string) bool {
+	return supportsConfigurationPatch(version, 72)
+}
+
 func supportsConfigurationPatch(version string, minimum int) bool {
 	major, minor, patch, ok := configurationVersion(version)
 	return ok && major == 0 && minor == 107 && patch >= minimum && patch <= 78

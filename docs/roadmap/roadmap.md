@@ -348,6 +348,9 @@ New follow-on dependencies:
 
 ## Release 0.5 — Cluster statistics
 
+**Current status (9 August 2026): Implemented; controlled PostgreSQL, real-node,
+packaged browser, Docker, and systemd release validation remains.**
+
 ### Outcomes
 
 - Dashboard shows aggregated node statistics.
@@ -367,6 +370,29 @@ New follow-on dependencies:
 
 - Cluster totals reconcile with node totals.
 - Metrics with invalid aggregation semantics are not misleadingly combined.
+
+### Implementation reconciliation — 9 August 2026
+
+Implemented in the repository:
+
+- immediate and configurable hourly collection of exact 24-hour, 7-day, and
+  30-day statistics from explicitly supported v0.107.72–v0.107.78 nodes;
+- immutable normalized snapshots, small durable poll attempts, overlap-safe
+  node buckets, daily rollups, and bounded retention under migration `000009`;
+- summed additive counters, aggregate-derived percentages, query-weighted
+  processing time, response-weighted upstream latency, stable ranked merging,
+  chronological series, and explicit node coverage/freshness;
+- authenticated cluster/node API plus responsive `/statistics` route using the
+  global scope selector, fixed windows, summary cards, accessible chart,
+  rankings, node coverage, and partial/empty/error states; and
+- a compact 24-hour dashboard summary that leaves health as the dashboard's
+  primary responsibility.
+
+Deliberately deferred:
+
+- custom ranges; and
+- all combined Query Log ingestion, search, retention, and event-derived
+  statistics, which remain Release 0.6 or later.
 
 ## Release 0.6 — Combined query log via API polling
 

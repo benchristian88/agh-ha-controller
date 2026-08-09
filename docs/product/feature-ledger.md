@@ -100,15 +100,27 @@ Local Go race/vet/build and frontend type/test/lint/build checks passed on 30 Ju
 
 The complete Phase 10 evidence, route table, deletion inventory, and known
 issues are in
-`docs/development/release-0.4.1-phase-10-regression-report.md`. Statistics
-aggregation and combined Query Log ingestion remain Releases 0.5 and 0.6 and
-are not classified as implemented here.
+`docs/development/release-0.4.1-phase-10-regression-report.md`.
+
+## Release 0.5 statistics aggregation
+
+| Feature | Status | Implementation and evidence | Remaining release validation |
+|---|---|---|---|
+| Exact-range collection | Implemented; automated checks pass | Immediate/configurable interval worker, 24h/7d/30d `recent` reads, four-node concurrency, request timeouts, maintenance and v0.107.72–v0.107.78 capability gates, safe durable attempts | Controlled multi-node live contract and outage/restart exercise |
+| Durable telemetry model | Implemented; migration added | Append-only `000009` separates poll evidence, immutable normalized snapshots, and overlap-safe hourly/daily node buckets; 32/400-day cleanup | PostgreSQL 0.4.1-to-0.5 upgrade and retention exercise |
+| Correct aggregation | Implemented; unit checks pass | Additive sums, aggregate percentages, query-weighted processing time, response-weighted upstream latency, stable normalization/sort, chronological series, explicit freshness/coverage | Reconcile API totals against two real nodes |
+| Statistics API and UI | Implemented; local checks pass | Authenticated presentation-ready cluster/node API; global scope, fixed ranges, summary metrics, accessible SVG chart, ranked panels, node coverage, and compact dashboard summary | Packaged responsive/browser accessibility smoke |
+| Security and privacy boundary | Implemented | Direct bounded controller reads; no DNS proxy, query-log dependency, raw response persistence, secret/URL logging, or browser-to-node calls | Production log redaction scan |
+
+Custom ranges and Query Log ingestion remain deliberately deferred. Detailed
+behavior and operator recovery are documented in
+`docs/backend/statistics-aggregation.md` and `docs/operations/runbook.md`.
 
 ## Deliberately deferred
 
 - Field-level drift ignore rules, selectable partial-deployment recovery, parallel/rolling strategies, scheduled maintenance windows, and intra-mutation automatic retries: later operational work.
 - TLS certificate/key mutation: deferred pending controller-managed secret references; 0.4 provides redacted modelling only.
-- Statistics and query-log ingestion: Releases 0.5 and 0.6; their node-local settings are managed in 0.4.
+- Custom statistics ranges and query-log ingestion: later work; fixed-range statistics are implemented in 0.5 and node-local telemetry policy remains managed configuration.
 - Additional local-user management, password change/recovery, durable or distributed login throttling, OIDC, and RBAC: follow-on security scope.
 - Automated backup/restore tooling and an audit export: later operational releases; the supported recovery path remains manual.
 - Proxmox community installer, signed/prebuilt artifacts, and automated upgrade/rollback remain later release work.

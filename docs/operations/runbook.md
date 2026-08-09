@@ -29,7 +29,44 @@ Generate secrets with `openssl rand -base64 48` and `openssl rand -base64 32`. S
 
 `PUBLIC_BASE_URL` must be the externally visible origin without credentials, a path, query, or fragment. Its scheme controls the Secure attribute on browser cookies.
 
-On startup the controller validates configuration, connects to PostgreSQL, applies embedded migrations when enabled, constructs security primitives, starts health/session workers, then opens HTTP. Any prerequisite failure stops startup.
+On startup the controller validates configuration, connects to PostgreSQL, applies embedded migrations when enabled, constructs security primitives, starts health/statistics/session workers, then opens HTTP. Any prerequisite failure stops startup.
+
+`STATISTICS_POLL_INTERVAL` controls central statistics collection and defaults
+to `1h`. Docker Compose passes it from `.env`; a direct/systemd installation
+sets it in `/etc/agh-ha-controller/agh-ha-controller.env`. After adding it to an
+existing preserved systemd environment file, restart the service. Keep the
+interval comfortably above `NODE_REQUEST_TIMEOUT`; collection passes never
+overlap.
+
+## Statistics collection
+
+Open **Statistics** and inspect **Node coverage**. The first usable snapshot
+normally appears after the controller's immediate startup pass completes. The
+fixed ranges reflect history retained by each AdGuard Home node, so a newly
+installed controller can display earlier traffic without manufacturing data.
+
+Common coverage reasons:
+
+- `STATISTICS_EXACT_RANGE_UNSUPPORTED`: upgrade the node to a tested
+  v0.107.72–v0.107.78 contract, or accept its explicit exclusion;
+- `NODE_MAINTENANCE`: leave maintenance only when normal polling is intended;
+- `STATISTICS_TIMEOUT` or `NODE_UNREACHABLE`: verify management-network access
+  and the configured timeout;
+- node authentication/TLS errors: repair the same stored credential or trust
+  boundary used by other controller reads; and
+- `STATISTICS_STALE`: the latest durable snapshot is older than the configured
+  freshness threshold.
+
+Controller downtime does not affect DNS. It pauses polls and can leave a gap.
+Restart triggers an immediate pass, but history already expired from AdGuard
+Home cannot be reconstructed. A node statistics reset is preserved as a real
+discontinuity. Use `journalctl -u agh-ha-controller` or
+`docker compose logs controller` for safe collection/storage diagnostics;
+credentials, node URLs, and raw responses are not logged.
+
+PostgreSQL retains snapshots, attempts, and hourly buckets for 32 days and
+daily rollups for 400 days. Include these tables in normal PostgreSQL backups;
+no separate telemetry volume exists.
 
 ## Release 0.1.1 installation checks
 

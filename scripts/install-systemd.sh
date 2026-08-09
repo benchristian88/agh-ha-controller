@@ -41,7 +41,7 @@ if ! id "${service_user}" >/dev/null 2>&1; then
 fi
 
 make -C "${repo_dir}" bootstrap
-make -C "${repo_dir}" VERSION=0.4.1 build
+make -C "${repo_dir}" VERSION=0.5.0 build
 
 install -d -o root -g root -m 0755 "${environment_dir}" /usr/local/share/agh-ha-controller
 install -d -o "${service_user}" -g "${service_group}" -m 0750 "${state_dir}"
@@ -70,7 +70,7 @@ SQL
     printf 'PUBLIC_BASE_URL=%s\n' "${public_base_url}"
     printf 'SESSION_SECRET=%s\n' "${session_secret}"
     printf 'CREDENTIAL_ENCRYPTION_KEY=%s\n' "${credential_key}"
-    printf 'LOG_LEVEL=info\nSESSION_DURATION=12h\nNODE_HEALTH_INTERVAL=30s\nNODE_REQUEST_TIMEOUT=10s\nAUTO_MIGRATE=true\n'
+    printf 'LOG_LEVEL=info\nSESSION_DURATION=12h\nNODE_HEALTH_INTERVAL=30s\nNODE_REQUEST_TIMEOUT=10s\nSTATISTICS_POLL_INTERVAL=1h\nAUTO_MIGRATE=true\n'
   } >"${environment_file}"
   chmod 0600 "${environment_file}"
 else

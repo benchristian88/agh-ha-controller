@@ -10,6 +10,7 @@ export type SettingsArea =
 export type RouteResolution =
   | { kind: "dashboard" }
   | { kind: "nodes" }
+  | { kind: "statistics" }
   | { kind: "configuration" }
   | { kind: "deployments" }
   | { kind: "drift" }
@@ -120,7 +121,6 @@ const settingsRoutes: Readonly<
 const plannedRoutes: Readonly<
   Record<string, { title: string; release?: string }>
 > = {
-  "/statistics": { title: "Statistics", release: "Release 0.5" },
   "/query-log": { title: "Query Log", release: "Release 0.6" },
   "/setup-guide": { title: "Setup Guide" },
   "/system/users": { title: "Users" },
@@ -146,6 +146,8 @@ export function resolveRoute(pathname: string): RouteResolution {
   switch (pathname) {
     case "/":
       return { kind: "dashboard" };
+    case "/statistics":
+      return { kind: "statistics" };
     case "/ha/nodes":
       return { kind: "nodes" };
     case "/ha/configuration":

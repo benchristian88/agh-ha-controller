@@ -4,6 +4,36 @@ All notable changes to AGH HA Controller will be documented in this file.
 
 The project intends to follow Semantic Versioning once the first public release is made.
 
+## 0.5.0 - Unreleased
+
+### Added
+
+- Immediate and configurable interval collection of exact 24-hour, 7-day, and
+  30-day AdGuard Home statistics with bounded concurrency, per-node evidence,
+  capability exclusions, maintenance handling, safe errors, and retention.
+- Append-only migration `000009_release_0_5_statistics` for normalized
+  snapshots, collection attempts, overlap-safe hourly buckets, and daily
+  rollups.
+- Authenticated cluster/node statistics API with summed additive counters,
+  query-weighted processing time, response-weighted upstream latency, stable
+  ranked-value merging, time series, freshness, and explicit coverage.
+- Responsive `/statistics` experience using the global scope selector, three
+  fixed ranges, summary cards, accessible activity chart, ranked panels, and
+  node-attributed partial/empty/error states. The dashboard retains health
+  focus and adds only a compact 24-hour summary.
+
+### Changed
+
+- Default controller, image, installer, and web version is 0.5.0.
+- AdGuard Home v0.107.72 through v0.107.78 has the explicit
+  `statistics_exact_range` capability. Older configuration-compatible nodes
+  remain manageable but are excluded from exact historical aggregation.
+
+### Deferred
+
+- Custom statistics ranges and combined query-log ingestion remain out of
+  scope; query-log ingestion is Release 0.6.
+
 ## 0.4.1 - Unreleased
 
 ### Added

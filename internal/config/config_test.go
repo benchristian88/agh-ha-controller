@@ -22,6 +22,9 @@ func TestLoad(t *testing.T) {
 	if configuration.NodeHealthInterval.String() != "45s" {
 		t.Fatalf("NodeHealthInterval = %v", configuration.NodeHealthInterval)
 	}
+	if configuration.StatisticsPollInterval.String() != "1h0m0s" {
+		t.Fatalf("StatisticsPollInterval = %v", configuration.StatisticsPollInterval)
+	}
 }
 
 func TestLoadRejectsPlaceholderCredentialKey(t *testing.T) {

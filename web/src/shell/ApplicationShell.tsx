@@ -23,6 +23,7 @@ import {
   type NavigationLink,
   PRIMARY_NAVIGATION,
 } from "./navigation";
+import { ScopeProvider } from "./ScopeContext";
 
 interface ApplicationShellProps {
   user: User;
@@ -263,7 +264,9 @@ export function ApplicationShell({
         </span>
       </section>
 
-      <main className="content">{children}</main>
+      <ScopeProvider value={{ nodeId: scopeNodeID, nodes }}>
+        <main className="content">{children}</main>
+      </ScopeProvider>
     </div>
   );
 }

@@ -19,6 +19,7 @@ import { GeneralSettingsPage } from "./features/general/GeneralSettingsPage";
 import { RevisionsPage } from "./features/history/HistoryPage";
 import { NodesPage } from "./features/nodes/NodesPage";
 import { RewritesPage } from "./features/rewrites/RewritesPage";
+import { StatisticsPage } from "./features/statistics/StatisticsPage";
 import { ApiError, api } from "./lib/api";
 import type { Cluster, User } from "./lib/types";
 import { NotFoundPage, PlannedPage } from "./routing/RouteStatePages";
@@ -174,6 +175,9 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
         break;
       case "nodes":
         content = <NodesPage cluster={selected} />;
+        break;
+      case "statistics":
+        content = <StatisticsPage cluster={selected} />;
         break;
       case "configuration":
         content = <ConfigurationPage cluster={selected} />;

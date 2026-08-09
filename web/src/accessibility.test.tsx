@@ -4,7 +4,7 @@ import { cleanup, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { afterEach, describe, expect, it } from "vitest";
-import { NotFoundPage, PlannedPage } from "./routing/RouteStatePages";
+import { NotFoundPage } from "./routing/RouteStatePages";
 import { ApplicationShell } from "./shell/ApplicationShell";
 
 afterEach(cleanup);
@@ -55,7 +55,7 @@ describe("WCAG structural regression", () => {
         onSelectCluster={() => undefined}
         onLogout={() => undefined}
       >
-        <PlannedPage title="Statistics" release="Release 0.5" />
+        <h1>Statistics</h1>
       </ApplicationShell>,
     );
     await interaction.click(getByRole("button", { name: "Open navigation" }));

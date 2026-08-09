@@ -20,11 +20,16 @@ Suggested default:
 
 ## Statistics
 
-Suggested default:
+Release 0.5 enforced default:
 
-- Raw node snapshots: 30 days.
-- Hourly rollups: 1 year.
-- Daily rollups: indefinitely.
+- Normalized node snapshots and poll attempts: 32 days.
+- Hourly node-attributed buckets: 32 days.
+- Daily node-attributed rollups: 400 days.
+
+Cleanup rolls completed hourly days into daily buckets before expiry. Raw node
+responses are never stored. Custom operator retention controls remain later
+work; changing the node's own statistics retention may reduce which exact
+windows it can supply.
 
 ## Query events
 

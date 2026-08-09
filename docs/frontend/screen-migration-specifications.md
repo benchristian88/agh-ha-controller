@@ -143,7 +143,9 @@ Replace raw numeric fields where appropriate:
 
 ## Deferred screens
 
-Statistics and Query Log should receive explicit planned/not-implemented states or be omitted until their release. They must not resolve to Dashboard by accident.
+Release 0.5 replaces the Statistics planned state with its dedicated page.
+Query Log remains explicit planned/not-implemented until Release 0.6. Neither
+route resolves to Dashboard by accident.
 
 ## Setup Guide
 

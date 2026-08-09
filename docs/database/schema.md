@@ -1,5 +1,23 @@
 # Schema Notes
 
+## Release 0.5 statistics
+
+Migration `000009_release_0_5_statistics` keeps telemetry concerns separate:
+
+- `statistics_poll_attempts` records bounded per-node collection evidence and
+  stable safe errors;
+- `statistics_snapshots` stores immutable normalized exact-range node results;
+  and
+- `statistics_buckets` stores overlap-safe hourly/daily additive counters with
+  node attribution.
+
+Foreign keys preserve cluster/node history. Snapshot rankings and series are
+bounded JSON arrays rather than unreviewed raw payloads. Bucket identity is
+`(node_id, resolution, bucket_start)`, allowing newer overlapping reads to
+replace the same source bucket without adding it twice. Desired configuration,
+observed configuration, deployments, statistics, and query events remain
+distinct record families.
+
 ## Migration naming
 
 ```text

@@ -53,8 +53,9 @@ operator-facing presentation. The 3 August 2026 responsibility pass then
 removed its two remaining combined-page compromises: Deployments and Drift now
 render distinct execution and convergence pages, and Revisions no longer
 renders Configuration Control. They continue to share typed controller APIs
-and semantic presentation primitives. Statistics and Query Log remain explicit
-planned states owned by Releases 0.5 and 0.6.
+and semantic presentation primitives. Release 0.5 subsequently replaces the
+Statistics planned state with the complete fixed-range, global-scope
+experience; Query Log remains the explicit Release 0.6 planned state.
 
 ## Route migrations
 
