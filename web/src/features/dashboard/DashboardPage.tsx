@@ -79,70 +79,100 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
         <Metric label="Stale nodes" value={String(stale)} />
         <Metric label="Controller role" value="Management only" />
       </section>
-      {operational !== undefined && (
-        <section className="card dashboard-operational">
-          <div>
-            <p className="eyebrow">Controller operations</p>
-            <h2>Controller health</h2>
-            <p>{operational.summary.message}</p>
-          </div>
-          <dl>
-            <div>
-              <dt>Overall</dt>
-              <dd>
+      {(operational !== undefined ||
+        (statistics !== undefined && statistics.state !== "unavailable")) && (
+        <section
+          className="dashboard-summary-grid"
+          aria-label="Controller and DNS overview"
+        >
+          {operational !== undefined && (
+            <article className="card dashboard-summary-card">
+              <header className="dashboard-summary-card__header">
+                <div>
+                  <p className="eyebrow">Controller operations</p>
+                  <h2>Controller health</h2>
+                </div>
                 <StatusBadge status={operational.summary.state} />
-              </dd>
-            </div>
-            <div>
-              <dt>Statistics</dt>
-              <dd>{operational.statistics.state}</dd>
-            </div>
-            <div>
-              <dt>Query Log</dt>
-              <dd>{operational.queryLog.state}</dd>
-            </div>
-          </dl>
-          <a
-            className="button button--secondary"
-            href="/system/operational-status"
-          >
-            View operational status
-          </a>
-        </section>
-      )}
-      {statistics !== undefined && statistics.state !== "unavailable" && (
-        <section className="card dashboard-statistics">
-          <div>
-            <p className="eyebrow">Last 24 hours</p>
-            <h2>DNS activity</h2>
-          </div>
-          <dl>
-            <div>
-              <dt>Queries</dt>
-              <dd>
-                {new Intl.NumberFormat().format(statistics.totals.dnsQueries)}
-              </dd>
-            </div>
-            <div>
-              <dt>Blocked</dt>
-              <dd>
-                {statistics.totals.blockedPercentage.toLocaleString(undefined, {
-                  maximumFractionDigits: 2,
-                })}
-                %
-              </dd>
-            </div>
-            <div>
-              <dt>Coverage</dt>
-              <dd>
-                {statistics.coverage.includedNodes} /{" "}
-                {statistics.coverage.expectedNodes} nodes
-              </dd>
-            </div>
-          </dl>
-          <a className="button button--secondary" href="/statistics">
-            View statistics
-          </a>
+              </header>
+              <p className="dashboard-summary-card__description">
+                {operational.summary.message}
+              </p>
+              <dl className="dashboard-summary-card__metrics">
+                <div>
+                  <dt>API</dt>
+                  <dd className="operational-value">{operational.api}</dd>
+                </div>
+                <div>
+                  <dt>Statistics</dt>
+                  <dd className="operational-value">
+                    {operational.statistics.state}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Query log</dt>
+                  <dd className="operational-value">
+                    {operational.queryLog.state}
+                  </dd>
+                </div>
+              </dl>
+              <footer className="dashboard-summary-card__footer">
+                <a
+                  className="button button--secondary"
+                  href="/system/operational-status"
+                >
+                  View operational status
+                </a>
+              </footer>
+            </article>
+          )}
+          {statistics !== undefined && statistics.state !== "unavailable" && (
+            <article className="card dashboard-summary-card">
+              <header className="dashboard-summary-card__header">
+                <div>
+                  <p className="eyebrow">Last 24 hours</p>
+                  <h2>DNS activity</h2>
+                </div>
+                <StatusBadge
+                  status={statistics.state === "ready" ? "healthy" : "degraded"}
+                />
+              </header>
+              <p className="dashboard-summary-card__description">
+                Aggregated DNS traffic across the nodes in the current scope.
+              </p>
+              <dl className="dashboard-summary-card__metrics">
+                <div>
+                  <dt>Queries</dt>
+                  <dd>
+                    {new Intl.NumberFormat().format(
+                      statistics.totals.dnsQueries,
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Blocked</dt>
+                  <dd>
+                    {statistics.totals.blockedPercentage.toLocaleString(
+                      undefined,
+                      { maximumFractionDigits: 2 },
+                    )}
+                    %
+                  </dd>
+                </div>
+                <div>
+                  <dt>Coverage</dt>
+                  <dd>
+                    {statistics.coverage.includedNodes} /{" "}
+                    {statistics.coverage.expectedNodes} nodes
+                  </dd>
+                </div>
+              </dl>
+              <footer className="dashboard-summary-card__footer">
+                <a className="button button--secondary" href="/statistics">
+                  View statistics
+                </a>
+              </footer>
+            </article>
+          )}
         </section>
       )}
       {currentNodes.length === 0 ? (
