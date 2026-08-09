@@ -1229,3 +1229,23 @@ Separate authoritative `DesiredDocument` revisions from per-node observations. D
 **Related release:** 0.4
 
 Introduce canonical schema v2 without rewriting immutable schema-v1 records. AdGuard Home v0.107.52 retains schema-v1 inventory and historical reconciliation; schema v2 supports the explicitly reviewed v0.107.53–v0.107.78 range and treats newer contracts as unknown. Project observations to the revision schema and compare only managed fields for convergence. Shared state gains broader DNS, filters/allowlists, clients, rewrites, service/safety, query-log, and statistics policy. DHCP configuration/static leases are node overrides with at most one enabled node and disable-before-enable deployment ordering; dynamic leases and redacted TLS status are observed-only. TLS secrets are never decoded or stored, and TLS mutation remains deferred. Filter refresh is explicit and audited. Full rationale and consequences are recorded in standalone ADR-0025.
+
+---
+
+# ADR-0028: Aggregate exact node statistics in the controller
+
+**Status:** Accepted
+
+**Date:** 2026-08-09
+
+**Related release:** 0.5
+
+Poll exact 24-hour, 7-day, and 30-day AdGuard Home statistics from explicitly
+supported v0.107.72–v0.107.78 nodes. Persist normalized immutable snapshots,
+small per-node attempt evidence, and overlap-safe node buckets. Sum additive
+counters, derive aggregate percentages, weight processing time by queries and
+upstream latency by response counts, and expose completeness/freshness beside
+all results. Maintenance and unsupported nodes remain explicit. The pipeline
+does not proxy DNS, mutate nodes, persist raw responses, or consume query logs.
+Full rationale, retention, normalization, and failure behavior are recorded in
+standalone ADR-0028.

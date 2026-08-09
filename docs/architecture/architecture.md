@@ -38,6 +38,15 @@ Release 0.3 keeps the same combined process and adds `internal/controlplane`, du
 
 Release 0.4 adds schema-v2 fields through the existing configuration, inventory, control-plane, and adapter boundaries rather than a parallel settings store. Shared desired state now covers broader DNS, filter/allowlist, client, rewrite, service/safety, query-log, and statistics policy. DHCP configuration/static leases remain node overrides; dynamic leases and redacted TLS status remain observations. Schema v1 is immutable and is projected from current observations for historical rollback and reconciliation. v0.107.52 remains on schema v1; schema v2 supports the explicitly version-gated v0.107.53–v0.107.78 contract. Audited filter refresh is an explicit operation outside revision deployment. ADR-0025 defines compatibility, TLS redaction, managed-field comparison, and DHCP handoff behavior.
 
+Release 0.5 adds `internal/telemetry` and a bounded statistics worker to the
+same controller process. The adapter reads exact recent windows directly from
+explicitly supported nodes; PostgreSQL stores normalized immutable snapshots,
+small poll evidence, and overlap-safe node buckets. Aggregation happens in the
+service/API layer with explicit coverage and weighted metrics. The worker has
+no DNS listener, no node mutation, and no query-log dependency. Controller
+downtime pauses collection while every node continues serving DNS. ADR-0028
+defines its compatibility, mathematics, retention, and failure boundaries.
+
 ### 3.1 Controller API
 
 Responsibilities:

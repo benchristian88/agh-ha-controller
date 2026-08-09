@@ -18,6 +18,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 	"github.com/benchristian88/agh-ha-controller/internal/operations"
+	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
 )
 
 const (
@@ -71,6 +72,10 @@ type DNSOperationService interface {
 	List(context.Context, string, operations.Command, int) ([]operations.Operation, error)
 }
 
+type StatisticsService interface {
+	Statistics(context.Context, string, telemetry.Range, string, int) (telemetry.Report, error)
+}
+
 type Server struct {
 	auth           *auth.Service
 	management     *domain.ManagementService
@@ -82,6 +87,7 @@ type Server struct {
 	dhcpChecker    DHCPActiveChecker
 	dhcpOperations DHCPOperationService
 	dnsOperations  DNSOperationService
+	statistics     StatisticsService
 	controlplane   *controlplane.Service
 	audit          AuditReader
 	health         HealthChecker
@@ -94,6 +100,7 @@ type Server struct {
 }
 
 func (s *Server) SetDNSOperations(service DNSOperationService) { s.dnsOperations = service }
+func (s *Server) SetStatistics(service StatisticsService)      { s.statistics = service }
 
 func NewServer(authService *auth.Service, management *domain.ManagementService, inventoryService *inventory.Service, audit AuditReader, health HealthChecker, logger *slog.Logger, secureCookies bool, publicBaseURL string, healthInterval time.Duration, webDist string, controlplanes ...*controlplane.Service) *Server {
 	var controlplaneService *controlplane.Service
@@ -128,6 +135,7 @@ func (s *Server) routes() {
 	s.mux.Handle("PATCH /api/v1/clusters/{clusterId}", s.authenticated(true, http.HandlerFunc(s.handleUpdateCluster)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/nodes", s.authenticated(false, http.HandlerFunc(s.handleListNodes)))
 	s.mux.Handle("POST /api/v1/clusters/{clusterId}/nodes", s.authenticated(true, http.HandlerFunc(s.handleCreateNode)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/statistics", s.authenticated(false, http.HandlerFunc(s.handleStatistics)))
 	s.mux.Handle("GET /api/v1/nodes/{nodeId}", s.authenticated(false, http.HandlerFunc(s.handleGetNode)))
 	s.mux.Handle("PATCH /api/v1/nodes/{nodeId}", s.authenticated(true, http.HandlerFunc(s.handleUpdateNode)))
 	s.mux.Handle("DELETE /api/v1/nodes/{nodeId}", s.authenticated(true, http.HandlerFunc(s.handleDeleteNode)))

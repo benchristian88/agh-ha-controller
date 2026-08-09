@@ -22,6 +22,7 @@ import type {
   DriftEvent,
   Node,
   OperationalTarget,
+  StatisticsReport,
   ValidationIssue,
 } from "./types";
 
@@ -140,6 +141,13 @@ export const api = {
       refreshedAt: string;
       staleAfterSeconds: number;
     }>(`/api/v1/clusters/${clusterId}/nodes`),
+  statistics: (clusterId: string, range: string, nodeId = "") => {
+    const query = new URLSearchParams({ range, limit: "10" });
+    if (nodeId !== "") query.set("nodeId", nodeId);
+    return request<StatisticsReport>(
+      `/api/v1/clusters/${clusterId}/statistics?${query.toString()}`,
+    );
+  },
   createNode: (clusterId: string, input: NodePayload) =>
     request<Node>(`/api/v1/clusters/${clusterId}/nodes`, {
       method: "POST",

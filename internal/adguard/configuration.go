@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 	"github.com/benchristian88/agh-ha-controller/internal/operations"
+	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
 )
 
 type ConfigurationReader struct{ probe *Probe }
@@ -25,6 +28,103 @@ const maxConfigurationBody = 4 << 20
 
 func NewConfigurationReader(timeoutProbe *Probe) *ConfigurationReader {
 	return &ConfigurationReader{probe: timeoutProbe}
+}
+
+type statisticsResponse struct {
+	TimeUnits                  string               `json:"time_units"`
+	DNSQueries                 int64                `json:"num_dns_queries"`
+	BlockedFiltering           int64                `json:"num_blocked_filtering"`
+	ReplacedSafeBrowsing       int64                `json:"num_replaced_safebrowsing"`
+	ReplacedSafeSearch         int64                `json:"num_replaced_safesearch"`
+	ReplacedParental           int64                `json:"num_replaced_parental"`
+	AverageProcessingTime      float64              `json:"avg_processing_time"`
+	TopQueriedDomains          []map[string]float64 `json:"top_queried_domains"`
+	TopBlockedDomains          []map[string]float64 `json:"top_blocked_domains"`
+	TopClients                 []map[string]float64 `json:"top_clients"`
+	TopUpstreamResponses       []map[string]float64 `json:"top_upstreams_responses"`
+	TopUpstreamAverageTime     []map[string]float64 `json:"top_upstreams_avg_time"`
+	DNSQueriesSeries           []int64              `json:"dns_queries"`
+	BlockedFilteringSeries     []int64              `json:"blocked_filtering"`
+	ReplacedSafeBrowsingSeries []int64              `json:"replaced_safebrowsing"`
+	ReplacedParentalSeries     []int64              `json:"replaced_parental"`
+}
+
+func validateStatisticsResponse(response statisticsResponse) error {
+	if response.TimeUnits != "hours" && response.TimeUnits != "days" {
+		return domain.NewError(domain.ErrorNodeResponse, "the node statistics response used an invalid time unit")
+	}
+	if response.DNSQueries < 0 || response.BlockedFiltering < 0 || response.ReplacedSafeBrowsing < 0 ||
+		response.ReplacedSafeSearch < 0 || response.ReplacedParental < 0 || response.AverageProcessingTime < 0 ||
+		math.IsNaN(response.AverageProcessingTime) || math.IsInf(response.AverageProcessingTime, 0) {
+		return domain.NewError(domain.ErrorNodeResponse, "the node statistics response contained invalid totals")
+	}
+	series := [][]int64{response.DNSQueriesSeries, response.BlockedFilteringSeries, response.ReplacedSafeBrowsingSeries, response.ReplacedParentalSeries}
+	if len(series[0]) == 0 || len(series[0]) > 1000 {
+		return domain.NewError(domain.ErrorNodeResponse, "the node statistics response contained an invalid series")
+	}
+	for _, values := range series {
+		if len(values) != len(series[0]) {
+			return domain.NewError(domain.ErrorNodeResponse, "the node statistics response contained mismatched series")
+		}
+		for _, value := range values {
+			if value < 0 {
+				return domain.NewError(domain.ErrorNodeResponse, "the node statistics response contained a negative series value")
+			}
+		}
+	}
+	for _, ranked := range [][]map[string]float64{response.TopQueriedDomains, response.TopBlockedDomains, response.TopClients, response.TopUpstreamResponses, response.TopUpstreamAverageTime} {
+		if len(ranked) > 100 {
+			return domain.NewError(domain.ErrorNodeResponse, "the node statistics response contained too many ranked values")
+		}
+		for _, item := range ranked {
+			if len(item) != 1 {
+				return domain.NewError(domain.ErrorNodeResponse, "the node statistics response contained an invalid ranked value")
+			}
+			for key, value := range item {
+				if strings.TrimSpace(key) == "" || len(key) > 512 || value < 0 || math.IsNaN(value) || math.IsInf(value, 0) {
+					return domain.NewError(domain.ErrorNodeResponse, "the node statistics response contained an invalid ranked value")
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func flattenRanked(values []map[string]float64) []telemetry.RankedValue {
+	result := make([]telemetry.RankedValue, 0, len(values))
+	for _, item := range values {
+		for key, value := range item {
+			result = append(result, telemetry.RankedValue{Key: strings.TrimSpace(key), Value: value})
+		}
+	}
+	return result
+}
+
+// ReadStatistics reads an exact recent statistics window and rejects malformed
+// or unbounded node data before it reaches durable storage.
+func (r *ConfigurationReader) ReadStatistics(ctx context.Context, request domain.NodeProbeRequest, recent time.Duration) (telemetry.SourceSnapshot, error) {
+	if recent <= 0 || recent%time.Hour != 0 {
+		return telemetry.SourceSnapshot{}, domain.Validation("recent", "must be a positive whole-hour duration")
+	}
+	query := url.Values{"recent": []string{strconv.FormatInt(recent.Milliseconds(), 10)}}
+	var response statisticsResponse
+	if err := r.getOperationalResource(ctx, request, "/control/stats", query, &response); err != nil {
+		return telemetry.SourceSnapshot{}, err
+	}
+	if err := validateStatisticsResponse(response); err != nil {
+		return telemetry.SourceSnapshot{}, err
+	}
+	return telemetry.SourceSnapshot{
+		TimeUnit: response.TimeUnits, DNSQueries: response.DNSQueries,
+		BlockedFiltering: response.BlockedFiltering, ReplacedSafeBrowsing: response.ReplacedSafeBrowsing,
+		ReplacedSafeSearch: response.ReplacedSafeSearch, ReplacedParental: response.ReplacedParental,
+		AverageProcessingSeconds: response.AverageProcessingTime,
+		TopQueriedDomains:        flattenRanked(response.TopQueriedDomains), TopBlockedDomains: flattenRanked(response.TopBlockedDomains),
+		TopClients: flattenRanked(response.TopClients), TopUpstreamResponses: flattenRanked(response.TopUpstreamResponses),
+		TopUpstreamAverageSeconds: flattenRanked(response.TopUpstreamAverageTime), DNSQueriesSeries: response.DNSQueriesSeries,
+		BlockedFilteringSeries: response.BlockedFilteringSeries, ReplacedSafeBrowsingSeries: response.ReplacedSafeBrowsingSeries,
+		ReplacedParentalSeries: response.ReplacedParentalSeries,
+	}, nil
 }
 
 type dnsInfoResponse struct {
@@ -243,7 +343,7 @@ type dhcpActiveCheckResponse struct {
 }
 
 func (r *ConfigurationReader) ReadConfiguration(ctx context.Context, request domain.NodeProbeRequest, version string) (configuration.Document, inventory.CapabilityProfile, error) {
-	profile := inventory.CapabilityProfile{ProductVersion: version, Compatibility: string(ConfigurationCompatibility(version)), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"dns": false, "cache_toggle": false, "upstream_timeout": false, "test_upstream_dns": false, "cache_clear": false, "filtering": false, "test_host_filtering": false, "test_host_filtering_context": false, "filter_interval_arbitrary": false, "clients": false, "rewrites": false, "rewrite_toggle": false, "blocked_services": false, "safety": false, "safe_search_ecosia": supportsEcosia(version), "query_log": false, "querylog_clear": false, "statistics": false, "stats_reset": false, "ignored_lists_toggle": false, "tls": false, "dhcp": false}, Warnings: []string{}}
+	profile := inventory.CapabilityProfile{ProductVersion: version, Compatibility: string(ConfigurationCompatibility(version)), SchemaVersion: configuration.SchemaVersion, Features: map[string]bool{"dns": false, "cache_toggle": false, "upstream_timeout": false, "test_upstream_dns": false, "cache_clear": false, "filtering": false, "test_host_filtering": false, "test_host_filtering_context": false, "filter_interval_arbitrary": false, "clients": false, "rewrites": false, "rewrite_toggle": false, "blocked_services": false, "safety": false, "safe_search_ecosia": supportsEcosia(version), "query_log": false, "querylog_clear": false, "statistics": false, "statistics_exact_range": SupportsRecentStatistics(version), "stats_reset": false, "ignored_lists_toggle": false, "tls": false, "dhcp": false}, Warnings: []string{}}
 	if ConfigurationCompatibility(version) != domain.CompatibilitySupported {
 		profile.Warnings = append(profile.Warnings, "This AdGuard Home version is outside the tested configuration inventory range.")
 		return configuration.Document{}, profile, domain.NewError(domain.ErrorNodeResponse, "the node version is not supported for configuration inventory")

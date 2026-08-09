@@ -70,6 +70,21 @@ AdGuard `error` strings and response bodies are never returned, logged, or
 stored. Although AdGuard exposes this read-only check as POST, the controller
 does not treat it as a configuration mutation.
 
+## Release 0.5 statistics contract
+
+The adapter reads `GET /control/stats?recent={milliseconds}` only for the
+explicitly tested v0.107.72–v0.107.78 exact-range contract. It requests whole
+hours for 24 hours, 7 days, and 30 days. Earlier configuration-compatible
+versions retain their configuration capabilities but report
+`statistics_exact_range: false` and are not approximated.
+
+The response boundary accepts `hours` or `days`, non-negative additive totals,
+a finite non-negative average processing time, up to 1,000 equal-length
+non-negative series points, and up to 100 one-key ranked entries per panel.
+Invalid, mismatched, oversized, negative, empty-key, NaN, or infinite data maps
+to a safe node-response error. The adapter returns a normalized typed snapshot;
+raw JSON and authentication data do not cross into storage.
+
 TLS parsing deliberately has no fields for `certificate_chain`, `private_key`, `certificate_path`, or `private_key_path`. Only public status, subject/issuer, validity, DNS names, ports, and safe warning text cross the adapter boundary. DHCP dynamic leases are observed-only; configuration/static leases are node-specific managed state.
 
 ## Error mapping

@@ -2,7 +2,7 @@
 
 AGH HA Controller is a management plane for running two or more AdGuard Home instances as a coordinated, highly available DNS service.
 
-AdGuard Home remains the DNS engine. AGH HA Controller currently provides the shared control plane for configuration, authentication, revision history, deployment, and drift detection. Cluster statistics aggregation and central query-log ingestion remain planned for Releases 0.5 and 0.6.
+AdGuard Home remains the DNS engine. AGH HA Controller currently provides the shared control plane for configuration, authentication, revision history, deployment, drift detection, and controller-collected cluster statistics. Central query-log ingestion remains planned for Release 0.6.
 
 ## Why this project exists
 
@@ -21,7 +21,7 @@ AGH HA Controller is intended to solve that gap by providing:
 
 ## Project status
 
-Release 0.4.1 aligns broader AdGuard Home administration with the approved horizontal navigation, mobile drawer, global cluster/scope/revision/health/deployment context, schema-v2 Configuration Control, and operator-focused settings presentations. Operators can manage shared DNS behavior, blocklists and allowlists, custom rules, persistent clients, rewrites, blocked services and schedules, safety services, Safe Search, and node query-log/statistics policy. TLS is exposed as redacted inventory, and DHCP is a guarded node override with one active node maximum. Release 0.4 functional, Docker, and native/systemd installation validation was completed by the operator on 3 August 2026. Current evidence is tracked in the [feature ledger](docs/product/feature-ledger.md) and [Phase 10 regression report](docs/development/release-0.4.1-phase-10-regression-report.md).
+Release 0.5 adds immediate and hourly exact-range polling, normalized PostgreSQL snapshots/buckets, mathematically valid aggregation, explicit coverage/freshness, cluster/node scope, and the complete `/statistics` experience. It builds on Release 0.4.1's horizontal navigation, global context, schema-v2 Configuration Control, and operator-focused settings. AdGuard Home remains the only DNS engine; the controller can be stopped without interrupting DNS. Current evidence is tracked in the [feature ledger](docs/product/feature-ledger.md), [statistics design](docs/backend/statistics-aggregation.md), and [ADR-0028](docs/decisions/ADR-0028-aggregate-exact-node-statistics-in-the-controller.md).
 
 The first meaningful product milestone is the configuration-control MVP:
 
@@ -62,15 +62,15 @@ The complete architecture is documented in [docs/architecture/architecture.md](d
 
 ## Technology stack
 
-### Services implemented through 0.4
+### Services implemented through 0.5
 
-- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, health polling, schema-versioned configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, audited filter refresh, session cleanup, audit access, and operational probes.
-- PostgreSQL 17: the system of record for users/sessions, clusters/nodes, encrypted credential envelopes, capability profiles, immutable observations/revisions, optimistic drafts, deployments and ordered per-node tasks, drift events, and audit history.
+- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, health and statistics polling, schema-versioned configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, audited filter refresh, session cleanup, audit access, and operational probes.
+- PostgreSQL 17: the system of record for users/sessions, clusters/nodes, encrypted credential envelopes, capability profiles, immutable observations/revisions, optimistic drafts, deployments and ordered per-node tasks, drift events, audit history, and normalized node-attributed statistics.
 - AdGuard Home adapter: bounded direct HTTP(S) reads and version-aware writes. Schema v2 manages broader DNS behavior, blocklists/allowlists, custom rules, persistent clients, rewrites, blocked-service schedules, safety services, Safe Search, query-log/statistics policy, and guarded DHCP configuration/static leases. DNS bind hosts/port remain verification-only. TLS responses are reduced to public status and certificate metadata before entering domain state.
 - Deployment worker: claims durable jobs, validates and observes all targets before mutation, applies one node at a time, skips already-converged DHCP configuration writes, stops on first failure, honors cancellation only between nodes, verifies by a new immutable observation, and activates the revision only after total success. Rejected mutations retain a safe method/path/status diagnostic on the per-node task without storing AdGuard Home response bodies.
 - Reconciliation worker: periodically compares the active revision's effective configuration with fresh node observations, deduplicates structured drift, and applies Manual, Alert, or Enforce policy while excluding maintenance nodes.
 
-AdGuard Home remains the live DNS service and never sends normal DNS traffic through the controller. Release 0.4 manages node-local statistics and query-log settings but does not ingest their events; aggregation, central query-log ingestion, and the optional forwarder remain later milestones.
+AdGuard Home remains the live DNS service and never sends normal DNS traffic through the controller. Release 0.5 reads bounded aggregate statistics directly from supported nodes without query-log ingestion. Central query-log ingestion and the optional forwarder remain later milestones.
 
 ### Controller backend
 
@@ -91,9 +91,10 @@ AdGuard Home remains the live DNS service and never sends normal DNS traffic thr
 - Responsive desktop-first administration interface
 
 Canonical navigation is grouped under Settings, Filters, and HA Controller.
-Statistics and Query Log have explicit future-release states and do not imply
-that aggregation or ingestion is available. Previous Release 0.4 settings URLs
-remain usable through documented compatibility redirects.
+Statistics is a complete cluster/node experience. Query Log retains an
+explicit future-release state and does not imply ingestion is available.
+Previous Release 0.4 settings URLs remain usable through documented
+compatibility redirects.
 
 HA Controller contains five distinct pages:
 

@@ -1,6 +1,6 @@
 # Controller API
 
-## Release 0.4 contract
+## Release 0.5 contract
 
 The controller serves its browser UI and JSON API from the same origin. JSON routes are versioned under:
 
@@ -62,6 +62,31 @@ PATCH /api/v1/clusters/{clusterId}
 Create accepts `name` and `description`. Update accepts the complete mutable representation plus `version`. A stale version returns HTTP 409. Responses include an integer `version` and an ETag.
 
 Cluster deletion is deliberately not included in Release 0.1 because safe behavior for historical configuration, deployment, and audit relationships belongs to a later lifecycle design.
+
+## Statistics route
+
+```text
+GET /api/v1/clusters/{clusterId}/statistics?range=24h|7d|30d&nodeId={optional UUID}&limit=1..25
+```
+
+The authenticated read defaults to `range=24h` and `limit=10`. Omitting
+`nodeId` returns the selected cluster aggregate; supplying a node UUID returns
+the same presentation contract for that node after verifying cluster
+membership. Invalid ranges, limits, and identifiers return stable validation
+errors.
+
+The response contains `state`, scope, generation/freshness timestamps,
+coverage counts, node-attributed coverage rows, summed totals, derived
+percentages, query-weighted average processing milliseconds, chronological
+series, and bounded rankings for queried/blocked domains, clients, upstream
+responses, and response-weighted upstream average latency. `state` is `ready`,
+`partial`, or `unavailable`; consumers must present coverage and must not infer
+that missing nodes contributed zero traffic.
+
+Only controller-collected normalized statistics are returned. The route does
+not read query logs, call nodes synchronously, expose node credentials/URLs, or
+return raw AdGuard Home payloads. Responses retain the API-wide `no-store`
+cache policy.
 
 ## Node routes
 

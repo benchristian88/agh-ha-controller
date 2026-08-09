@@ -3,25 +3,32 @@ import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
 import { StatusBadge } from "../../components/StatusBadge";
 import { api } from "../../lib/api";
 import { clusterHealth, isStale } from "../../lib/freshness";
-import type { Cluster, Node } from "../../lib/types";
+import type { Cluster, Node, StatisticsReport } from "../../lib/types";
+import { useScope } from "../../shell/ScopeContext";
 
 export function DashboardPage({ cluster }: { cluster: Cluster }) {
+  const { nodeId: scopeNodeId } = useScope();
   const [nodes, setNodes] = useState<Node[]>();
   const [refreshedAt, setRefreshedAt] = useState<string>();
   const [staleAfterMs, setStaleAfterMs] = useState(90_000);
   const [error, setError] = useState<unknown>();
+  const [statistics, setStatistics] = useState<StatisticsReport>();
 
   const load = useCallback(async () => {
     try {
-      const result = await api.nodes(cluster.id);
+      const [result, statisticsResult] = await Promise.all([
+        api.nodes(cluster.id),
+        api.statistics(cluster.id, "24h", scopeNodeId).catch(() => undefined),
+      ]);
       setNodes(result.items);
       setRefreshedAt(result.refreshedAt);
       setStaleAfterMs(result.staleAfterSeconds * 1000);
       setError(undefined);
+      setStatistics(statisticsResult);
     } catch (caught) {
       setError(caught);
     }
-  }, [cluster.id]);
+  }, [cluster.id, scopeNodeId]);
 
   useEffect(() => {
     void load();
@@ -64,6 +71,41 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
         <Metric label="Stale nodes" value={String(stale)} />
         <Metric label="Controller role" value="Management only" />
       </section>
+      {statistics !== undefined && statistics.state !== "unavailable" && (
+        <section className="card dashboard-statistics">
+          <div>
+            <p className="eyebrow">Last 24 hours</p>
+            <h2>DNS activity</h2>
+          </div>
+          <dl>
+            <div>
+              <dt>Queries</dt>
+              <dd>
+                {new Intl.NumberFormat().format(statistics.totals.dnsQueries)}
+              </dd>
+            </div>
+            <div>
+              <dt>Blocked</dt>
+              <dd>
+                {statistics.totals.blockedPercentage.toLocaleString(undefined, {
+                  maximumFractionDigits: 2,
+                })}
+                %
+              </dd>
+            </div>
+            <div>
+              <dt>Coverage</dt>
+              <dd>
+                {statistics.coverage.includedNodes} /{" "}
+                {statistics.coverage.expectedNodes} nodes
+              </dd>
+            </div>
+          </dl>
+          <a className="button button--secondary" href="/statistics">
+            View statistics
+          </a>
+        </section>
+      )}
       {currentNodes.length === 0 ? (
         <EmptyState title="Add your first AdGuard Home node">
           <p>

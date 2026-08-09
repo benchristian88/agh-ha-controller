@@ -32,6 +32,16 @@ rows, explicit patch-capability warnings, and draft/revision/affected-node
 context. Saving remains draft-only; central Statistics and Query Log data
 surfaces remain assigned to Releases 0.5 and 0.6 respectively.
 
+## Release 0.5 statistics
+
+`/statistics` reuses the shell's persistent cluster/node scope and presents
+controller-collected 24-hour, 7-day, and 30-day data. Four summary cards,
+accessible SVG activity lines, ranked domain/client/upstream panels, and a
+node-attributed coverage table share the existing responsive card/table/status
+language. Loading, unavailable, partial, stale, unsupported, maintenance, and
+refresh-error states are textual. The dashboard adds only a compact 24-hour
+summary and remains primarily a health surface. Query Log remains planned.
+
 The 3 August 2026 HA responsibility pass retains the same navigation but gives
 each HA route one task: Nodes for infrastructure, Configuration Control for
 forward-looking draft approval/publication and advanced adoption, Deployments

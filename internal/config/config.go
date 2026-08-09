@@ -20,6 +20,7 @@ type Config struct {
 	SessionDuration         time.Duration
 	NodeHealthInterval      time.Duration
 	NodeRequestTimeout      time.Duration
+	StatisticsPollInterval  time.Duration
 	WebDistDirectory        string
 	LogLevel                string
 	AutoMigrate             bool
@@ -52,6 +53,10 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	statisticsInterval, err := duration("STATISTICS_POLL_INTERVAL", time.Hour)
+	if err != nil {
+		return Config{}, err
+	}
 	autoMigrate, err := boolean("AUTO_MIGRATE", true)
 	if err != nil {
 		return Config{}, err
@@ -69,6 +74,7 @@ func Load() (Config, error) {
 		SessionDuration:         sessionDuration,
 		NodeHealthInterval:      healthInterval,
 		NodeRequestTimeout:      requestTimeout,
+		StatisticsPollInterval:  statisticsInterval,
 		WebDistDirectory:        env("WEB_DIST_DIR", "web/dist"),
 		LogLevel:                env("LOG_LEVEL", "info"),
 		AutoMigrate:             autoMigrate,

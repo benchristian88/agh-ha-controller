@@ -505,6 +505,69 @@ export interface ApiErrorBody {
   requestId: string;
 }
 
+export type StatisticsRange = "24h" | "7d" | "30d";
+
+export interface StatisticsRanking {
+  key: string;
+  value: number;
+  percentage?: number;
+}
+
+export interface StatisticsReport {
+  range: StatisticsRange;
+  scope: { type: "cluster" | "node"; nodeId?: string };
+  state: "ready" | "partial" | "unavailable";
+  generatedAt: string;
+  freshness: {
+    newestAt?: string;
+    oldestAt?: string;
+    staleAfterSeconds: number;
+  };
+  coverage: {
+    status: "complete" | "partial" | "unavailable";
+    expectedNodes: number;
+    includedNodes: number;
+    missingNodes: number;
+    staleNodes: number;
+    unsupportedNodes: number;
+    maintenanceNodes: number;
+  };
+  totals: {
+    dnsQueries: number;
+    blockedFiltering: number;
+    blockedPercentage: number;
+    replacedSafeBrowsing: number;
+    replacedSafeSearch: number;
+    replacedParental: number;
+    safetyInterventions: number;
+    safetyInterventionPercentage: number;
+    averageProcessingMs: number;
+  };
+  series: {
+    at: string;
+    dnsQueries: number;
+    blockedFiltering: number;
+    replacedSafeBrowsing: number;
+    replacedParental: number;
+    includedNodes: number;
+  }[];
+  rankings: {
+    queriedDomains: StatisticsRanking[];
+    blockedDomains: StatisticsRanking[];
+    clients: StatisticsRanking[];
+    upstreamResponses: StatisticsRanking[];
+    upstreamAverageLatencyMs: StatisticsRanking[];
+  };
+  nodes: {
+    nodeId: string;
+    nodeName: string;
+    status: string;
+    reasonCode?: string;
+    collectedAt?: string;
+    dnsQueries?: number;
+  }[];
+}
+
 export type OperationalTarget =
   | { scope: "node"; nodeId: string }
   | { scope: "all_compatible_enabled_nodes" };

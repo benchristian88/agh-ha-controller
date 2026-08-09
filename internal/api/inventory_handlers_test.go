@@ -45,6 +45,7 @@ func TestPresentationEndpointsRequireAuthentication(t *testing.T) {
 		"/api/v1/nodes/22222222-2222-4222-8222-222222222222/dhcp/interfaces",
 		"/api/v1/operational-commands/77777777-7777-4777-8777-777777777777",
 		"/api/v1/clusters/11111111-1111-4111-8111-111111111111/operational-commands",
+		"/api/v1/clusters/11111111-1111-4111-8111-111111111111/statistics",
 	} {
 		t.Run(path, func(t *testing.T) {
 			server := &Server{mux: http.NewServeMux()}
