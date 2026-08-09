@@ -151,10 +151,18 @@ func (s *Store) LatestStatisticsAttempts(ctx context.Context, clusterID, nodeID 
 	if nodeID != "" {
 		nodeFilter = nodeID
 	}
-	rows, err := s.pool.Query(ctx, `SELECT DISTINCT ON (a.node_id) a.node_id,a.status,a.error_code,a.range_errors,a.completed_at
+	rows, err := s.pool.Query(ctx, `WITH latest AS (
+		SELECT DISTINCT ON (a.node_id) a.node_id,a.status,a.error_code,a.range_errors,a.started_at,
+			a.completed_at,a.collected_ranges
 		FROM statistics_poll_attempts a JOIN nodes n ON n.id=a.node_id
 		WHERE a.cluster_id=$1 AND ($2::uuid IS NULL OR a.node_id=$2::uuid) AND n.deleted_at IS NULL
-		ORDER BY a.node_id,a.completed_at DESC`, clusterID, nodeFilter)
+		ORDER BY a.node_id,a.completed_at DESC
+	) SELECT l.node_id,l.status,l.error_code,l.range_errors,l.started_at,l.completed_at,l.collected_ranges,
+		(SELECT max(s.completed_at) FROM statistics_poll_attempts s WHERE s.node_id=l.node_id AND s.status='succeeded'),
+		(SELECT count(*) FROM statistics_poll_attempts f WHERE f.node_id=l.node_id AND f.status IN ('failed','partial')
+		 AND f.completed_at > COALESCE((SELECT max(s.completed_at) FROM statistics_poll_attempts s
+		 WHERE s.node_id=l.node_id AND s.status='succeeded'), '-infinity'::timestamptz))
+	FROM latest l ORDER BY l.node_id`, clusterID, nodeFilter)
 	if err != nil {
 		return nil, fmt.Errorf("query latest statistics attempts: %w", err)
 	}
@@ -163,7 +171,8 @@ func (s *Store) LatestStatisticsAttempts(ctx context.Context, clusterID, nodeID 
 	for rows.Next() {
 		var attempt telemetry.NodeAttempt
 		var rangeErrors []byte
-		if err := rows.Scan(&attempt.NodeID, &attempt.Status, &attempt.ErrorCode, &rangeErrors, &attempt.CompletedAt); err != nil {
+		if err := rows.Scan(&attempt.NodeID, &attempt.Status, &attempt.ErrorCode, &rangeErrors, &attempt.StartedAt,
+			&attempt.CompletedAt, &attempt.CollectedRanges, &attempt.LastSuccessAt, &attempt.ConsecutiveFailures); err != nil {
 			return nil, fmt.Errorf("scan statistics attempt: %w", err)
 		}
 		if err := json.Unmarshal(rangeErrors, &attempt.RangeErrors); err != nil {
@@ -194,10 +203,10 @@ func (s *Store) CleanupStatistics(ctx context.Context, now time.Time) error {
 		return fmt.Errorf("roll up daily statistics: %w", err)
 	}
 	for _, statement := range []string{
-		`DELETE FROM statistics_snapshots WHERE collected_at < $1::timestamptz - interval '32 days'`,
-		`DELETE FROM statistics_poll_attempts WHERE completed_at < $1::timestamptz - interval '32 days'`,
-		`DELETE FROM statistics_buckets WHERE resolution='hour' AND bucket_start < $1::timestamptz - interval '32 days'`,
-		`DELETE FROM statistics_buckets WHERE resolution='day' AND bucket_start < $1::timestamptz - interval '400 days'`,
+		`WITH expired AS (SELECT id FROM statistics_snapshots WHERE collected_at < $1::timestamptz - interval '32 days' ORDER BY collected_at,id LIMIT 10000) DELETE FROM statistics_snapshots s USING expired e WHERE s.id=e.id`,
+		`WITH expired AS (SELECT id FROM statistics_poll_attempts WHERE completed_at < $1::timestamptz - interval '32 days' ORDER BY completed_at,id LIMIT 10000) DELETE FROM statistics_poll_attempts a USING expired e WHERE a.id=e.id`,
+		`WITH expired AS (SELECT node_id,resolution,bucket_start FROM statistics_buckets WHERE resolution='hour' AND bucket_start < $1::timestamptz - interval '32 days' ORDER BY bucket_start,node_id LIMIT 10000) DELETE FROM statistics_buckets b USING expired e WHERE b.node_id=e.node_id AND b.resolution=e.resolution AND b.bucket_start=e.bucket_start`,
+		`WITH expired AS (SELECT node_id,resolution,bucket_start FROM statistics_buckets WHERE resolution='day' AND bucket_start < $1::timestamptz - interval '400 days' ORDER BY bucket_start,node_id LIMIT 10000) DELETE FROM statistics_buckets b USING expired e WHERE b.node_id=e.node_id AND b.resolution=e.resolution AND b.bucket_start=e.bucket_start`,
 	} {
 		if _, err := tx.Exec(ctx, statement, now); err != nil {
 			return fmt.Errorf("apply statistics retention: %w", err)

@@ -42,10 +42,10 @@ Recommended:
 | 0.4 | Manage most AGH features |
 | 0.5 | See cluster statistics |
 | 0.6 | Search combined query logs |
-| 0.7 | Trial forwarder ingestion |
-| 0.8 | Production event ingestion |
-| 0.9 | Operate and maintain HA safely |
-| 1.0 | Community-ready production release |
+| 0.7 | Operational hardening and observability |
+| 0.8 | HA operations and lifecycle |
+| 0.9 | Product and release hardening |
+| 1.0 | Stable supported release |
 
 ## Current implementation status
 
@@ -56,7 +56,8 @@ Recommended:
 | 0.2 / 0.2.1 / 0.2.2 | Complete | Inventory, empty-draft fix, and atomic systemd upgrade behavior were operator-validated by 30 July 2026. |
 | 0.3 / 0.3.1 / 0.3.2 | Complete | Authoritative deployment, rollback, drift/Enforce, Docker, systemd, and functional workflows were operator-validated by 30 July 2026. |
 | 0.4 | Complete | Schema v2 and broader control-plane behavior remain the foundation for 0.4.1; functional, Docker, and native/systemd installation validation completed 3 August 2026. |
-| 0.4.1 | Implemented; external release gates pending | UI alignment, distinct HA page responsibilities, and local regression/WCAG/visual/race/vet/build/dependency/documentation gates pass. PostgreSQL upgrade and controlled real-node checks remain. |
-| 0.5 | Implemented; external release gates pending | Exact-range polling/storage/aggregation, coverage-aware API/UI, retention, local unit/frontend/build gates, and deployment documentation are complete. PostgreSQL upgrade, controlled real-node reconciliation, and packaged browser/install checks remain. |
-| 0.6 | Implemented; external release gates pending | API-polled normalized ingestion, retention, search/filter/keyset API, coverage-aware Query Log UI, draft handoffs, local tests, and documentation are implemented. PostgreSQL upgrade, controlled real-node, and packaged browser/install checks remain. |
-| 0.7–1.0 | Planned | Forwarder fidelity, production event delivery, operational HA, and community-release sequencing are unchanged. |
+| 0.4.1 | Complete | Frontend alignment and the distinct HA page responsibilities were completed and validated before 0.5/0.6. Historical phase reports retain the original evidence. |
+| 0.5 | Complete and validated | Exact-range polling/storage/aggregation, coverage-aware API/UI, and retention are confirmed working. Release 0.7 hardens but does not redesign them. |
+| 0.6 | Complete and validated | API-polled normalized ingestion, retention, search/filter/keyset API, coverage/gaps, Query Log UI, and draft handoffs are confirmed working. |
+| 0.7 | Implemented; final external gates pending | Operational health API/UI, worker/retry state, storage and retention visibility, protected metrics, bounded cleanup, ADR-0029, and roadmap/docs are implemented. Packaged Docker/systemd and clean PostgreSQL/browser validation remain final release gates. |
+| 0.8–1.0 | Planned | HA Operations & Lifecycle, Product and Release Hardening, then Stable Supported Release. |

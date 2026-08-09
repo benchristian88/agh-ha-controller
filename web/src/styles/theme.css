@@ -93,6 +93,9 @@ h3 { font-size: 1rem; }
 .card { padding: 18px; }
 .card-list { display: grid; gap: 14px; }
 .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 24px; }
+.storage-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.operational-value { text-transform: capitalize; }
+.operational-core { margin-bottom: var(--aghha-space-6); }
 .metric-card { padding: 16px; }
 .metric-card span { display: block; color: var(--text-muted); font-size: .82rem; }
 .metric-card strong { display: block; font-size: 1.6rem; font-weight: 550; margin-top: 9px; }
@@ -480,7 +483,7 @@ th[data-align="right"], td[data-align="right"] { text-align: right; }
 .status--info, .status--observed { color: var(--aghha-info); background: var(--aghha-info-soft); }
 .status--degraded, .status--stale, .status--drifted, .status--pending, .status--applying, .status--verifying, .status--warning, .status--unknown { color: var(--aghha-warning); background: var(--aghha-warning-soft); }
 .status--unreachable, .status--incompatible, .status--unsupported, .status--failed { color: var(--aghha-danger); background: var(--aghha-danger-soft); }
-.status--maintenance, .status--disabled, .status--empty { color: var(--aghha-text-muted); background: var(--aghha-neutral-soft); }
+.status--maintenance, .status--paused, .status--disabled, .status--empty { color: var(--aghha-text-muted); background: var(--aghha-neutral-soft); }
 
 .dialog-layer { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: var(--aghha-space-4); }
 .dialog-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--aghha-overlay); cursor: default; }
@@ -535,6 +538,7 @@ th[data-align="right"], td[data-align="right"] { text-align: right; }
   .context-select select { min-width: 125px; max-width: 165px; }
   .content { padding: 18px 14px; }
   .metrics, .form-grid, .configuration-summary-grid { grid-template-columns: 1fr; }
+  .storage-grid { grid-template-columns: 1fr; }
   .statistics-range { width: 100%; }
   .statistics-range .button { min-width: 0; flex: 1 1 0; padding-inline: 6px; }
   .statistics-chart figcaption { flex-wrap: wrap; }

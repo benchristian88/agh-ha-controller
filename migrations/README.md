@@ -23,3 +23,6 @@ Released schema milestones:
 - `000006_release_0_4_1_dns_operations`: encrypted-input, durable fleet DNS operational commands and per-node results.
 - `000007_release_0_4_1_host_filter_operation`: encrypted-input, durable host-filtering tests and bounded per-node rule results.
 - `000008_release_0_4_1_policy_operations`: confirmed Query Log clear and Statistics reset commands with durable per-node results.
+- `000009_release_0_5_statistics`: normalized Statistics attempts, snapshots, and buckets.
+- `000010_release_0_6_query_log`: normalized Query Log events, checkpoints, attempts, and search indexes.
+- `000011_release_0_7_operational_health`: bounded retained-time metadata indexes for Operational Status and cleanup.

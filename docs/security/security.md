@@ -137,6 +137,22 @@ confirmed, CSRF-protected, durable, and audited. Retention cleanup is not a
 node-clear operation. Query events remain excluded from normal diagnostic and
 support bundles unless a future explicit redacted export is designed.
 
+## Release 0.7 operational diagnostics
+
+Detailed `/api/v1/clusters/{clusterId}/operational-status` data requires the
+existing authenticated administrator session and cluster validation. It
+contains stable safe codes and aggregate metadata, never raw worker errors,
+stack traces, node URLs, credentials, query contents, or client identifiers.
+
+`/health` and `/ready` remain intentionally minimal and unauthenticated for
+orchestrator checks. `/metrics` returns 404 unless an operator configures a
+minimum-32-character `METRICS_BEARER_TOKEN`; enabled scrapes require that bearer
+token and should also be limited by host firewall or reverse-proxy policy. The
+token is runtime-secret material and is never logged or returned.
+
+ADR-0029 keeps Atlas agentless by default. Release 0.7 adds no node daemon,
+machine credential, remote-shell privilege, or local DNS-host spool.
+
 ## Threats to consider
 
 - Compromised controller.

@@ -15,7 +15,9 @@ import (
 func (s *Store) QueryLogCheckpoint(ctx context.Context, nodeID string) (querylog.Checkpoint, bool, error) {
 	var checkpoint querylog.Checkpoint
 	err := s.pool.QueryRow(ctx, `SELECT cluster_id,node_id,high_watermark_at,source_newest_at,source_oldest_at,
-		last_attempt_at,last_success_at,last_status,error_code,gap_detected,gap_reason,logging_enabled,node_version,updated_at
+		last_attempt_at,last_success_at,last_status,error_code,gap_detected,gap_reason,logging_enabled,node_version,updated_at,
+		(SELECT count(*) FROM query_ingestion_attempts a WHERE a.node_id=query_ingestion_checkpoints.node_id
+		 AND a.status='failed' AND a.completed_at > COALESCE(query_ingestion_checkpoints.last_success_at,'-infinity'::timestamptz))
 		FROM query_ingestion_checkpoints WHERE node_id=$1`, nodeID).Scan(
 		&checkpoint.ClusterID, &checkpoint.NodeID, &checkpoint.HighWatermarkAt, &checkpoint.SourceNewestAt,
 		&checkpoint.SourceOldestAt, &checkpoint.LastAttemptAt, &checkpoint.LastSuccessAt, &checkpoint.LastStatus,
@@ -135,7 +137,7 @@ func (s *Store) QueryLogCheckpoints(ctx context.Context, clusterID, nodeID strin
 		if err := rows.Scan(&checkpoint.ClusterID, &checkpoint.NodeID, &checkpoint.HighWatermarkAt, &checkpoint.SourceNewestAt,
 			&checkpoint.SourceOldestAt, &checkpoint.LastAttemptAt, &checkpoint.LastSuccessAt, &checkpoint.LastStatus,
 			&checkpoint.ErrorCode, &checkpoint.GapDetected, &checkpoint.GapReason, &checkpoint.LoggingEnabled,
-			&checkpoint.NodeVersion, &checkpoint.UpdatedAt); err != nil {
+			&checkpoint.NodeVersion, &checkpoint.UpdatedAt, &checkpoint.ConsecutiveFailures); err != nil {
 			return nil, fmt.Errorf("scan query-log checkpoint: %w", err)
 		}
 		result = append(result, checkpoint)

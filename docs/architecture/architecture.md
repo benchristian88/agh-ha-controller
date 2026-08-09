@@ -14,8 +14,6 @@ flowchart LR
     C --> DB[(PostgreSQL)]
     C --> A[AdGuard Home Node A]
     C --> B[AdGuard Home Node B]
-    F1[Optional Forwarder A] --> C
-    F2[Optional Forwarder B] --> C
     DNS1[DNS clients] --> A
     DNS2[DNS clients] --> B
 ```
@@ -28,7 +26,7 @@ DNS clients communicate directly with AdGuard Home nodes. The controller is neve
 
 The implemented foundation is one Go process containing the API, static frontend server, immediate/interval health poller, and expired-session cleanup. It uses PostgreSQL for users, sessions, clusters, nodes, health results, and audit events. The React build is installed as a directory and served by the Go process on the API origin.
 
-In 0.1 the process only called AdGuard Home's read-only `/control/status` endpoint. It has never contained a DNS listener or proxy. Configuration and reconciliation arrived in later releases; telemetry ingestion and the forwarder remain staged work.
+In 0.1 the process only called AdGuard Home's read-only `/control/status` endpoint. It has never contained a DNS listener or proxy. Configuration, reconciliation, Statistics, and Query Log API ingestion arrived in later releases; ADR-0029 keeps node-local agents out of the standard architecture.
 
 Release 0.1.1 packages this same process through two git-based paths: the reference Debian/systemd installer and a production Docker Compose stack with PostgreSQL. Packaging does not change the process, database, same-origin frontend, or DNS-independence boundaries.
 
@@ -121,7 +119,6 @@ PostgreSQL stores:
 - Query events during the polling phase.
 - Query-ingestion checkpoints and attempts.
 - Audit records.
-- Forwarder checkpoints.
 
 ### 3.5 Frontend
 
@@ -133,11 +130,12 @@ draft approval/publication, Deployments for execution events, Drift for current
 convergence, and Change History for immutable revisions/comparison/rollback.
 Routine authoring remains under the grouped Settings and Filters routes.
 
-### 3.6 Optional forwarder
+### 3.6 Agentless integration boundary
 
-A later Go service installed beside each AdGuard Home node.
-
-It reads the node query log, maintains a checkpoint, batches events, compresses payloads, retries failed delivery, and spools locally when the controller is unavailable.
+Release 0.7 adopts ADR-0029: native platform APIs are the standard Statistics
+and Query Log integration. A local forwarder is conditional, unassigned work
+that requires measured evidence that API polling cannot meet reliability,
+latency, scale, load, or compatibility needs.
 
 ## 4. Source-of-truth model
 
@@ -206,7 +204,7 @@ The initial strategy is sequential deployment to reduce blast radius. Parallel d
 - Existing AdGuard Home configuration remains active.
 - Configuration changes cannot be deployed.
 - Statistics ingestion pauses.
-- Forwarders spool locally where available.
+- API collectors resume from durable PostgreSQL evidence when the controller returns.
 
 ### One AdGuard Home node unavailable
 
@@ -275,6 +273,15 @@ The controller should expose:
 - Query ingestion lag.
 - Database health.
 - HTTP health and readiness endpoints.
+
+Release 0.7 implements a coherent operational-health service in the combined
+process. It derives per-node connectivity, observation, Statistics, and Query
+Log state from existing durable records; tracks bounded process-worker state;
+and reads PostgreSQL relation metadata for storage estimates. Overall health
+fails for PostgreSQL loss, degrades for stale/failed integrations, and does not
+turn an optional collector issue into process liveness failure. Detailed status
+is authenticated. `/health`, `/ready`, and bearer-protected opt-in `/metrics`
+retain separate security and availability semantics.
 
 ## 11. Scaling approach
 

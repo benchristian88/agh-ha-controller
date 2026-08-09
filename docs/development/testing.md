@@ -1,5 +1,8 @@
 # Testing Strategy
 
+Release 0.7 operational-health validation and its remaining packaged/real-node
+gates are tracked in `docs/development/release-0.7-validation.md`.
+
 ## Unit tests
 
 Target:

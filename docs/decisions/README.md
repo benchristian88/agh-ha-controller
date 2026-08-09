@@ -32,3 +32,4 @@ Architecture Decision Records capture durable decisions and their rationale.
 | [ADR-0026](ADR-0026-adopt-adguard-v2-inspired-ui-language.md) | Accepted | Adopt an AdGuard Home v2-inspired operator model |
 | [ADR-0027](ADR-0027-use-query-backed-inline-details-for-the-ha-revision-lifecycle.md) | Accepted | Use query-backed inline details for the HA revision lifecycle |
 | [ADR-0028](ADR-0028-aggregate-exact-node-statistics-in-the-controller.md) | Accepted | Aggregate exact node statistics in the controller |
+| [ADR-0029](ADR-0029-remain-agentless-by-default.md) | Accepted | Remain agentless by default and defer a local Query Log forwarder until evidence requires it |

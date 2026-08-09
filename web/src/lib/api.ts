@@ -21,6 +21,7 @@ import type {
   DNSOperationalCommand,
   DriftEvent,
   Node,
+  OperationalStatus,
   OperationalTarget,
   QueryEvent,
   QueryEventPage,
@@ -143,6 +144,10 @@ export const api = {
       refreshedAt: string;
       staleAfterSeconds: number;
     }>(`/api/v1/clusters/${clusterId}/nodes`),
+  operationalStatus: (clusterId: string) =>
+    request<OperationalStatus>(
+      `/api/v1/clusters/${clusterId}/operational-status`,
+    ),
   statistics: (clusterId: string, range: string, nodeId = "") => {
     const query = new URLSearchParams({ range, limit: "10" });
     if (nodeId !== "") query.set("nodeId", nodeId);

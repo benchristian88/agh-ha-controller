@@ -25,6 +25,7 @@ export type RouteResolution =
       heading: readonly [title: string, description: string];
     }
   | { kind: "audit" }
+  | { kind: "operational-status" }
   | { kind: "planned"; title: string; release?: string }
   | { kind: "redirect"; to: string }
   | { kind: "not-found" };
@@ -51,6 +52,7 @@ export const CANONICAL_PATHS = [
   "/setup-guide",
   "/system/users",
   "/system/audit",
+  "/system/operational-status",
   "/system/settings",
   "/system/backups",
   "/system/about",
@@ -168,6 +170,8 @@ export function resolveRoute(pathname: string): RouteResolution {
       return { kind: "blocked-services" };
     case "/system/audit":
       return { kind: "audit" };
+    case "/system/operational-status":
+      return { kind: "operational-status" };
     default:
       return { kind: "not-found" };
   }

@@ -345,6 +345,25 @@ GET /health  # process liveness; does not require PostgreSQL
 GET /ready   # PostgreSQL connectivity and mutation readiness
 ```
 
+Stale or failed optional collectors do not fail liveness. PostgreSQL loss
+fails readiness.
+
+Authenticated detailed status is cluster-scoped:
+
+```text
+GET /api/v1/clusters/{clusterId}/operational-status
+```
+
+It returns presentation-ready overall, database/pool/storage, connectivity,
+observation, Statistics, Query Log, gap, retention, and worker states with safe
+codes and bounded arrays. It never returns raw errors, stack traces,
+credentials, node URLs, query contents, or client identifiers.
+
+`GET /metrics` returns 404 unless `METRICS_BEARER_TOKEN` is configured and
+requires that bearer token when enabled. Metrics use bounded worker labels.
+
 ## Later contracts
 
-Statistics and query-event contracts begin in 0.5 and 0.6.
+Statistics and query-event contracts began in 0.5 and 0.6. Full notification
+delivery, HA lifecycle automation, and mutable system settings remain later
+contracts.

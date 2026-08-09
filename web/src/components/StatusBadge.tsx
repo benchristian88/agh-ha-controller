@@ -13,6 +13,7 @@ export type StatusKind =
   | "verifying"
   | "failed"
   | "maintenance"
+  | "paused"
   | "observed"
   | "unsupported"
   | "success"
@@ -35,6 +36,7 @@ const labels: Record<StatusKind, string> = {
   verifying: "Verifying",
   failed: "Failed",
   maintenance: "Maintenance",
+  paused: "Paused",
   observed: "Observed Only",
   unsupported: "Unsupported",
   success: "Success",

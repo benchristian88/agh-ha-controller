@@ -357,7 +357,8 @@ function CoverageNotice({ report }: { report: QueryEventPage }) {
         ` ${coverage.disabledNodes} have query logging disabled.`}
       {coverage.errorNodes > 0 && ` ${coverage.errorNodes} currently failing.`}
       {coverage.gapNodes > 0 &&
-        ` ${coverage.gapNodes} have a known ingestion gap.`}
+        ` ${coverage.gapNodes} have a known ingestion gap.`}{" "}
+      <a href="/system/operational-status">View ingestion health</a>
     </Banner>
   );
 }

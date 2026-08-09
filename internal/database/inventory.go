@@ -72,6 +72,23 @@ func (s *Store) LatestSnapshots(ctx context.Context, clusterID string) ([]invent
 	return items, rows.Err()
 }
 
+func (s *Store) LatestSuccessfulSnapshots(ctx context.Context, clusterID string) ([]inventory.Snapshot, error) {
+	rows, err := s.pool.Query(ctx, `SELECT DISTINCT ON (o.node_id) o.id,o.node_id,o.observed_at,o.schema_version,o.document_json,o.canonical_hash,o.node_version,o.collection_status,o.error_code FROM observed_snapshots o JOIN nodes n ON n.id=o.node_id WHERE n.cluster_id=$1 AND n.deleted_at IS NULL AND o.collection_status='succeeded' ORDER BY o.node_id,o.observed_at DESC`, clusterID)
+	if err != nil {
+		return nil, fmt.Errorf("list latest successful snapshots: %w", err)
+	}
+	defer rows.Close()
+	items := []inventory.Snapshot{}
+	for rows.Next() {
+		item, scanErr := scanSnapshot(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
 func scanSnapshot(row rowScanner) (inventory.Snapshot, error) {
 	var item inventory.Snapshot
 	var document []byte

@@ -635,6 +635,92 @@ export interface QueryEventPage {
   filters: { statuses: QueryEventStatus[]; queryTypes: string[] };
 }
 
+export type OperationalHealthState =
+  | "healthy"
+  | "degraded"
+  | "stale"
+  | "failed"
+  | "paused"
+  | "unsupported"
+  | "maintenance"
+  | "unknown";
+
+export interface OperationalNodeHealth {
+  nodeId: string;
+  nodeName: string;
+  state: OperationalHealthState;
+  lastAttemptAt?: string;
+  lastSuccessAt?: string;
+  nextScheduledAt?: string;
+  lagSeconds?: number;
+  consecutiveFailures: number;
+  errorCode?: string;
+  gapDetected?: boolean;
+  gapReason?: string;
+  recordsReceived?: number;
+  capabilityState?: OperationalHealthState;
+  capabilityRefreshedAt?: string;
+}
+
+export interface OperationalCollectionHealth {
+  state: OperationalHealthState;
+  expectedNodes: number;
+  currentNodes: number;
+  staleNodes: number;
+  unsupportedNodes: number;
+  coveragePercent: number;
+  nodes: OperationalNodeHealth[];
+}
+
+export interface OperationalStatus {
+  generatedAt: string;
+  clusterId: string;
+  summary: {
+    state: OperationalHealthState;
+    actionRequired: boolean;
+    message: string;
+    healthyNodes: number;
+    expectedNodes: number;
+  };
+  api: OperationalHealthState;
+  database: {
+    state: OperationalHealthState;
+    pingLatencyMs: number;
+    schemaVersion: number;
+    databaseBytes: number;
+    poolTotal: number;
+    poolAcquired: number;
+    poolMax: number;
+    errorCode?: string;
+    datasets: {
+      name: string;
+      estimatedRows: number;
+      approximateBytes: number;
+      retentionSeconds: number;
+      oldestRetainedAt?: string;
+      newestRetainedAt?: string;
+    }[];
+  };
+  nodes: OperationalNodeHealth[];
+  observation: OperationalCollectionHealth;
+  statistics: OperationalCollectionHealth;
+  queryLog: OperationalCollectionHealth;
+  workers: {
+    name: string;
+    state: OperationalHealthState;
+    running: boolean;
+    lastAttemptAt?: string;
+    lastSuccessAt?: string;
+    lastFailureAt?: string;
+    consecutiveFailures: number;
+    nextScheduledAt?: string;
+    currentDurationMs?: number;
+    errorCode?: string;
+    runsTotal: number;
+    failuresTotal: number;
+  }[];
+}
+
 export type OperationalTarget =
   | { scope: "node"; nodeId: string }
   | { scope: "all_compatible_enabled_nodes" };

@@ -229,3 +229,30 @@ open Release 0.4 completion gate.
 7. Change a schema-v2 managed setting directly and confirm drift; change only TLS status or a dynamic lease and confirm no drift.
 
 If a v2 deployment is blocked, inspect the node capability profile and successful current observation. Do not bypass the gate: upgrade the node, restore endpoint access, refresh, and re-import. TLS changes must be made in the native node UI while the node is in maintenance, followed by refresh and deliberate adoption.
+
+## Release 0.7 Operational Status
+
+Use **Administration -> Operational Status** before querying PostgreSQL or
+searching logs. Connectivity and full observation are separate: a node API may
+be reachable while its configuration snapshot is stale. Statistics and Query
+Log reuse their established freshness rules and known source gaps are explicit.
+
+For a failed collector, check the safe code, last success, lag, failure streak,
+and next attempt. Confirm maintenance and compatibility, then inspect logs for
+the same subsystem/node ID. Logs must not contain credentials, query contents,
+or raw responses. Healthy-node polls continue when another node fails.
+
+Retention failures are separate worker states and do not stop collection.
+Statistics and Query Log deletion are bounded to 10,000 rows per dataset/pass.
+Check free disk, locks, autovacuum, and PostgreSQL logs; do not routinely run
+`VACUUM FULL`. A successful run clears the worker failure streak.
+
+- `/health` is process liveness and does not fail for stale collectors.
+- `/ready` is PostgreSQL-aware readiness and is the Docker health check.
+- `/api/v1/clusters/{clusterId}/operational-status` is authenticated detail.
+- `/metrics` is disabled by default. Configure a random minimum-32-character
+  `METRICS_BEARER_TOKEN`, restart, use it as the Prometheus bearer token, and
+  restrict port 8080 with host or reverse-proxy policy.
+
+PostgreSQL sizes are metadata estimates: monitor trends, autovacuum and index
+growth, run normal `ANALYZE`, and test backup/restore duration as data grows.

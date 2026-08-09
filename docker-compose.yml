@@ -22,10 +22,10 @@ services:
     build:
       context: .
       args:
-        VERSION: 0.6.0
+        VERSION: 0.7.0
         COMMIT: ${CONTROLLER_COMMIT:-git-checkout}
         BUILT_AT: ${CONTROLLER_BUILT_AT:-local}
-    image: agh-ha-controller:0.6.0
+    image: agh-ha-controller:0.7.0
     restart: unless-stopped
     depends_on:
       postgres:
@@ -44,6 +44,7 @@ services:
       QUERY_LOG_COLLECTION_ENABLED: ${QUERY_LOG_COLLECTION_ENABLED:-true}
       QUERY_LOG_POLL_INTERVAL: ${QUERY_LOG_POLL_INTERVAL:-30s}
       QUERY_LOG_RETENTION: ${QUERY_LOG_RETENTION:-168h}
+      METRICS_BEARER_TOKEN: ${METRICS_BEARER_TOKEN:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       AUTO_MIGRATE: "true"
       WEB_DIST_DIR: /usr/local/share/agh-ha-controller/web

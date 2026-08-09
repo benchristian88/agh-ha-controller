@@ -133,20 +133,21 @@ type Event struct {
 }
 
 type Checkpoint struct {
-	ClusterID       string
-	NodeID          string
-	HighWatermarkAt *time.Time
-	SourceNewestAt  *time.Time
-	SourceOldestAt  *time.Time
-	LastAttemptAt   time.Time
-	LastSuccessAt   *time.Time
-	LastStatus      string
-	ErrorCode       string
-	GapDetected     bool
-	GapReason       string
-	LoggingEnabled  *bool
-	NodeVersion     string
-	UpdatedAt       time.Time
+	ClusterID           string
+	NodeID              string
+	HighWatermarkAt     *time.Time
+	SourceNewestAt      *time.Time
+	SourceOldestAt      *time.Time
+	LastAttemptAt       time.Time
+	LastSuccessAt       *time.Time
+	LastStatus          string
+	ErrorCode           string
+	GapDetected         bool
+	GapReason           string
+	LoggingEnabled      *bool
+	NodeVersion         string
+	UpdatedAt           time.Time
+	ConsecutiveFailures int
 }
 
 type Attempt struct {

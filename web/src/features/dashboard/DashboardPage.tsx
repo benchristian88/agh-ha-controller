@@ -3,7 +3,12 @@ import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
 import { StatusBadge } from "../../components/StatusBadge";
 import { api } from "../../lib/api";
 import { clusterHealth, isStale } from "../../lib/freshness";
-import type { Cluster, Node, StatisticsReport } from "../../lib/types";
+import type {
+  Cluster,
+  Node,
+  OperationalStatus,
+  StatisticsReport,
+} from "../../lib/types";
 import { useScope } from "../../shell/ScopeContext";
 
 export function DashboardPage({ cluster }: { cluster: Cluster }) {
@@ -13,18 +18,21 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
   const [staleAfterMs, setStaleAfterMs] = useState(90_000);
   const [error, setError] = useState<unknown>();
   const [statistics, setStatistics] = useState<StatisticsReport>();
+  const [operational, setOperational] = useState<OperationalStatus>();
 
   const load = useCallback(async () => {
     try {
-      const [result, statisticsResult] = await Promise.all([
+      const [result, statisticsResult, operationalResult] = await Promise.all([
         api.nodes(cluster.id),
         api.statistics(cluster.id, "24h", scopeNodeId).catch(() => undefined),
+        api.operationalStatus(cluster.id).catch(() => undefined),
       ]);
       setNodes(result.items);
       setRefreshedAt(result.refreshedAt);
       setStaleAfterMs(result.staleAfterSeconds * 1000);
       setError(undefined);
       setStatistics(statisticsResult);
+      setOperational(operationalResult);
     } catch (caught) {
       setError(caught);
     }
@@ -71,6 +79,37 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
         <Metric label="Stale nodes" value={String(stale)} />
         <Metric label="Controller role" value="Management only" />
       </section>
+      {operational !== undefined && (
+        <section className="card dashboard-operational">
+          <div>
+            <p className="eyebrow">Controller operations</p>
+            <h2>Controller health</h2>
+            <p>{operational.summary.message}</p>
+          </div>
+          <dl>
+            <div>
+              <dt>Overall</dt>
+              <dd>
+                <StatusBadge status={operational.summary.state} />
+              </dd>
+            </div>
+            <div>
+              <dt>Statistics</dt>
+              <dd>{operational.statistics.state}</dd>
+            </div>
+            <div>
+              <dt>Query Log</dt>
+              <dd>{operational.queryLog.state}</dd>
+            </div>
+          </dl>
+          <a
+            className="button button--secondary"
+            href="/system/operational-status"
+          >
+            View operational status
+          </a>
+        </section>
+      )}
       {statistics !== undefined && statistics.state !== "unavailable" && (
         <section className="card dashboard-statistics">
           <div>

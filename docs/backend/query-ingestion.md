@@ -96,8 +96,9 @@ vacuum/headroom. Operators must monitor database growth and shorten retention
 or increase polling capacity before sustained input reaches the 10,000-record
 per-node/per-pass bound.
 
-## Later forwarder
+## Conditional forwarder
 
-A local forwarder remains Release 0.7+ scope for stable file identity/offset,
-rotation handling, disk spooling, compression, and at-least-once batch delivery.
-Release 0.6 does not add a hidden alternate configuration or transport model.
+ADR-0029 gives a local forwarder no assigned release. Stable file
+identity/offset, rotation handling, disk spooling, compression, and stronger
+delivery justify it only if measurements show the supported API path cannot
+meet operational requirements. Release 0.6 has no hidden alternate transport.

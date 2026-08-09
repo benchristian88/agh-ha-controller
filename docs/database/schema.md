@@ -1,5 +1,12 @@
 # Schema Notes
 
+Migration `000011_release_0_7_operational_health` adds only retained-time
+indexes for `statistics_snapshots.collected_at` and
+`query_events(source_timestamp,id)`. Operational health remains derived from
+the released node/observation/Statistics/Query Log/control-plane records and
+PostgreSQL metadata; no parallel health table is introduced. Statistics
+retention deletes are bounded in repository queries.
+
 ## Release 0.6 combined Query Log
 
 Migration `000010_release_0_6_query_log` installs the trusted `pg_trgm`

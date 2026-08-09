@@ -27,6 +27,7 @@ type Config struct {
 	WebDistDirectory        string
 	LogLevel                string
 	AutoMigrate             bool
+	MetricsToken            string
 }
 
 func Load() (Config, error) {
@@ -85,6 +86,10 @@ func Load() (Config, error) {
 	if required("DATABASE_URL") == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
 	}
+	metricsToken := required("METRICS_BEARER_TOKEN")
+	if metricsToken != "" && len(metricsToken) < 32 {
+		return Config{}, fmt.Errorf("METRICS_BEARER_TOKEN must be at least 32 characters when configured")
+	}
 	return Config{
 		Environment:             env("APP_ENV", "development"),
 		HTTPAddress:             env("HTTP_ADDR", ":8080"),
@@ -102,6 +107,7 @@ func Load() (Config, error) {
 		WebDistDirectory:        env("WEB_DIST_DIR", "web/dist"),
 		LogLevel:                env("LOG_LEVEL", "info"),
 		AutoMigrate:             autoMigrate,
+		MetricsToken:            metricsToken,
 	}, nil
 }
 

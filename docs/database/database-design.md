@@ -4,6 +4,13 @@
 
 PostgreSQL is the initial primary database.
 
+Release 0.7 adds no parallel health tables. Durable node, observation,
+Statistics, Query Log, deployment, and drift records remain authoritative;
+short-lived worker-running state stays in process and becomes unknown after a
+restart. Migration 000011 adds retained-time indexes so Operational Status can
+read PostgreSQL relation estimates/sizes, pool counters, and indexed min/max
+timestamps rather than exact full-table counts.
+
 ## Design principles
 
 - UTC timestamps.

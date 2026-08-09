@@ -5,11 +5,9 @@
 ```text
 LXC 101: agh-node-a
   AdGuard Home
-  Optional future log forwarder
 
 LXC 102: agh-node-b
   AdGuard Home
-  Optional future log forwarder
 
 LXC 103: agh-ha-controller
   Controller API
@@ -46,13 +44,12 @@ DNS clients to nodes:
 
 ## systemd services
 
-Planned units:
+Runtime unit:
 
 - `agh-ha-controller.service`
-- `agh-ha-worker.service`
-- `agh-ha-forwarder.service`
 
-The controller and worker may begin as one binary and one service.
+The controller and workers run as one binary and service. ADR-0029 adds no
+node-local agent; a forwarder is conditional future work with no unit today.
 
 Release 0.1 implements `agh-ha-controller.service` as the combined API and worker process. The installation must place:
 

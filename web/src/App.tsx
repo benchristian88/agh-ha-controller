@@ -18,6 +18,7 @@ import { CustomRulesPage } from "./features/filters/CustomRulesPage";
 import { GeneralSettingsPage } from "./features/general/GeneralSettingsPage";
 import { RevisionsPage } from "./features/history/HistoryPage";
 import { NodesPage } from "./features/nodes/NodesPage";
+import { OperationalStatusPage } from "./features/operational-status/OperationalStatusPage";
 import { QueryLogPage } from "./features/query-log/QueryLogPage";
 import { RewritesPage } from "./features/rewrites/RewritesPage";
 import { StatisticsPage } from "./features/statistics/StatisticsPage";
@@ -194,6 +195,9 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
         break;
       case "drift":
         content = <DriftPage cluster={selected} />;
+        break;
+      case "operational-status":
+        content = <OperationalStatusPage cluster={selected} />;
         break;
       case "blocked-services":
         content = <BlockedServicesPage cluster={selected} />;

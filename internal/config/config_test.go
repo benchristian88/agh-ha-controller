@@ -71,3 +71,14 @@ func TestLoadRejectsPlaceholderSessionSecret(t *testing.T) {
 		t.Fatal("Load accepted a non-base64 session secret")
 	}
 }
+
+func TestLoadRejectsShortMetricsToken(t *testing.T) {
+	t.Setenv("PUBLIC_BASE_URL", "http://localhost:8080")
+	t.Setenv("DATABASE_URL", "postgres://example.invalid/test")
+	t.Setenv("SESSION_SECRET", base64.StdEncoding.EncodeToString([]byte(strings.Repeat("s", 48))))
+	t.Setenv("CREDENTIAL_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString([]byte("12345678901234567890123456789012")))
+	t.Setenv("METRICS_BEARER_TOKEN", "too-short")
+	if _, err := Load(); err == nil {
+		t.Fatal("Load accepted a short metrics bearer token")
+	}
+}

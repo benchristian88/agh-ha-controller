@@ -9,6 +9,7 @@ import (
 
 	"github.com/benchristian88/agh-ha-controller/internal/adguard"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
 	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
 )
 
@@ -31,10 +32,15 @@ type StatisticsPoller struct {
 	concurrency int
 	logger      *slog.Logger
 	now         func() time.Time
+	health      *operationalhealth.Tracker
 }
 
-func NewStatisticsPoller(store StatisticsStore, decrypter CredentialDecrypter, reader StatisticsReader, interval, timeout time.Duration, logger *slog.Logger) *StatisticsPoller {
-	return &StatisticsPoller{store: store, decrypter: decrypter, reader: reader, interval: interval, timeout: timeout, concurrency: 4, logger: logger, now: time.Now}
+func NewStatisticsPoller(store StatisticsStore, decrypter CredentialDecrypter, reader StatisticsReader, interval, timeout time.Duration, logger *slog.Logger, trackers ...*operationalhealth.Tracker) *StatisticsPoller {
+	poller := &StatisticsPoller{store: store, decrypter: decrypter, reader: reader, interval: interval, timeout: timeout, concurrency: 4, logger: logger, now: time.Now}
+	if len(trackers) > 0 {
+		poller.health = trackers[0]
+	}
+	return poller
 }
 
 func (p *StatisticsPoller) Run(ctx context.Context) {
@@ -52,9 +58,15 @@ func (p *StatisticsPoller) Run(ctx context.Context) {
 }
 
 func (p *StatisticsPoller) poll(ctx context.Context) {
+	if p.health != nil {
+		p.health.Start("statistics_collection", p.now().UTC().Add(p.interval))
+	}
 	records, err := p.store.PollableNodes(ctx)
 	if err != nil {
-		p.logger.Error("statistics polling could not load nodes", "error", err)
+		p.logger.Error("statistics polling could not load nodes", "subsystem", "statistics_collection", "error", err, "retry_in", p.interval)
+		if p.health != nil {
+			p.health.Failure("statistics_collection", "STATISTICS_NODE_LIST_FAILED", p.now().UTC().Add(p.interval))
+		}
 		return
 	}
 	semaphore := make(chan struct{}, p.concurrency)
@@ -74,8 +86,21 @@ func (p *StatisticsPoller) poll(ctx context.Context) {
 		}()
 	}
 	group.Wait()
+	if p.health != nil {
+		p.health.Success("statistics_collection", p.now().UTC().Add(p.interval))
+	}
+	if p.health != nil {
+		p.health.Start("statistics_retention", p.now().UTC().Add(p.interval))
+	}
 	if err := p.store.CleanupStatistics(ctx, p.now().UTC()); err != nil {
-		p.logger.Error("statistics retention cleanup failed", "error", err)
+		p.logger.Error("statistics retention cleanup failed", "subsystem", "statistics_retention", "error", err, "retry_in", p.interval)
+		if p.health != nil {
+			p.health.Failure("statistics_retention", "STATISTICS_RETENTION_FAILED", p.now().UTC().Add(p.interval))
+		}
+		return
+	}
+	if p.health != nil {
+		p.health.Success("statistics_retention", p.now().UTC().Add(p.interval))
 	}
 }
 

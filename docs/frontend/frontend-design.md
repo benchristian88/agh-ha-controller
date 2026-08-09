@@ -110,7 +110,7 @@ Do not copy source code, trademarks beyond nominative product references, or pro
 - Change history
 - Deployments
 - Drift
-- Log forwarders
+- Operational Status
 
 ### System
 
@@ -169,7 +169,7 @@ For each node:
 - Drift detected.
 - Drift corrected.
 - Node became unreachable.
-- Forwarder lag increased.
+- Collector lag increased or a known ingestion gap was detected.
 
 ### Query log preview
 

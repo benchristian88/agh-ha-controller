@@ -36,6 +36,7 @@ describe("canonical route safety", () => {
       "/setup-guide": "planned",
       "/system/users": "planned",
       "/system/audit": "audit",
+      "/system/operational-status": "operational-status",
       "/system/settings": "planned",
       "/system/backups": "planned",
       "/system/about": "planned",

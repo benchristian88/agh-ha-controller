@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
 	"github.com/benchristian88/agh-ha-controller/internal/querylog"
 )
 
@@ -39,15 +40,20 @@ type QueryLogPoller struct {
 	concurrency int
 	logger      *slog.Logger
 	now         func() time.Time
+	health      *operationalhealth.Tracker
 }
 
-func NewQueryLogPoller(store QueryLogStore, decrypter CredentialDecrypter, reader QueryLogReader, interval, timeout, retention time.Duration, logger *slog.Logger) *QueryLogPoller {
+func NewQueryLogPoller(store QueryLogStore, decrypter CredentialDecrypter, reader QueryLogReader, interval, timeout, retention time.Duration, logger *slog.Logger, trackers ...*operationalhealth.Tracker) *QueryLogPoller {
 	overlap := 2 * interval
 	if overlap < 2*time.Minute {
 		overlap = 2 * time.Minute
 	}
-	return &QueryLogPoller{store: store, decrypter: decrypter, reader: reader, interval: interval,
+	poller := &QueryLogPoller{store: store, decrypter: decrypter, reader: reader, interval: interval,
 		timeout: timeout, retention: retention, overlap: overlap, concurrency: 4, logger: logger, now: time.Now}
+	if len(trackers) > 0 {
+		poller.health = trackers[0]
+	}
+	return poller
 }
 
 func (p *QueryLogPoller) Run(ctx context.Context) {
@@ -65,9 +71,15 @@ func (p *QueryLogPoller) Run(ctx context.Context) {
 }
 
 func (p *QueryLogPoller) poll(ctx context.Context) {
+	if p.health != nil {
+		p.health.Start("query_log_collection", p.now().UTC().Add(p.interval))
+	}
 	records, err := p.store.PollableNodes(ctx)
 	if err != nil {
-		p.logger.Error("query-log polling could not load nodes", "error", err)
+		p.logger.Error("query-log polling could not load nodes", "subsystem", "query_log_collection", "error", err, "retry_in", p.interval)
+		if p.health != nil {
+			p.health.Failure("query_log_collection", "QUERY_LOG_NODE_LIST_FAILED", p.now().UTC().Add(p.interval))
+		}
 		return
 	}
 	semaphore := make(chan struct{}, p.concurrency)
@@ -87,8 +99,21 @@ func (p *QueryLogPoller) poll(ctx context.Context) {
 		}()
 	}
 	group.Wait()
+	if p.health != nil {
+		p.health.Success("query_log_collection", p.now().UTC().Add(p.interval))
+	}
+	if p.health != nil {
+		p.health.Start("query_log_retention", p.now().UTC().Add(p.interval))
+	}
 	if _, err := p.store.CleanupQueryLog(ctx, p.now().UTC(), p.retention, 10_000); err != nil {
-		p.logger.Error("query-log retention cleanup failed", "error", err)
+		p.logger.Error("query-log retention cleanup failed", "subsystem", "query_log_retention", "error", err, "retry_in", p.interval)
+		if p.health != nil {
+			p.health.Failure("query_log_retention", "QUERY_LOG_RETENTION_FAILED", p.now().UTC().Add(p.interval))
+		}
+		return
+	}
+	if p.health != nil {
+		p.health.Success("query_log_retention", p.now().UTC().Add(p.interval))
 	}
 }
 

@@ -21,7 +21,15 @@ AGH HA Controller is intended to solve that gap by providing:
 
 ## Project status
 
-Release 0.6 adds bounded API polling of every enabled compatible node, normalized PostgreSQL query events, restart-safe checkpoints, central retention, server-side search/filtering, keyset pagination, explicit coverage/gaps, and the complete `/query-log` cluster/node experience. Query detail links observed domains into existing mutable-draft rule and rewrite workflows without publishing, deploying, or changing a node. Release 0.5 exact-range statistics remain independent. AdGuard Home remains the only DNS engine; the controller can be stopped without interrupting DNS. Current evidence is tracked in the [feature ledger](docs/product/feature-ledger.md), [query-ingestion design](docs/backend/query-ingestion.md), and [ADR-0015](docs/decisions/ADR-0015-make-central-query-log-collection-privacy-conscious-and-configurable.md).
+Release 0.7 adds authenticated Operational Status for API/PostgreSQL, node
+connectivity versus full observation, per-node Statistics and Query Log
+collection, known gaps, workers, retention, and storage growth. The Dashboard
+links a compact summary, cleanup is bounded, and opt-in bearer-protected
+Prometheus worker metrics are available. Releases 0.5 Statistics and 0.6 Query
+Log are complete and validated. AdGuard Home remains the only DNS engine; the
+controller can stop without interrupting DNS. See the [operational-health
+design](docs/backend/operational-health.md), [feature
+ledger](docs/product/feature-ledger.md), and [ADR-0029](docs/decisions/ADR-0029-remain-agentless-by-default.md).
 
 The first meaningful product milestone is the configuration-control MVP:
 
@@ -45,7 +53,7 @@ The initial reference deployment assumes:
 - PostgreSQL on the controller host or a separate database host.
 - Node communication over HTTPS using the AdGuard Home REST API.
 - systemd-managed controller services.
-- Optional Go-based query-log forwarders in later releases.
+- No node-side Atlas agent; supported integrations use AdGuard Home APIs.
 
 ## Architecture principles
 
@@ -57,20 +65,21 @@ The initial reference deployment assumes:
 - **Node-specific settings are modelled explicitly.**
 - **All deployments are revisioned and auditable.**
 - **Backward-compatible, capability-aware node management is required.**
+- **Native platform APIs are preferred; local agents require measured need.**
 
 The complete architecture is documented in [docs/architecture/architecture.md](docs/architecture/architecture.md).
 
 ## Technology stack
 
-### Services implemented through 0.6
+### Services implemented through 0.7
 
-- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, health/statistics/query-log polling, schema-versioned configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, audited filter refresh, retention, session cleanup, audit access, and operational probes.
+- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, health/statistics/query-log polling, schema-versioned configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, audited filter refresh, bounded retention, Operational Status, protected metrics, session cleanup, audit access, and operational probes.
 - PostgreSQL 17: the system of record for users/sessions, clusters/nodes, encrypted credential envelopes, capability profiles, immutable observations/revisions, optimistic drafts, deployments and ordered per-node tasks, drift events, audit history, normalized node-attributed statistics, query events, and query-ingestion evidence.
 - AdGuard Home adapter: bounded direct HTTP(S) reads and version-aware writes. Schema v2 manages broader DNS behavior, blocklists/allowlists, custom rules, persistent clients, rewrites, blocked-service schedules, safety services, Safe Search, query-log/statistics policy, and guarded DHCP configuration/static leases. DNS bind hosts/port remain verification-only. TLS responses are reduced to public status and certificate metadata before entering domain state.
 - Deployment worker: claims durable jobs, validates and observes all targets before mutation, applies one node at a time, skips already-converged DHCP configuration writes, stops on first failure, honors cancellation only between nodes, verifies by a new immutable observation, and activates the revision only after total success. Rejected mutations retain a safe method/path/status diagnostic on the per-node task without storing AdGuard Home response bodies.
 - Reconciliation worker: periodically compares the active revision's effective configuration with fresh node observations, deduplicates structured drift, and applies Manual, Alert, or Enforce policy while excluding maintenance nodes.
 
-AdGuard Home remains the live DNS service and never sends normal DNS traffic through the controller. Release 0.5 reads bounded aggregate statistics directly from supported nodes. Release 0.6 separately polls bounded query-log pages; the optional higher-fidelity forwarder remains a later milestone.
+AdGuard Home remains the live DNS service and never sends normal DNS traffic through the controller. Release 0.5 reads bounded aggregate statistics directly from supported nodes. Release 0.6 separately polls bounded query-log pages. ADR-0029 keeps these native API paths standard and makes any forwarder evidence-triggered future work.
 
 ### Controller backend
 
@@ -110,9 +119,20 @@ HA Controller contains five distinct pages:
 
 [![Mobile navigation drawer](docs/frontend/screenshots/release-0.4.1/phase-10-mobile-drawer-dark-320.png)](docs/frontend/screenshots/release-0.4.1/phase-10-mobile-drawer-dark-320.png)
 
-### Forwarder
+### Operational health
 
-Planned for a later release: Go static binary, systemd service, local disk spool, at-least-once delivery, and controller-side deduplication.
+Administration -> Operational Status answers whether Atlas itself is healthy.
+`/health` is liveness, `/ready` is PostgreSQL-aware readiness, and the detailed
+cluster endpoint is authenticated. Set a random `METRICS_BEARER_TOKEN` of at
+least 32 characters to enable `/metrics`; it otherwise returns 404. Restrict
+enabled metrics with host/reverse-proxy policy and use the token as the
+Prometheus bearer credential.
+
+Central Query Log retention is configured by `QUERY_LOG_RETENTION` (1 hour to
+90 days) and remains distinct from node-local policy. Statistics retains 32
+days of snapshots/hourly buckets and 400 days of daily rollups. The status page
+shows approximate PostgreSQL storage and retained time bounds; see the
+[runbook](docs/operations/runbook.md) for troubleshooting and maintenance.
 
 ## Repository layout
 

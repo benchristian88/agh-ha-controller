@@ -14,9 +14,10 @@ Initial all-in-one process:
 
 It may later be split into API and worker services.
 
-### forwarder
+### conditional forwarder
 
-Optional later node-side process for query-log ingestion.
+Not part of the supported runtime or a numbered release. ADR-0029 requires
+measured API-ingestion limitations and a new review before implementation.
 
 ## Package boundaries
 
@@ -29,6 +30,8 @@ Optional later node-side process for query-log ingestion.
 - `telemetry`: statistics and query events.
 - `jobs`: scheduling and job execution.
 - `api`: HTTP transport and DTO mapping.
+- `operationalhealth`: shared health states, aggregation, freshness mapping,
+  bounded worker tracking, and presentation models.
 
 ### Release 0.1 concrete packages
 
@@ -107,6 +110,12 @@ in the same transaction. A failed transaction advances no checkpoint. The
 query-log worker is independent from health, statistics, deployment, and
 reconciliation; it runs one pass at a time, bounds node concurrency and source
 pages, propagates cancellation/timeouts, and never mutates a node.
+
+Release 0.7 adds the authenticated cluster operational-status read model. It
+reuses node/observation/Statistics/Query Log records and PostgreSQL metadata
+rather than adding a parallel health database. Process worker state is bounded
+and resets honestly to unknown on restart. Claim-loop failures back off
+cancellably to 30 seconds; fixed-schedule collectors remain isolated per node.
 
 ## Release 0.1 failure behaviour
 

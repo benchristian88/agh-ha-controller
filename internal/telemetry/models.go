@@ -95,9 +95,13 @@ type PollAttempt struct {
 }
 
 type NodeAttempt struct {
-	NodeID      string
-	Status      string
-	ErrorCode   string
-	RangeErrors map[Range]string
-	CompletedAt time.Time
+	NodeID              string
+	Status              string
+	ErrorCode           string
+	RangeErrors         map[Range]string
+	StartedAt           time.Time
+	CompletedAt         time.Time
+	LastSuccessAt       *time.Time
+	CollectedRanges     int
+	ConsecutiveFailures int
 }
