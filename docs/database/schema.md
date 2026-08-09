@@ -29,8 +29,9 @@ payloads, and unrelated configuration are not stored.
 
 Migration `000009_release_0_5_statistics` keeps telemetry concerns separate:
 
-- `statistics_poll_attempts` records bounded per-node collection evidence and
-  stable safe errors;
+- `statistics_poll_attempts` records bounded per-node collection evidence,
+  the count of ranges eligible under the node's retention, and stable safe
+  per-range errors for failures or configured retention exclusions;
 - `statistics_snapshots` stores immutable normalized exact-range node results;
   and
 - `statistics_buckets` stores overlap-safe hourly/daily additive counters with

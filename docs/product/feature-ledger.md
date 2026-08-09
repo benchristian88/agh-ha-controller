@@ -106,7 +106,7 @@ issues are in
 
 | Feature | Status | Implementation and evidence | Remaining release validation |
 |---|---|---|---|
-| Exact-range collection | Complete and validated | Immediate/configurable interval worker, 24h/7d/30d `recent` reads, four-node concurrency, request timeouts, maintenance and v0.107.72–v0.107.78 capability gates, safe durable attempts | Operator-confirmed working |
+| Exact-range collection | Complete and validated | Immediate/configurable interval worker, retention-aware eligible 24h/7d/30d `recent` reads, four-node concurrency, request timeouts, maintenance and v0.107.72–v0.107.78 capability gates, safe durable attempts | Operator evidence reproduced the 24h-retention boundary; regression coverage added |
 | Durable telemetry model | Complete and validated | Append-only `000009` separates poll evidence, immutable normalized snapshots, and overlap-safe hourly/daily node buckets; 32/400-day cleanup | Operator-confirmed working |
 | Correct aggregation | Complete and validated | Additive sums, aggregate percentages, query-weighted processing time, response-weighted upstream latency, stable normalization/sort, chronological series, explicit freshness/coverage | Operator-confirmed working |
 | Statistics API and UI | Complete and validated | Authenticated presentation-ready cluster/node API; global scope, fixed ranges, summary metrics, accessible SVG chart, ranked panels, node coverage, and compact dashboard summary | Operator-confirmed working |

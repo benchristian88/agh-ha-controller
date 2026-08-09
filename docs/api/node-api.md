@@ -96,11 +96,15 @@ does not treat it as a configuration mutation.
 
 ## Release 0.5 statistics contract
 
-The adapter reads `GET /control/stats?recent={milliseconds}` only for the
-explicitly tested v0.107.72–v0.107.78 exact-range contract. It requests whole
-hours for 24 hours, 7 days, and 30 days. Earlier configuration-compatible
-versions retain their configuration capabilities but report
-`statistics_exact_range: false` and are not approximated.
+The adapter reads `GET /control/stats/config` and
+`GET /control/stats?recent={milliseconds}` only for the explicitly tested
+v0.107.72–v0.107.78 exact-range contract. It requests whole-hour fixed ranges
+for 24 hours, 7 days, and 30 days only when they do not exceed that node's
+configured interval. Earlier configuration-compatible versions retain their
+configuration capabilities but report `statistics_exact_range: false` and are
+not approximated. A fixed range beyond node retention maps to
+`STATISTICS_RANGE_EXCEEDS_NODE_RETENTION` without making the eligible collector
+pass fail.
 
 The response boundary accepts `hours` or `days`, non-negative additive totals,
 a finite non-negative average processing time, up to 1,000 equal-length

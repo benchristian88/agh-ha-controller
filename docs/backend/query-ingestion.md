@@ -17,7 +17,10 @@ not use offsets against the changing live log.
 The adapter normalizes timestamp, question, type, client/client ID and optional
 display name, protocol, response/filtering status, processing milliseconds,
 upstream, reason/service, bounded rules and answers, cache, and DNSSEC flags.
-Malformed or oversized records are skipped and recorded as an ingestion gap.
+The DNS root question name `.` is preserved as a valid domain; ordinary fully
+qualified names have one trailing dot removed before case normalization.
+Malformed or oversized records are skipped and recorded as an ingestion gap,
+with only the node ID and invalid-record count written to safe warning logs.
 Legacy `querylog_info` and current `querylog/config` are used only to determine
 whether logging is enabled and whether client addresses are anonymized. Atlas
 preserves the anonymized identity exactly as received and never reverses it.

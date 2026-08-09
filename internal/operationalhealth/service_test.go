@@ -80,3 +80,17 @@ func TestDatabaseFailureFailsOverallHealth(t *testing.T) {
 		t.Fatalf("summary = %#v", status.Summary)
 	}
 }
+
+func TestStatisticsEligibleRangeSuccessIsHealthy(t *testing.T) {
+	now := time.Date(2026, 8, 9, 1, 0, 0, 0, time.UTC)
+	nodeID := "22222222-2222-4222-8222-222222222222"
+	result := statisticsHealth(
+		[]domain.Node{{ID: nodeID, Name: "dns-primary", Enabled: true}},
+		[]telemetry.NodeAttempt{{NodeID: nodeID, Status: "succeeded", CompletedAt: now, CollectedRanges: 1,
+			RangeErrors: map[telemetry.Range]string{telemetry.Range7Days: telemetry.ErrorRangeExceedsNodeRetention}}},
+		now, 3*time.Hour, time.Hour,
+	)
+	if result.State != Healthy || len(result.Nodes) != 1 || result.Nodes[0].State != Healthy || result.Nodes[0].RecordsReceived != 1 {
+		t.Fatalf("statistics health = %#v", result)
+	}
+}

@@ -187,7 +187,13 @@ func (s *Service) aggregate(window Range, nodeID string, limit int, nodes []doma
 		attempt := attemptByNode[node.ID]
 		snapshot, hasSnapshot := snapshotByNode[node.ID]
 		if attempt.Status == "unsupported" && (!hasSnapshot || !attempt.CompletedAt.Before(snapshot.CollectedAt)) {
-			coverage.Status, coverage.ReasonCode = "unsupported", "STATISTICS_EXACT_RANGE_UNSUPPORTED"
+			coverage.Status, coverage.ReasonCode = "unsupported", attempt.RangeErrors[window]
+			if coverage.ReasonCode == "" {
+				coverage.ReasonCode = attempt.ErrorCode
+			}
+			if coverage.ReasonCode == "" {
+				coverage.ReasonCode = "STATISTICS_EXACT_RANGE_UNSUPPORTED"
+			}
 			report.Coverage.UnsupportedNodes++
 			report.Nodes = append(report.Nodes, coverage)
 			continue

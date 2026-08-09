@@ -49,6 +49,11 @@ Common coverage reasons:
 
 - `STATISTICS_EXACT_RANGE_UNSUPPORTED`: upgrade the node to a tested
   v0.107.72–v0.107.78 contract, or accept its explicit exclusion;
+- `STATISTICS_RANGE_EXCEEDS_NODE_RETENTION`: the selected 7d or 30d range is
+  longer than this node's configured statistics interval; increase node-local
+  retention through a reviewed configuration revision only if that history is
+  required;
+- `STATISTICS_DISABLED`: statistics are disabled on the node;
 - `NODE_MAINTENANCE`: leave maintenance only when normal polling is intended;
 - `STATISTICS_TIMEOUT` or `NODE_UNREACHABLE`: verify management-network access
   and the configured timeout;
@@ -67,6 +72,11 @@ credentials, node URLs, and raw responses are not logged.
 PostgreSQL retains snapshots, attempts, and hourly buckets for 32 days and
 daily rollups for 400 days. Include these tables in normal PostgreSQL backups;
 no separate telemetry volume exists.
+
+A node configured for 24 hours is expected to collect only `24h`; that is a
+healthy collector pass. The 7d and 30d views remain unavailable for that node
+with the retention reason above. `NODE_INVALID_RESPONSE` for those longer
+ranges is not expected after the retention-aware correction.
 
 ## Release 0.1.1 installation checks
 
@@ -178,6 +188,12 @@ poll capacity was insufficient; shorten the interval. A retention gap or reset
 cannot be reconstructed through the node API. `QUERY_LOG_CURSOR_STALLED` or
 malformed-record gaps should be captured with node/controller versions, never
 with credentials or raw household query history.
+
+The DNS root question `.` is valid and is ingested without creating a
+malformed-record gap. For a continuing `QUERY_LOG_MALFORMED_RECORD`, search the
+safe controller warning for `node_id` and `invalid_records`; never paste the
+raw page. A later successful gap-free pass clears the checkpoint gap, while
+previously retained valid events remain unchanged.
 
 Monitor PostgreSQL database/index size and autovacuum. Budget roughly 1–3 GiB
 per million events including indexes and headroom, then validate against actual

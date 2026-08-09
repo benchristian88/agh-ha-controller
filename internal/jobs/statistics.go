@@ -20,6 +20,7 @@ type StatisticsStore interface {
 }
 
 type StatisticsReader interface {
+	ReadStatisticsConfig(context.Context, domain.NodeProbeRequest) (telemetry.SourceConfig, error)
 	ReadStatistics(context.Context, domain.NodeProbeRequest, time.Duration) (telemetry.SourceSnapshot, error)
 }
 
@@ -139,14 +140,43 @@ func (p *StatisticsPoller) pollNode(ctx context.Context, record domain.NodeRecor
 		return
 	}
 	request := domain.NodeProbeRequest{BaseURL: record.Node.BaseURL, CertificatePolicy: record.Node.CertificatePolicy, CustomCAPEM: record.Secrets.CustomCAPEM, Credentials: credentials}
-	snapshots := make([]telemetry.Snapshot, 0, attempt.ExpectedRanges)
+	requestContext, cancel := context.WithTimeout(ctx, p.timeout)
+	sourceConfig, err := p.reader.ReadStatisticsConfig(requestContext, request)
+	cancel()
+	if err != nil {
+		attempt.Status, attempt.ErrorCode = "failed", statisticsErrorCode(err)
+		setAllRangeErrors(&attempt, attempt.ErrorCode)
+		recordAttempt(nil)
+		return
+	}
+	if !sourceConfig.Enabled {
+		attempt.Status, attempt.ErrorCode = "unsupported", telemetry.ErrorStatisticsDisabled
+		setAllRangeErrors(&attempt, attempt.ErrorCode)
+		recordAttempt(nil)
+		return
+	}
+	eligibleRanges := telemetry.RangesWithinRetention(sourceConfig.Retention)
+	if len(eligibleRanges) == 0 {
+		attempt.Status, attempt.ErrorCode = "unsupported", telemetry.ErrorRangeExceedsNodeRetention
+		setAllRangeErrors(&attempt, attempt.ErrorCode)
+		recordAttempt(nil)
+		return
+	}
+	attempt.ExpectedRanges = len(eligibleRanges)
 	for _, window := range telemetry.SupportedRanges() {
-		requestContext, cancel := context.WithTimeout(ctx, p.timeout)
+		if window.Duration() > sourceConfig.Retention {
+			attempt.RangeErrors[window] = telemetry.ErrorRangeExceedsNodeRetention
+		}
+	}
+	snapshots := make([]telemetry.Snapshot, 0, attempt.ExpectedRanges)
+	for _, window := range eligibleRanges {
+		requestContext, cancel = context.WithTimeout(ctx, p.timeout)
 		source, readErr := p.reader.ReadStatistics(requestContext, request, window.Duration())
 		cancel()
 		if readErr != nil {
 			attempt.ErrorCode = statisticsErrorCode(readErr)
 			attempt.RangeErrors[window] = attempt.ErrorCode
+			p.logger.Warn("statistics range collection failed", "subsystem", "statistics_collection", "node_id", record.Node.ID, "range", window, "error_code", attempt.ErrorCode)
 			continue
 		}
 		collectedAt := p.now().UTC()

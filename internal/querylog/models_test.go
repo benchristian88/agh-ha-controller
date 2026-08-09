@@ -24,3 +24,10 @@ func TestNormalizeBoundsAndRejectsUnsafeElapsedValues(t *testing.T) {
 		t.Fatalf("unexpected normalization: %+v", event)
 	}
 }
+
+func TestNormalizePreservesDNSRootQuestion(t *testing.T) {
+	event := SourceEvent{Timestamp: time.Now(), QueryName: ".", QueryType: "ns", ResponseStatus: StatusAllowed}
+	if !event.Normalize() || event.QueryName != "." || event.QueryType != "NS" {
+		t.Fatalf("root question was not preserved: %+v", event)
+	}
+}

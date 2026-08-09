@@ -32,6 +32,14 @@ NODE_REQUEST_TIMEOUT, 3h)`. Query Log staleness reuses
 `max(3 * NODE_HEALTH_INTERVAL + NODE_REQUEST_TIMEOUT, 2m)` and remains distinct
 from the node connectivity timestamp.
 
+Statistics health is based on ranges eligible under each node's current
+retention. A successful 24-hour read on a node configured for 24 hours is
+healthy even though 7d and 30d reports identify that node with
+`STATISTICS_RANGE_EXCEEDS_NODE_RETENTION`. Query Log root (`.`) questions are
+valid records and do not create malformed-record gaps. A genuine skipped
+record remains a degraded data-quality state even when the rest of the poll
+succeeds.
+
 ## Worker and retry behavior
 
 Workers are context-cancellable, run one pass at a time, and isolate nodes

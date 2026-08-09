@@ -205,6 +205,7 @@ func (p *QueryLogPoller) pollNode(ctx context.Context, record domain.NodeRecord)
 		}
 		if page.InvalidRecords > 0 {
 			attempt.GapDetected, attempt.GapReason = true, "QUERY_LOG_MALFORMED_RECORD"
+			p.logger.Warn("query-log page contained malformed records", "subsystem", "query_log_collection", "node_id", record.Node.ID, "invalid_records", page.InvalidRecords)
 		}
 		for _, source := range page.Events {
 			fingerprint := source.Fingerprint()

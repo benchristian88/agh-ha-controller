@@ -76,6 +76,18 @@ func TestNormalizeQueryLogItemPreservesClientIDAsIdentifier(t *testing.T) {
 	}
 }
 
+func TestNormalizeQueryLogItemAcceptsDNSRootQuestion(t *testing.T) {
+	item := queryLogItem{Time: "2026-08-09T01:02:03Z", ElapsedMS: json.RawMessage(`1`)}
+	item.Question.Name, item.Question.Type = ".", "NS"
+	event, ok := normalizeQueryLogItem(item)
+	if !ok {
+		t.Fatal("DNS root query was rejected")
+	}
+	if event.QueryName != "." {
+		t.Fatalf("expected DNS root name to be preserved, got %q", event.QueryName)
+	}
+}
+
 func TestNormalizeQueryLogItemRejectsMalformedRecord(t *testing.T) {
 	item := queryLogItem{Time: "not-a-time", ElapsedMS: json.RawMessage(`"NaN"`)}
 	if _, ok := normalizeQueryLogItem(item); ok {

@@ -188,7 +188,11 @@ func SupportsVersion(version string) bool {
 }
 
 func normalizeDomain(value string) string {
-	return strings.ToLower(strings.TrimSuffix(bounded(value, 1025), "."))
+	value = bounded(value, 1025)
+	if value == "." {
+		return value
+	}
+	return strings.ToLower(strings.TrimSuffix(value, "."))
 }
 
 func bounded(value string, limit int) string {

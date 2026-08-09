@@ -86,7 +86,10 @@ that missing nodes contributed zero traffic.
 Only controller-collected normalized statistics are returned. The route does
 not read query logs, call nodes synchronously, expose node credentials/URLs, or
 return raw AdGuard Home payloads. Responses retain the API-wide `no-store`
-cache policy.
+cache policy. Node coverage uses `STATISTICS_RANGE_EXCEEDS_NODE_RETENTION` when
+the selected fixed range is longer than that node's configured statistics
+interval; this is an explicit unavailable range, not a zero contribution or an
+unhealthy eligible-range poll.
 
 ## Query-event routes
 

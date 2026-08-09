@@ -26,9 +26,19 @@ func (s *statisticsStoreFake) RecordStatisticsPoll(_ context.Context, attempt te
 }
 func (s *statisticsStoreFake) CleanupStatistics(context.Context, time.Time) error { return nil }
 
-type statisticsReaderFake struct{}
+type statisticsReaderFake struct {
+	config      telemetry.SourceConfig
+	configReads int
+	rangeReads  []time.Duration
+}
 
-func (statisticsReaderFake) ReadStatistics(_ context.Context, _ domain.NodeProbeRequest, recent time.Duration) (telemetry.SourceSnapshot, error) {
+func (r *statisticsReaderFake) ReadStatisticsConfig(context.Context, domain.NodeProbeRequest) (telemetry.SourceConfig, error) {
+	r.configReads++
+	return r.config, nil
+}
+
+func (r *statisticsReaderFake) ReadStatistics(_ context.Context, _ domain.NodeProbeRequest, recent time.Duration) (telemetry.SourceSnapshot, error) {
+	r.rangeReads = append(r.rangeReads, recent)
 	if recent != telemetry.Range24Hours.Duration() {
 		return telemetry.SourceSnapshot{}, &domain.Error{Kind: domain.ErrorCapability, Message: "range unavailable", Cause: errors.New("retention too short")}
 	}
@@ -37,7 +47,8 @@ func (statisticsReaderFake) ReadStatistics(_ context.Context, _ domain.NodeProbe
 
 func TestStatisticsPollerRecordsPartialRangeFailures(t *testing.T) {
 	store := &statisticsStoreFake{}
-	poller := NewStatisticsPoller(store, decrypterFake{}, statisticsReaderFake{}, time.Hour, time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	reader := &statisticsReaderFake{config: telemetry.SourceConfig{Enabled: true, Retention: 30 * 24 * time.Hour}}
+	poller := NewStatisticsPoller(store, decrypterFake{}, reader, time.Hour, time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	now := time.Date(2026, 8, 9, 12, 30, 0, 0, time.UTC)
 	poller.now = func() time.Time { return now }
 	poller.pollNode(context.Background(), domain.NodeRecord{Node: domain.Node{
@@ -54,11 +65,33 @@ func TestStatisticsPollerRecordsPartialRangeFailures(t *testing.T) {
 	}
 }
 
+func TestStatisticsPollerOnlyExpectsRangesWithinNodeRetention(t *testing.T) {
+	store := &statisticsStoreFake{}
+	reader := &statisticsReaderFake{config: telemetry.SourceConfig{Enabled: true, Retention: 24 * time.Hour}}
+	poller := NewStatisticsPoller(store, decrypterFake{}, reader, time.Hour, time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	poller.pollNode(context.Background(), domain.NodeRecord{Node: domain.Node{
+		ID: "22222222-2222-4222-8222-222222222222", ClusterID: "11111111-1111-4111-8111-111111111111", Name: "Primary", Version: "v0.107.78",
+	}})
+	if store.attempt.Status != "succeeded" || store.attempt.ExpectedRanges != 1 || store.attempt.CollectedRanges != 1 || len(store.snapshots) != 1 {
+		t.Fatalf("attempt=%+v snapshots=%d", store.attempt, len(store.snapshots))
+	}
+	if len(reader.rangeReads) != 1 || reader.rangeReads[0] != telemetry.Range24Hours.Duration() {
+		t.Fatalf("range reads = %v", reader.rangeReads)
+	}
+	if store.attempt.RangeErrors[telemetry.Range7Days] != telemetry.ErrorRangeExceedsNodeRetention || store.attempt.RangeErrors[telemetry.Range30Days] != telemetry.ErrorRangeExceedsNodeRetention {
+		t.Fatalf("range errors = %+v", store.attempt.RangeErrors)
+	}
+}
+
 func TestStatisticsPollerDoesNotCallUnsupportedNode(t *testing.T) {
 	store := &statisticsStoreFake{}
-	poller := NewStatisticsPoller(store, decrypterFake{}, statisticsReaderFake{}, time.Hour, time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	reader := &statisticsReaderFake{config: telemetry.SourceConfig{Enabled: true, Retention: 30 * 24 * time.Hour}}
+	poller := NewStatisticsPoller(store, decrypterFake{}, reader, time.Hour, time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	poller.pollNode(context.Background(), domain.NodeRecord{Node: domain.Node{ID: "22222222-2222-4222-8222-222222222222", ClusterID: "11111111-1111-4111-8111-111111111111", Version: "v0.107.71"}})
 	if store.attempt.Status != "unsupported" || store.attempt.RangeErrors[telemetry.Range24Hours] != "STATISTICS_EXACT_RANGE_UNSUPPORTED" {
 		t.Fatalf("attempt = %+v", store.attempt)
+	}
+	if reader.configReads != 0 || len(reader.rangeReads) != 0 {
+		t.Fatalf("unsupported node was read: config=%d ranges=%v", reader.configReads, reader.rangeReads)
 	}
 }

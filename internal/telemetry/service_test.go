@@ -86,6 +86,42 @@ func TestStatisticsNodeScopeRejectsNodeOutsideCluster(t *testing.T) {
 	}
 }
 
+func TestStatisticsReportsRangeBeyondNodeRetentionAsUnavailable(t *testing.T) {
+	now := time.Date(2026, 8, 9, 12, 30, 0, 0, time.UTC)
+	repository := repositoryFake{
+		nodes: []domain.Node{{ID: testNodeOne, ClusterID: testClusterID, Name: "one", Enabled: true}},
+		attempts: []NodeAttempt{{NodeID: testNodeOne, Status: "succeeded", CompletedAt: now,
+			CollectedRanges: 1, RangeErrors: map[Range]string{Range7Days: ErrorRangeExceedsNodeRetention}}},
+	}
+	service := NewService(repository, time.Hour, time.Second)
+	service.now = func() time.Time { return now }
+	report, err := service.Statistics(context.Background(), testClusterID, Range7Days, "", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.State != "unavailable" || len(report.Nodes) != 1 || report.Nodes[0].Status != "missing" || report.Nodes[0].ReasonCode != ErrorRangeExceedsNodeRetention {
+		t.Fatalf("report = %#v", report)
+	}
+}
+
+func TestStatisticsPreservesUnsupportedSourceReason(t *testing.T) {
+	now := time.Date(2026, 8, 9, 12, 30, 0, 0, time.UTC)
+	repository := repositoryFake{
+		nodes: []domain.Node{{ID: testNodeOne, ClusterID: testClusterID, Name: "one", Enabled: true}},
+		attempts: []NodeAttempt{{NodeID: testNodeOne, Status: "unsupported", ErrorCode: ErrorStatisticsDisabled,
+			CompletedAt: now, RangeErrors: map[Range]string{Range24Hours: ErrorStatisticsDisabled}}},
+	}
+	service := NewService(repository, time.Hour, time.Second)
+	service.now = func() time.Time { return now }
+	report, err := service.Statistics(context.Background(), testClusterID, Range24Hours, "", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Nodes) != 1 || report.Nodes[0].Status != "unsupported" || report.Nodes[0].ReasonCode != ErrorStatisticsDisabled {
+		t.Fatalf("report = %#v", report)
+	}
+}
+
 func statisticsFixture(nodeID, name string, collectedAt, end time.Time, queries, blocked int64, average float64, upstreamCount, upstreamAverage float64, domainName string) Snapshot {
 	return Snapshot{NodeID: nodeID, NodeName: name, ClusterID: testClusterID, Range: Range24Hours, CollectedAt: collectedAt,
 		SourceStartedAt: end.Add(-24 * time.Hour), SourceEndedAt: end, SourceSnapshot: SourceSnapshot{
