@@ -15,23 +15,23 @@
 
 ## Artifacts
 
-Implemented through 0.4:
+Implemented through 0.9:
 
 - Source-build Docker image and Compose definition.
 - Git-checkout systemd installer.
 - Versioned PostgreSQL migrations with rollback guards.
 - Backend race tests, frontend unit/type/lint/build checks, and Compose configuration validation.
+- Linux amd64/arm64 controller, migration, and backup binaries.
+- Versioned frontend archive and SHA-256 checksum manifest.
+- Optional SPDX JSON SBOM when `syft` is present.
 
 Planned:
 
-- Linux amd64 binary.
-- Linux arm64 binary.
 - Forwarder binaries.
 - Published container image.
-- Checksums.
-- SBOM.
 - Signature or provenance metadata.
-- Installation script.
+- Prebuilt-binary installation script/package (the current systemd installer
+  builds a versioned checkout from source).
 - Upgrade notes.
 
 ## Release 0.4 gate
@@ -55,3 +55,22 @@ report; unavailable checks must not be reported as passing.
 - Triage regressions.
 - Publish urgent patch guidance.
 - Update known issues.
+
+## Release 0.9 artifact and feature-freeze gate
+
+Set an explicit stable version and run `make release-artifacts
+CONTROLLER_VERSION=0.9.0`. The script emits Linux amd64/arm64 controller,
+migration and backup binaries, frontend assets, and `SHA256SUMS`; it emits an
+SPDX JSON SBOM when `syft` is available. Docker build arguments must use the
+same version, commit, and UTC build time. Stable artifacts must never retain the
+`-dev` version or unknown build fields.
+
+No signing infrastructure is claimed until a protected release-key lifecycle
+is approved. Publish checksums over HTTPS with the release and require native
+operators to verify them before replacing binaries.
+
+Release 0.9 reaches feature freeze only after
+`development/release-0.9-validation.md` records every automated and external
+gate. Afterward, 1.0 accepts defects, security/migration/upgrade/usability and
+compatibility blockers, documentation/release-engineering work, and the
+deliberate rename—not new major capability areas.

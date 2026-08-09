@@ -284,19 +284,19 @@ redundancy; schedule an outage accordingly.
 After entering maintenance, perform the platform-owned work. For
 native/systemd, use the supported OS/package or AdGuard Home procedure and keep
 its rollback artifact. For Docker, pin and replace the image through the
-operator's Compose/container workflow and keep the previous image tag. Atlas
+operator's Compose/container workflow and keep the previous image tag. AGH HA Controller
 does not run either command. Home Assistant add-on/custom/unknown installs have
-no supported Atlas upgrade workflow in 0.8.
+no supported controller upgrade workflow in 0.8.
 
 For a guided upgrade, record the target version, complete the external work,
-then select **Validate upgrade**. Atlas checks a fresh authenticated version,
+then select **Validate upgrade**. AGH HA Controller checks a fresh authenticated version,
 API, capability/configuration observation, active DNS over configured
 protocols, active-revision convergence/no drift, DHCP, non-expired TLS, and
 configured collectors. A failure is durable and leaves maintenance enabled.
 Repair or use the platform rollback, refresh evidence, and start a new guided
 operation; never clear maintenance in the database.
 
-An upstream update indicator is informational until its version enters Atlas's
+An upstream update indicator is informational until its version enters the controller's
 explicit tested compatibility range. A capability error is a release boundary,
 not a prompt to bypass validation.
 
@@ -306,6 +306,32 @@ bindings/firewall and the latest configuration observation. Expected failures
 during maintenance are retained but their webhook delivery is suppressed.
 
 Certificate warnings use 30/7-day thresholds. Rotate certificate/key material
-outside Atlas, then refresh observation; Atlas never stores or installs it.
+outside the controller, then refresh observation; AGH HA Controller never stores or installs it.
 Release checks are cached six hours, so a stale upstream result does not alter
-the explicit Atlas compatibility profile.
+the explicit controller compatibility profile.
+
+## Controller backup, recovery, and updates
+
+Before an upgrade, create a Standard Backup from **System → Backup & Restore**
+or `agh-ha-backup create`, keep its passphrase separately, and run preflight.
+Use Full only when retained Statistics, Query Log, DNS probe, HA-event, and
+notification-delivery history justifies the larger archive and restore time.
+Neither type retains browser sessions or release caches.
+
+Recovery is offline: stop the controller, create a new empty PostgreSQL 17
+database, run the exact `agh-ha-backup restore` procedure in
+`backup-and-restore.md`, install the recovered credential key, point the service
+at the restored database, then restart. Do not target the live database. Keep
+the old database and runtime configuration until login, disabled-user state,
+node credential decryption, desired/active revisions, deployments, drift,
+collectors, HA state, and expected history have been verified.
+
+For controller updates, review **System → Updates**, release notes, the
+compatibility matrix, and migration requirements. Docker operators run the
+displayed source-build Compose workflow on the host after setting the reviewed
+`CONTROLLER_VERSION` in `.env`; no published container image is currently
+claimed. Native/systemd operators verify the
+published SHA-256 checksum, check out/install the exact release, and rerun the
+installer. After restart, verify `/ready`, About build/schema metadata, login,
+nodes, convergence, collectors, and HA state. The controller never executes an
+update or accesses a Docker socket.

@@ -2,7 +2,7 @@
 
 Release 0.7 implements **Administration -> Operational Status** at
 `/system/operational-status`. Administration is the appropriate location
-because the page answers whether Atlas itself is operating correctly; it is
+because the page answers whether AGH HA Controller itself is operating correctly; it is
 not another DNS configuration or HA lifecycle task.
 
 The page shows overall controller health, API/PostgreSQL status, independent

@@ -10,7 +10,7 @@
   lifecycle UI with automated accessibility coverage.
 - Append-only migration 000012 and bounded operational evidence retention.
 
-## Required release gates
+## Completed release gates
 
 Run `make test`, the uncached Go race suite, frontend format/type/test/build,
 PostgreSQL integration with `TEST_DATABASE_URL`, migration up/down/up on a copy
@@ -22,8 +22,12 @@ controller shutdown while DNS continues.
 Then validate both production packages: upgrade and clean install with Docker
 Compose and native/systemd, browser desktop/mobile light/dark workflows, restart
 persistence, logs/redaction, and rollback using each platform's documented
-operator procedure. Release 0.8 must remain “implemented; external gates
-pending” until this evidence is recorded.
+operator procedure.
+
+The operator confirmed completion of the real-node, PostgreSQL migration,
+packaged browser, Docker Compose, and native/systemd gates on 9 August 2026.
+Release 0.8 is complete and validated. This record preserves the gate that was
+run rather than replacing it with a less specific completion claim.
 
 ## Security review
 

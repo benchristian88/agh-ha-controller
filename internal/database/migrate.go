@@ -98,6 +98,14 @@ func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	return nil
 }
 
+func LatestSchemaVersion() int64 {
+	items, err := loadMigrations()
+	if err != nil || len(items) == 0 {
+		return 0
+	}
+	return items[len(items)-1].version
+}
+
 func RollbackLastMigration(ctx context.Context, pool *pgxpool.Pool) error {
 	items, err := loadMigrations()
 	if err != nil {

@@ -1,4 +1,5 @@
 import type {
+  AdminUser,
   AllowlistPresentation,
   ApiErrorBody,
   AuditEvent,
@@ -13,6 +14,7 @@ import type {
   ConfigurationDraft,
   ConfigurationRevision,
   ConfigurationSnapshot,
+  ControllerUpdateStatus,
   Deployment,
   DeploymentPreview,
   DesiredConfigurationDocument,
@@ -32,10 +34,13 @@ import type {
   OperationalTarget,
   QueryEvent,
   QueryEventPage,
+  RestorePreflight,
   StatisticsReport,
+  SystemSettings,
   UpgradeOperation,
   ValidationIssue,
   VersionHealth,
+  VersionInfo,
 } from "./types";
 
 export class ApiError extends Error {
@@ -99,6 +104,33 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function checkedResponse(
+  path: string,
+  options: RequestInit,
+): Promise<Response> {
+  const headers = new Headers(options.headers);
+  headers.set("X-CSRF-Token", cookie("aghha_csrf"));
+  const response = await fetch(path, {
+    ...options,
+    headers,
+    credentials: "same-origin",
+  });
+  if (!response.ok) {
+    let body: ApiErrorBody = {
+      code: "HTTP_ERROR",
+      message: `Request failed with status ${response.status}.`,
+      requestId: response.headers.get("X-Request-ID") ?? "unknown",
+    };
+    try {
+      body = ((await response.json()) as { error: ApiErrorBody }).error ?? body;
+    } catch {
+      /* safe fallback */
+    }
+    throw new ApiError(response.status, body);
+  }
+  return response;
+}
+
 export interface NodePayload {
   name: string;
   baseUrl: string;
@@ -131,6 +163,82 @@ export const api = {
   me: () => request<AuthResponse>("/api/v1/auth/me"),
   logout: () =>
     request<void>("/api/v1/auth/logout", { method: "POST", body: "{}" }),
+  users: () => request<{ items: AdminUser[] }>("/api/v1/users"),
+  createUser: (input: {
+    email: string;
+    displayName: string;
+    password: string;
+  }) =>
+    request<AdminUser>("/api/v1/users", {
+      method: "POST",
+      body: JSON.stringify({ ...input, role: "administrator" }),
+    }),
+  updateUser: (user: AdminUser, enabled: boolean) =>
+    request<AdminUser>(`/api/v1/users/${user.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+        enabled,
+      }),
+    }),
+  resetUserPassword: (userId: string, password: string) =>
+    request<void>(`/api/v1/users/${userId}/password-reset`, {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    }),
+  createBackup: async (type: "standard" | "full", passphrase: string) => {
+    const response = await checkedResponse("/api/v1/system/backups", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, passphrase }),
+    });
+    const disposition = response.headers.get("Content-Disposition") ?? "";
+    const filename =
+      disposition.match(/filename="([^"]+)"/)?.[1] ??
+      `agh-ha-controller-${type}.aghhabackup`;
+    return {
+      blob: await response.blob(),
+      filename,
+      type: response.headers.get("X-Backup-Type") ?? type,
+      applicationVersion:
+        response.headers.get("X-Backup-Application-Version") ?? "unknown",
+      databaseSchemaVersion:
+        response.headers.get("X-Backup-Schema-Version") ?? "unknown",
+      createdAt: response.headers.get("X-Backup-Created-At") ?? "",
+    };
+  },
+  restorePreflight: async (archive: File, passphrase: string) => {
+    const form = new FormData();
+    form.set("archive", archive);
+    form.set("passphrase", passphrase);
+    const response = await checkedResponse("/api/v1/system/restore-preflight", {
+      method: "POST",
+      body: form,
+    });
+    return (await response.json()) as RestorePreflight;
+  },
+  controllerUpdate: () =>
+    request<ControllerUpdateStatus>("/api/v1/system/update"),
+  checkControllerUpdate: () =>
+    request<ControllerUpdateStatus>("/api/v1/system/update/check", {
+      method: "POST",
+      body: "{}",
+    }),
+  versionInfo: () => request<VersionInfo>("/api/v1/system/version"),
+  systemSettings: () => request<SystemSettings>("/api/v1/system/settings"),
+  updateSystemSettings: (
+    settings: SystemSettings,
+    updateChecksEnabled: boolean,
+  ) =>
+    request<SystemSettings>("/api/v1/system/settings", {
+      method: "PATCH",
+      body: JSON.stringify({
+        updateChecksEnabled,
+        recordVersion: settings.recordVersion,
+      }),
+    }),
   clusters: () => request<{ items: Cluster[] }>("/api/v1/clusters"),
   createCluster: (input: { name: string; description: string }) =>
     request<Cluster>("/api/v1/clusters", {

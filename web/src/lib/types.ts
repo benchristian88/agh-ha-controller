@@ -5,6 +5,72 @@ export interface User {
   role: "administrator";
 }
 
+export interface AdminUser extends User {
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt?: string;
+}
+
+export interface VersionInfo {
+  version: string;
+  commit: string;
+  builtAt: string;
+  development: boolean;
+  databaseSchemaVersion: number;
+}
+
+export interface ControllerUpdateStatus {
+  installedVersion: string;
+  buildIdentifier: string;
+  buildDate: string;
+  development: boolean;
+  latestVersion?: string;
+  state: "development" | "unknown" | "update_available" | "up_to_date";
+  releaseUrl?: string;
+  releaseNotes?: string;
+  lastChecked?: string;
+  errorCode?: string;
+  installationType: "docker" | "native_systemd" | "custom" | "unknown";
+  updateMethod: string;
+  updateCommand?: string;
+  backupRequired: boolean;
+}
+
+export interface SystemSettings {
+  updateChecksEnabled: boolean;
+  recordVersion: number;
+  queryLogRetention: string;
+  statisticsRetention: string;
+  installationType: string;
+}
+
+export interface BackupManifest {
+  backupFormatVersion: number;
+  applicationVersion: string;
+  buildIdentifier: string;
+  databaseSchemaVersion: number;
+  createdAt: string;
+  type: "standard" | "full";
+  includedComponents: string[];
+  excludedComponents: string[];
+  requiresPassphrase: boolean;
+  sessionsRestored: boolean;
+}
+
+export interface RestorePreflight {
+  valid: boolean;
+  manifest: BackupManifest;
+  sizeBytes: number;
+  plan: {
+    execution: "offline_cli";
+    requiresRestart: boolean;
+    replaces: string[];
+    retains: string[];
+    sessionsInvalidated: boolean;
+  };
+}
+
 export interface AuthResponse {
   user: User;
   expiresAt: string;

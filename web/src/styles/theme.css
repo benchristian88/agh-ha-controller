@@ -596,3 +596,9 @@ th[data-align="right"], td[data-align="right"] { text-align: right; }
   .dialog__actions { padding: var(--aghha-space-3) var(--aghha-space-4); }
   .independence-card { grid-template-columns: 1fr; gap: 8px; }
 }
+
+.setup-guide { display: grid; gap: var(--aghha-space-3); padding: 0; list-style: none; }
+.setup-guide li { display: grid; grid-template-columns: 28px 1fr; gap: var(--aghha-space-3); align-items: start; padding: var(--aghha-space-4); border: 1px solid var(--border); border-radius: var(--aghha-radius-card); background: var(--bg-card); }
+.setup-guide li > span { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 50%; color: var(--text-muted); }
+.setup-guide__complete > span { border-color: var(--success); background: var(--success-soft); color: var(--success); }
+.release-notes { max-height: 28rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }

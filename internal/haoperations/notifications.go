@@ -118,7 +118,7 @@ func (s *NotificationService) DeliverNext(ctx context.Context) (bool, error) {
 		return true, s.failDelivery(ctx, delivery, "NOTIFICATION_DESTINATION_INVALID")
 	}
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("User-Agent", "Atlas-DNS-Controller")
+	request.Header.Set("User-Agent", "AGH-HA-Controller")
 	response, err := s.client.Do(request)
 	if err != nil {
 		return true, s.failDelivery(ctx, delivery, "NOTIFICATION_DELIVERY_FAILED")

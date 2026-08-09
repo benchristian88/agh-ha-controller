@@ -28,6 +28,9 @@ type Config struct {
 	LogLevel                string
 	AutoMigrate             bool
 	MetricsToken            string
+	PGDumpPath              string
+	PGRestorePath           string
+	InstallationType        string
 }
 
 func Load() (Config, error) {
@@ -90,6 +93,10 @@ func Load() (Config, error) {
 	if metricsToken != "" && len(metricsToken) < 32 {
 		return Config{}, fmt.Errorf("METRICS_BEARER_TOKEN must be at least 32 characters when configured")
 	}
+	installationType := env("INSTALLATION_TYPE", "unknown")
+	if installationType != "docker" && installationType != "native_systemd" && installationType != "custom" && installationType != "unknown" {
+		return Config{}, fmt.Errorf("INSTALLATION_TYPE must be docker, native_systemd, custom, or unknown")
+	}
 	return Config{
 		Environment:             env("APP_ENV", "development"),
 		HTTPAddress:             env("HTTP_ADDR", ":8080"),
@@ -108,6 +115,9 @@ func Load() (Config, error) {
 		LogLevel:                env("LOG_LEVEL", "info"),
 		AutoMigrate:             autoMigrate,
 		MetricsToken:            metricsToken,
+		PGDumpPath:              env("PG_DUMP_PATH", "pg_dump"),
+		PGRestorePath:           env("PG_RESTORE_PATH", "pg_restore"),
+		InstallationType:        installationType,
 	}, nil
 }
 

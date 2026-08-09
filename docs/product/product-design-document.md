@@ -24,7 +24,7 @@ This document is authoritative for product intent. More specialised documents un
 Release 0.1 implementation details and validation status are recorded in `docs/product/feature-ledger.md` and the Release 0.1 reconciliation section of `docs/roadmap/roadmap.md`. ADR-0021 resolves the runtime and security choices that were open in the original baseline.
 
 **Release 0.7 roadmap amendment:** Releases 0.5 Statistics and 0.6 Query Log
-are complete and validated. ADR-0029 makes Atlas agentless by default and
+are complete and validated. ADR-0029 makes AGH HA Controller agentless by default and
 supersedes every older fixed-release forwarder reference in this accumulated
 design document. Release 0.7 is Operational Hardening & Observability; 0.8 is
 HA Operations & Lifecycle; 0.9 is Product and Release Hardening; 1.0 is the

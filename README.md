@@ -31,12 +31,22 @@ Log, and 0.7 operational hardening are complete and operator-validated.
 Release 0.8 adds active UDP/TCP DNS health distinct from management API health,
 N-node HA capacity/history, maintenance and fail-closed return workflows,
 certificate and AdGuard version awareness, encrypted webhook notifications,
-and durable guided native/systemd or Docker upgrades. Atlas coordinates these
+and durable guided native/systemd or Docker upgrades. AGH HA Controller coordinates these
 workflows but still carries no live DNS traffic and runs no remote upgrade
 commands. AdGuard Home remains the only DNS engine; the
 controller can stop without interrupting DNS. See the [operational-health
 design](docs/backend/operational-health.md), [feature
 ledger](docs/product/feature-ledger.md), and [ADR-0029](docs/decisions/ADR-0029-remain-agentless-by-default.md).
+
+Release 0.9 implements the final productisation feature set before 1.0:
+multiple local administrators, passphrase-encrypted Standard and Full portable
+backups, bounded restore preflight and offline clean-database recovery, cached
+stable-release awareness with host-guided updates, coherent system settings,
+a state-derived Setup Guide, About/build metadata, neutral application assets,
+and installable-web-app metadata. Automated and external release validation is
+still tracked in the [Release 0.9 validation
+record](docs/development/release-0.9-validation.md); 0.9 is not marked complete
+until those gates are evidenced.
 
 The first meaningful product milestone is the configuration-control MVP:
 
@@ -60,7 +70,7 @@ The initial reference deployment assumes:
 - PostgreSQL on the controller host or a separate database host.
 - Node communication over HTTPS using the AdGuard Home REST API.
 - systemd-managed controller services.
-- No node-side Atlas agent; supported integrations use AdGuard Home APIs.
+- No node-side controller agent; supported integrations use AdGuard Home APIs.
 
 ## Architecture principles
 
@@ -78,9 +88,10 @@ The complete architecture is documented in [docs/architecture/architecture.md](d
 
 ## Technology stack
 
-### Services implemented through 0.8
+### Services implemented through 0.9
 
-- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, API/DNS health, statistics/query-log polling, schema-versioned configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, lifecycle coordination/guided upgrades, webhook notifications, bounded retention, Operational Status, protected metrics, session cleanup, audit access, and operational probes.
+- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication and administrator management, cluster/node management, API/DNS health, statistics/query-log polling, schema-versioned configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, lifecycle coordination/guided upgrades, webhook notifications, bounded retention, Operational Status, protected metrics, portable-backup creation/preflight, cached controller-update awareness, session cleanup, audit access, and operational probes.
+- `agh-ha-backup`: an offline-capable administration CLI that creates and preflights the same encrypted archive format as the web flow and restores only to a new empty PostgreSQL database.
 - PostgreSQL 17: the system of record for users/sessions, clusters/nodes, encrypted credential envelopes, capability profiles, immutable observations/revisions, optimistic drafts, deployments and ordered per-node tasks, drift events, audit history, normalized node-attributed statistics, query events, and query-ingestion evidence.
 - AdGuard Home adapter: bounded direct HTTP(S) reads and version-aware writes. Schema v2 manages broader DNS behavior, blocklists/allowlists, custom rules, persistent clients, rewrites, blocked-service schedules, safety services, Safe Search, query-log/statistics policy, and guarded DHCP configuration/static leases. DNS bind hosts/port remain verification-only. TLS responses are reduced to public status and certificate metadata before entering domain state.
 - Deployment worker: claims durable jobs, validates and observes all targets before mutation, applies one node at a time, skips already-converged DHCP configuration writes, stops on first failure, honors cancellation only between nodes, verifies by a new immutable observation, and activates the revision only after total success. Rejected mutations retain a safe method/path/status diagnostic on the per-node task without storing AdGuard Home response bodies.
@@ -175,11 +186,17 @@ docker compose up --build --detach
 docker compose ps
 ```
 
-The stack builds the Go controller and React UI from the checkout, runs PostgreSQL 17 with a persistent named volume, applies embedded migrations, and exposes port 8080 by default. Use `docker compose logs -f controller` for startup diagnostics. Back up the PostgreSQL volume and `.env`; losing `CREDENTIAL_ENCRYPTION_KEY` makes stored node credentials unrecoverable.
+The stack builds the Go controller, backup CLI, and React UI from the checkout,
+runs PostgreSQL 17 with matching backup utilities and a persistent named volume,
+applies embedded migrations, and exposes port 8080 by default. Use
+`docker compose logs -f controller` for startup diagnostics. Create and verify a
+portable backup before upgrades and retain `.env` separately for target runtime
+settings such as the session secret and public URL. The `controller-work`
+volume is restricted temporary backup workspace, not retained backup storage.
 
 ## Install directly with systemd
 
-The reference path is Debian 13, including an unprivileged Debian LXC. Install PostgreSQL, Go 1.24, Node.js 22/npm, Git, Make, and OpenSSL, clone the repository, then run:
+The reference path is Debian 13, including an unprivileged Debian LXC. Install PostgreSQL 17 client tools, Go 1.24, Node.js 22/npm, Git, Make, and OpenSSL, clone the repository, then run:
 
 ```bash
 cd agh-ha-controller
@@ -200,7 +217,7 @@ Central collection defaults to every 30 seconds and central retention to seven
 days. Configure these with `QUERY_LOG_COLLECTION_ENABLED`,
 `QUERY_LOG_POLL_INTERVAL`, and `QUERY_LOG_RETENTION`; they do not change the
 node-local query-log enablement, anonymisation, ignore, or retention policy in
-the schema-v2 General Settings draft. Atlas preserves anonymised client data as
+the schema-v2 General Settings draft. AGH HA Controller preserves anonymised client data as
 received and excludes raw events from routine logs and support bundles.
 
 Query detail can propose an allow/block custom rule, prefill a DNS rewrite, or
@@ -216,10 +233,32 @@ node lifecycle detail before maintenance. Preflight blocks active deployments
 and active DHCP ownership and warns about remaining DNS capacity. Returning a
 node to service is allowed only after fresh API, observation/capability, DNS,
 active-revision convergence, drift, DHCP, TLS, and collector checks pass.
-Native/systemd and Docker upgrades are guided: Atlas records and validates the
+Native/systemd and Docker upgrades are guided: AGH HA Controller records and validates the
 operation while the operator uses the platform's own install and rollback
 mechanism. See the [HA operations design](docs/backend/ha-operations.md) and
 [runbook](docs/operations/runbook.md).
+
+## Product administration and recovery
+
+Use **System → Users** to create, disable/re-enable, or reset credentials for
+local administrators. Disabling or resetting an account revokes its sessions;
+the server prevents self-disable and loss of the final enabled administrator.
+Hard deletion and additional roles are intentionally absent because the current
+authorization model supports administrators only and audit attribution must be
+preserved.
+
+Use **System → Backup & Restore** to download a passphrase-encrypted Standard
+(control plane) or Full (including retained operational history) archive and to
+run a non-mutating restore preflight. Actual restore is intentionally offline
+through `agh-ha-backup restore`, with the controller stopped and a new empty
+database. See the [backup procedure](docs/operations/backup-and-restore.md),
+[archive format](docs/operations/backup-format.md), and [compatibility
+matrix](docs/operations/compatibility-matrix.md).
+
+Use **System → Updates** for cached stable-release information and installation-
+specific host instructions. The controller never runs those commands, performs
+an automatic upgrade, mounts the Docker socket, or treats untrusted release
+metadata as executable input.
 
 ## Authoritative configuration workflow
 

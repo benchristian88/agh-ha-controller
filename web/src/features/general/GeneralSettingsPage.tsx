@@ -657,7 +657,7 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
 
           <SettingsGroup
             title="Statistics policy"
-            description="Configures retention inside each AdGuard Home node. Atlas central query-event retention is configured separately by the controller operator."
+            description="Configures retention inside each AdGuard Home node. Central query-event retention is configured separately by the controller operator."
             actions={
               <button
                 type="button"

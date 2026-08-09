@@ -13,6 +13,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/adguard"
 	controllerapi "github.com/benchristian88/agh-ha-controller/internal/api"
 	"github.com/benchristian88/agh-ha-controller/internal/auth"
+	"github.com/benchristian88/agh-ha-controller/internal/backup"
 	"github.com/benchristian88/agh-ha-controller/internal/config"
 	"github.com/benchristian88/agh-ha-controller/internal/controlplane"
 	"github.com/benchristian88/agh-ha-controller/internal/database"
@@ -23,7 +24,10 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
 	"github.com/benchristian88/agh-ha-controller/internal/operations"
 	"github.com/benchristian88/agh-ha-controller/internal/querylog"
+	"github.com/benchristian88/agh-ha-controller/internal/systemsettings"
 	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
+	"github.com/benchristian88/agh-ha-controller/internal/updates"
+	"github.com/benchristian88/agh-ha-controller/internal/useradmin"
 	"github.com/benchristian88/agh-ha-controller/internal/version"
 )
 
@@ -66,6 +70,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	userAdministration := useradmin.NewService(store)
+	backupService := backup.NewService(configuration.DatabaseURL, configuration.CredentialEncryptionKey, configuration.PGDumpPath, store)
+	controllerUpdates := updates.NewService(store, configuration.InstallationType)
+	systemSettings := systemsettings.NewService(store, configuration.QueryLogRetention.String(), configuration.InstallationType)
 	probe := adguard.NewProbe(configuration.NodeRequestTimeout)
 	management := domain.NewManagementService(store, credentialCipher, probe)
 	configurationAdapter := adguard.NewConfigurationReader(probe)
@@ -129,6 +137,10 @@ func run() error {
 	apiServer.SetOperationalHealth(operationalService)
 	apiServer.SetHAOperations(haOperationsService)
 	apiServer.SetNotificationSettings(notificationService)
+	apiServer.SetUserAdministration(userAdministration)
+	apiServer.SetBackups(backupService)
+	apiServer.SetControllerUpdates(controllerUpdates)
+	apiServer.SetSystemSettings(systemSettings)
 	apiServer.SetMetrics(workerHealth, configuration.MetricsToken)
 	httpServer := &http.Server{
 		Addr:              configuration.HTTPAddress,

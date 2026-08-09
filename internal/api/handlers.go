@@ -334,8 +334,20 @@ func (s *Server) handleAuditEvents(response http.ResponseWriter, request *http.R
 	writeJSON(response, http.StatusOK, map[string]any{"items": events, "limit": limit, "offset": offset})
 }
 
-func (s *Server) handleVersion(response http.ResponseWriter, _ *http.Request) {
-	writeJSON(response, http.StatusOK, version.Current())
+func (s *Server) handleVersion(response http.ResponseWriter, request *http.Request) {
+	info := version.Current()
+	schemaVersion := int64(0)
+	if reader, ok := s.health.(interface {
+		CurrentSchemaVersion(context.Context) (int64, error)
+	}); ok {
+		current, err := reader.CurrentSchemaVersion(request.Context())
+		if err != nil {
+			s.writeError(response, request, err)
+			return
+		}
+		schemaVersion = current
+	}
+	writeJSON(response, http.StatusOK, map[string]any{"version": info.Version, "commit": info.Commit, "builtAt": info.BuiltAt, "development": info.Development, "databaseSchemaVersion": schemaVersion})
 }
 
 func entityTag(value int) string {

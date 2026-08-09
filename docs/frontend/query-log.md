@@ -1,6 +1,6 @@
 # Query Log Interface
 
-`/query-log` is a dense combined event table within the Release 0.4.1 Atlas
+`/query-log` is a dense combined event table within the Release 0.4.1 controller
 navigation and design system. Global scope selects the entire cluster or one
 node; the Node column remains visible in either mode so attribution cannot be
 lost. Search is debounced and server-side. Status, observed query type, exact

@@ -117,6 +117,16 @@ existing `/nodes` page remains infrastructure inventory and links to detail.
 - About
 - Sign Out
 
+Release 0.9 completes Users, Audit Log, Operational Status, System Settings,
+Backup & Restore, Updates, and About. Setup Guide remains in primary navigation
+and derives checks from enabled nodes, observations, draft, immutable revisions,
+successful deployment, Statistics, Query Log, and HA state. No completed check
+is based solely on visiting a route.
+
+The login and shell share a neutral diamond/network mark. Browser favicon,
+Apple touch icon, 192/512 PWA icons, and `manifest.webmanifest` retain AGH HA
+Controller naming. No service worker or offline data cache is introduced.
+
 ## Configuration Control purpose
 
 `/ha/configuration` is not another settings editor.

@@ -23,7 +23,13 @@ import { NodesPage } from "./features/nodes/NodesPage";
 import { OperationalStatusPage } from "./features/operational-status/OperationalStatusPage";
 import { QueryLogPage } from "./features/query-log/QueryLogPage";
 import { RewritesPage } from "./features/rewrites/RewritesPage";
+import { SetupGuidePage } from "./features/setup/SetupGuidePage";
 import { StatisticsPage } from "./features/statistics/StatisticsPage";
+import { AboutPage } from "./features/system/AboutPage";
+import { BackupPage } from "./features/system/BackupPage";
+import { SystemSettingsPage } from "./features/system/SystemSettingsPage";
+import { UpdatesPage } from "./features/system/UpdatesPage";
+import { UsersPage } from "./features/users/UsersPage";
 import { ApiError, api } from "./lib/api";
 import type { Cluster, User } from "./lib/types";
 import { NotFoundPage, PlannedPage } from "./routing/RouteStatePages";
@@ -162,6 +168,11 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
   else if (clusters === undefined && error !== undefined)
     content = <ErrorState error={error} retry={() => void loadClusters()} />;
   else if (route.kind === "audit") content = <AuditPage />;
+  else if (route.kind === "users") content = <UsersPage currentUser={user} />;
+  else if (route.kind === "backups") content = <BackupPage />;
+  else if (route.kind === "updates") content = <UpdatesPage />;
+  else if (route.kind === "about") content = <AboutPage />;
+  else if (route.kind === "system-settings") content = <SystemSettingsPage />;
   else if (selected === undefined)
     content = (
       <EmptyState title="Create your first cluster">
@@ -208,6 +219,9 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
         break;
       case "operational-status":
         content = <OperationalStatusPage cluster={selected} />;
+        break;
+      case "setup-guide":
+        content = <SetupGuidePage cluster={selected} />;
         break;
       case "blocked-services":
         content = <BlockedServicesPage cluster={selected} />;

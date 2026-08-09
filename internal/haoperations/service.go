@@ -564,7 +564,7 @@ func (s *Service) MaintenancePreflight(ctx context.Context, nodeID string) (Main
 		{Name: "drift", Status: ternary(!openDrift, "pass", "warning"), Message: ternary(!openDrift, "No open drift", "Open drift remains visible during maintenance")},
 		{Name: "dhcp", Status: ternary(!activeDHCP, "pass", "fail"), Required: true, Message: ternary(!activeDHCP, "Node is not active DHCP", "Complete an audited DHCP handoff before maintenance")},
 		{Name: "tls", Status: ternary(certificateState == CertificateExpired, "fail", ternary(certificateState == CertificateWarning || certificateState == CertificateCritical, "warning", "pass")), Message: "Current redacted certificate state: " + string(certificateState)},
-		{Name: "peer_compatibility", Status: ternary(peersCompatible, "pass", "warning"), Message: ternary(peersCompatible, "Enabled peers are inside the tested Atlas compatibility range", "One or more enabled peers are outside the tested Atlas compatibility range")},
+		{Name: "peer_compatibility", Status: ternary(peersCompatible, "pass", "warning"), Message: ternary(peersCompatible, "Enabled peers are inside the tested controller compatibility range", "One or more enabled peers are outside the tested controller compatibility range")},
 		{Name: "api", Status: ternary(node.HealthStatus == domain.NodeHealthy, "pass", "warning"), Message: "Management API health is evaluated independently"},
 	}
 	preflight.Allowed = !activeDeployment && !activeDHCP && (remaining > 0 || preflight.BreakGlassRequired)
@@ -720,10 +720,10 @@ func (s *Service) StartUpgrade(ctx context.Context, actor domain.Actor, nodeID, 
 		return Upgrade{}, err
 	}
 	if SupportForInstallation(settings.InstallationType) != UpgradeGuided {
-		return Upgrade{}, domain.NewError(domain.ErrorCapability, "this installation type has no supported Atlas upgrade workflow")
+		return Upgrade{}, domain.NewError(domain.ErrorCapability, "this installation type has no supported controller upgrade workflow")
 	}
 	if node.CompatibilityStatus != domain.CompatibilitySupported {
-		return Upgrade{}, domain.NewError(domain.ErrorCapability, "the current node version is outside the supported Atlas compatibility range")
+		return Upgrade{}, domain.NewError(domain.ErrorCapability, "the current node version is outside the supported controller compatibility range")
 	}
 	if !node.MaintenanceMode {
 		return Upgrade{}, domain.NewError(domain.ErrorConflict, "guided upgrade requires the node to be in maintenance")
@@ -733,7 +733,7 @@ func (s *Service) StartUpgrade(ctx context.Context, actor domain.Actor, nodeID, 
 		return Upgrade{}, domain.Validation("targetVersion", "is required")
 	}
 	if s.compatibility(targetVersion) != domain.CompatibilitySupported {
-		return Upgrade{}, domain.NewError(domain.ErrorCapability, "the target version is outside the tested Atlas compatibility range")
+		return Upgrade{}, domain.NewError(domain.ErrorCapability, "the target version is outside the tested controller compatibility range")
 	}
 	preflight, err := s.MaintenancePreflight(ctx, nodeID)
 	if err != nil {

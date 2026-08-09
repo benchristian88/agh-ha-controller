@@ -308,8 +308,22 @@ The following are explicitly out of scope for the initial releases:
 The combined controller process gains an `haoperations` service, DNS probe,
 upstream release, notification delivery, and transition workers. They call node
 DNS listeners and HTTPS APIs from the management plane and persist evidence in
-PostgreSQL. No request from a DNS client enters Atlas, no DNS listener is
-published by Atlas, and nodes continue serving if every controller worker is
+PostgreSQL. No request from a DNS client enters AGH HA Controller, no DNS listener is
+published by the controller, and nodes continue serving if every controller worker is
 stopped. ADR-0030 defines maintenance, return-to-service, and guided-upgrade
 failure behavior. Optional failover products such as Keepalived or dnsdist are
 neither required nor managed in Release 0.8.
+
+## Release 0.9 productisation boundary
+
+Portable backup is a shared domain/service implementation used by browser and
+CLI entry points. PostgreSQL `pg_dump` provides a concurrent consistent snapshot;
+the credential key joins it only inside a passphrase-encrypted envelope. Browser
+restore stops at authenticated preflight. Mutation is an offline CLI operation
+against a new empty database so the old installation remains a rollback source.
+
+Local authorization still has one `administrator` role rather than an invented
+pre-1.0 RBAC model. Multiple identities, disabled state, password lifecycle,
+session revocation, audit attribution, and final-admin safety are first-class.
+Controller update awareness is cached information and host guidance, never a
+host execution boundary. Product text remains AGH HA Controller through 0.9.

@@ -158,33 +158,52 @@ rewriting them.
 
 | Feature | Status | Implementation and evidence | Remaining release validation |
 |---|---|---|---|
-| Active DNS and HA summary | Implemented; automated checks pass | Independent bounded UDP/TCP queries, observed/default listener, per-node evidence, N-node serving capacity, transition history, 30-day probe/one-year event retention | Real-node UDP/TCP failure/recovery and controller-offline DNS exercise |
-| Maintenance lifecycle | Implemented | Deployment, remaining DNS, break-glass, drift and active-DHCP preflight; maintenance exclusion/suppression; fail-closed fresh API/observation/DNS/convergence/TLS/DHCP/collector return checks | Two-node planned maintenance and DHCP handoff exercise |
-| Failure/certificate/version awareness | Implemented | Failed-node/redundancy transitions, redacted TLS expiry state, 30/7-day warnings, six-hour official upstream release cache, explicit Atlas compatibility | Real certificate and upstream outage exercise |
-| Guided upgrades | Implemented; intentionally not automated | Durable native/systemd and Docker operator-guided workflow, fresh target-version and full return validation; unsupported installation types explicit | Platform upgrade/rollback exercise and version-mismatch recovery |
-| Notifications | Implemented | Optional encrypted write-only HTTPS webhook, durable event/delivery, maintenance suppression, five-attempt bound, safe payload/errors | Receiver failure/retry/redaction exercise |
-| API and frontend | Implemented; automated checks pass | Authenticated/CSRF-protected lifecycle APIs, HA Operations, node lifecycle detail, Operational Status/Dashboard integration, accessibility tests | Packaged desktop/mobile light/dark browser exercise |
-| Migration and packaging | Implemented | Append-only 000012, 0.8.0 version alignment, Docker/systemd build sources | 0.7 database up/down/up copy, clean/upgrade Docker and native/systemd validation |
+| Active DNS and HA summary | Complete and validated | Independent bounded UDP/TCP queries, observed/default listener, per-node evidence, N-node serving capacity, transition history, 30-day probe/one-year event retention | Operator-validated 9 August 2026 |
+| Maintenance lifecycle | Complete and validated | Deployment, remaining DNS, break-glass, drift and active-DHCP preflight; maintenance exclusion/suppression; fail-closed fresh API/observation/DNS/convergence/TLS/DHCP/collector return checks | Operator-validated 9 August 2026 |
+| Failure/certificate/version awareness | Complete and validated | Failed-node/redundancy transitions, redacted TLS expiry state, 30/7-day warnings, six-hour official upstream release cache, explicit compatibility | Operator-validated 9 August 2026 |
+| Guided upgrades | Complete and validated; intentionally not automated | Durable native/systemd and Docker operator-guided workflow, fresh target-version and full return validation; unsupported installation types explicit | Operator-validated 9 August 2026 |
+| Notifications | Complete and validated | Optional encrypted write-only HTTPS webhook, durable event/delivery, maintenance suppression, five-attempt bound, safe payload/errors | Operator-validated 9 August 2026 |
+| API and frontend | Complete and validated | Authenticated/CSRF-protected lifecycle APIs, HA Operations, node lifecycle detail, Operational Status/Dashboard integration, accessibility tests | Operator-validated 9 August 2026 |
+| Migration and packaging | Complete and validated | Append-only 000012, 0.8.0 version alignment, Docker/systemd build sources | Operator-validated 9 August 2026 |
 
-Release 0.8 is not marked complete until the remaining real-node, PostgreSQL,
-browser, Docker, and systemd gates in `development/release-0.8-validation.md`
-are recorded.
+The operator confirmed the real-node, PostgreSQL, browser, Docker, and systemd
+gates in `development/release-0.8-validation.md` on 9 August 2026. Release 0.8
+is complete and validated.
+
+## Release 0.9 productisation, backup, and upgrade readiness
+
+| Feature | Status | Implementation and evidence | Remaining release validation |
+|---|---|---|---|
+| User Administration | Implemented; automated checks pass | Dedicated Users page/API; multiple local administrators; duplicate/role validation; enable/disable; credential reset; immediate session enforcement; audit; no hard deletion | PostgreSQL/browser lifecycle and restored-login matrix |
+| Final-administrator safety | Implemented | Transactional user-table lock and enabled-admin count; self-disable rejected; role remains administrator-only | Concurrent two-session PostgreSQL exercise |
+| Standard/Full backup | Implemented; archive tests pass | Consistent custom dump; optional-history table-data policy; `age` passphrase encryption; authenticated inner/outer manifest; checksums; restricted temporary state | Production-size concurrent Docker/systemd backup |
+| Restore preflight and DR | Implemented; archive tests pass | Bounded web preflight; future/corrupt/wrong-passphrase rejection; offline CLI requires new empty DB; recovered key output; sessions excluded; restore audit | Existing-install shadow DB and clean-install DR |
+| Controller updates | Implemented; unit checks pass | Cached stable GitHub release metadata, safe link validation, outage/rate-limit state, persisted enable setting, guided Docker/native instructions, no execution endpoint | Live stable/current/update/outage exercise |
+| Build/version metadata | Implemented | Backend version/commit/build/development/schema contract; 0.9 development default; shared release linker injection | Artifact consistency across published packages |
+| Setup/System/About | Implemented; frontend checks pass | State-derived Setup Guide; rationalised persisted settings; accurate independent-project, compatibility and licensing About | Packaged desktop/mobile browser matrix |
+| Branding/PWA | Implemented | Name-neutral SVG mark, favicon, 192/512 and Apple icons, manifest, standalone/iOS metadata, consistent login/header mark | iOS and installed-app rendering |
+| Packaging/docs/policy | Implemented | Backup binary in native/Docker builds; PostgreSQL 17 tools; ADRs; format, compatibility, validation, support/deprecation docs | Docker/systemd clean install and 0.8 upgrade |
+
+Release 0.9 remains implemented with external gates pending. Feature freeze is
+recorded only after `development/release-0.9-validation.md` is completed.
 
 ## Deliberately deferred
 
 - Field-level drift ignore rules, selectable partial-deployment recovery, parallel/rolling strategies, scheduled maintenance windows, and intra-mutation automatic retries: later operational work.
 - TLS certificate/key mutation: deferred pending controller-managed secret references; 0.4 provides redacted modelling only.
 - Custom statistics ranges and query-derived analytics/rollups: later work; fixed-range statistics are implemented in 0.5, API-polled query ingestion in 0.6, and node-local telemetry policy remains managed configuration.
-- Additional local-user management, password change/recovery, durable or distributed login throttling, OIDC, and RBAC: follow-on security scope.
-- Automated backup/restore tooling and an audit export: later operational releases; the supported recovery path remains manual.
+- OIDC, additional roles/RBAC, email invitation/recovery, durable or distributed login throttling, and user self-service password change remain follow-on security scope.
+- Scheduled/remote backup destinations and audit export remain follow-on operational scope; 0.9 provides manual portable backup and offline restore.
 - Proxmox community installer, signed/prebuilt artifacts, and automated upgrade/rollback remain later release work.
 
 ## Known limitations
 
-- Release 0.1 supports one initial administrator and has no account-management screen.
+- Release 0.1 began with one bootstrap administrator; Release 0.9 adds the
+  dedicated multiple-administrator lifecycle surface without broadening RBAC.
 - Process worker state is in-memory and becomes unknown after restart; durable
   collector attempts, checkpoints, observations, deployments, and drift remain
   the restart source of truth.
 - The built React directory is installed alongside the Go binary rather than embedded in it.
 - `insecure_http` exists for explicit homelab compatibility and exposes node credentials to that management network; it is never selected implicitly.
-- Repeatable automated packaged-host backup/restore and live DNS-outage evidence remain follow-on improvements after the operator accepted the 0.1/0.1.1 production validation.
+- Release 0.9 portable backup/restore still requires the documented external
+  packaged-host and clean-install disaster-recovery evidence before completion.

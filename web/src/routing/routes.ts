@@ -28,6 +28,12 @@ export type RouteResolution =
     }
   | { kind: "audit" }
   | { kind: "operational-status" }
+  | { kind: "users" }
+  | { kind: "backups" }
+  | { kind: "updates" }
+  | { kind: "setup-guide" }
+  | { kind: "system-settings" }
+  | { kind: "about" }
   | { kind: "planned"; title: string; release?: string }
   | { kind: "redirect"; to: string }
   | { kind: "not-found" };
@@ -58,6 +64,7 @@ export const CANONICAL_PATHS = [
   "/system/operational-status",
   "/system/settings",
   "/system/backups",
+  "/system/updates",
   "/system/about",
 ] as const;
 
@@ -126,13 +133,7 @@ const settingsRoutes: Readonly<
 
 const plannedRoutes: Readonly<
   Record<string, { title: string; release?: string }>
-> = {
-  "/setup-guide": { title: "Setup Guide" },
-  "/system/users": { title: "Users" },
-  "/system/settings": { title: "System Settings" },
-  "/system/backups": { title: "Backups" },
-  "/system/about": { title: "About" },
-};
+> = {};
 
 export function resolveRoute(pathname: string): RouteResolution {
   if (pathname.length > 1 && pathname.endsWith("/")) {
@@ -181,6 +182,18 @@ export function resolveRoute(pathname: string): RouteResolution {
       return { kind: "audit" };
     case "/system/operational-status":
       return { kind: "operational-status" };
+    case "/system/users":
+      return { kind: "users" };
+    case "/system/backups":
+      return { kind: "backups" };
+    case "/system/updates":
+      return { kind: "updates" };
+    case "/setup-guide":
+      return { kind: "setup-guide" };
+    case "/system/settings":
+      return { kind: "system-settings" };
+    case "/system/about":
+      return { kind: "about" };
     default:
       return { kind: "not-found" };
   }

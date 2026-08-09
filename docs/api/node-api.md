@@ -2,7 +2,7 @@
 
 ## Release 0.6 Query Log reads
 
-For the explicitly reviewed v0.107.52–v0.107.78 range, Atlas reads
+For the explicitly reviewed v0.107.52–v0.107.78 range, AGH HA Controller reads
 `GET /control/querylog` with `limit` (maximum 500), empty `search`,
 `response_status=all`, and the previous response's `oldest` value as
 `older_than`. Results are newest-first. Offset exists in portions of the
@@ -20,7 +20,7 @@ to 64 KiB and normalizes only controller-domain values. Legacy
 
 The source can repeat records across overlapping windows, discard history due
 to node policy or clear, reset after restart, and cannot distinguish completely
-identical events with an ID. Atlas documents and exposes those limitations via
+identical events with an ID. AGH HA Controller documents and exposes those limitations via
 checkpoint/gap coverage; it does not log raw payloads or attempt to reverse
 client anonymisation.
 

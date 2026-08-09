@@ -52,7 +52,7 @@ coverage. Normalization excludes credentials, node URLs, raw payloads, and
 mutable display-name enrichment from identity; diagnostic bundles exclude raw
 events by default.
 
-The source API has no event ID. Atlas therefore uses a node-scoped SHA-256
+The source API has no event ID. AGH HA Controller therefore uses a node-scoped SHA-256
 fingerprint plus occurrence ordinal and an overlapping `older_than` polling
 window. This deliberately preserves indistinguishable legitimate repeats and
 documents that perfect identity cannot be recovered after source reordering or

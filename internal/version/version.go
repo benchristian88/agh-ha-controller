@@ -1,17 +1,22 @@
 package version
 
+import "strings"
+
 var (
-	Version = "0.8.0"
+	Version = "0.9.0-dev"
 	Commit  = "unknown"
 	BuiltAt = "unknown"
 )
 
 type Info struct {
-	Version string `json:"version"`
-	Commit  string `json:"commit"`
-	BuiltAt string `json:"builtAt"`
+	Version     string `json:"version"`
+	Commit      string `json:"commit"`
+	BuiltAt     string `json:"builtAt"`
+	Development bool   `json:"development"`
 }
 
 func Current() Info {
-	return Info{Version: Version, Commit: Commit, BuiltAt: BuiltAt}
+	trimmed := strings.TrimSpace(Version)
+	development := trimmed == "" || trimmed == "unknown" || strings.Contains(trimmed, "-") || Commit == "unknown" || BuiltAt == "unknown"
+	return Info{Version: trimmed, Commit: Commit, BuiltAt: BuiltAt, Development: development}
 }

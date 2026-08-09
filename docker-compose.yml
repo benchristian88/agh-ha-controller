@@ -22,16 +22,17 @@ services:
     build:
       context: .
       args:
-        VERSION: 0.8.0
+        VERSION: ${CONTROLLER_VERSION:-0.9.0-dev}
         COMMIT: ${CONTROLLER_COMMIT:-git-checkout}
         BUILT_AT: ${CONTROLLER_BUILT_AT:-local}
-    image: agh-ha-controller:0.8.0
+    image: agh-ha-controller:${CONTROLLER_VERSION:-0.9.0-dev}
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       APP_ENV: production
+      INSTALLATION_TYPE: docker
       HTTP_ADDR: :8080
       DATABASE_URL: postgres://${POSTGRES_USER:-aghha}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aghha}?sslmode=disable
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?set PUBLIC_BASE_URL in .env}
@@ -59,8 +60,11 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777
+    volumes:
+      - controller-work:/var/lib/agh-ha-controller/tmp
     security_opt:
       - no-new-privileges:true
 
 volumes:
   postgres-data:
+  controller-work:

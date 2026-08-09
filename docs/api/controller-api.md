@@ -10,6 +10,30 @@ The controller serves its browser UI and JSON API from the same origin. JSON rou
 
 `GET /health` and `GET /ready` are intentionally unversioned operational probes.
 
+## Release 0.9 administration and recovery
+
+All routes below require an enabled administrator session. Mutations also
+require the existing same-origin CSRF token.
+
+- `GET /api/v1/users`, `POST /api/v1/users`, and
+  `PATCH /api/v1/users/{userId}` list, create, and
+  enable/disable local administrators. Responses omit password hashes and
+  session material. The only accepted 0.9 role is `administrator`.
+- `POST /api/v1/users/{userId}/password-reset` replaces the Argon2id credential and
+  revokes every target session. No credential is returned.
+- `POST /api/v1/system/backups` accepts `{type, passphrase}` and streams a Standard or
+  Full `.aghhabackup`. Passphrases are transient. Archive creation is audited.
+- `POST /api/v1/system/restore-preflight` accepts bounded multipart `archive` and
+  `passphrase` fields, authenticates/validates without mutation, and returns the
+  manifest and offline restore plan. Restore execution has no web endpoint.
+- `GET /api/v1/system/update` returns cached controller release status and host-guided
+  update instructions; `POST /api/v1/system/update/check` forces a bounded refresh.
+- `GET/PATCH /api/v1/system/settings` exposes the justified persisted release-check
+  setting plus read-only retention and installation facts with optimistic
+  `recordVersion`.
+- `GET /api/v1/system/version` returns application version, commit, build time,
+  development state, and current database schema version.
+
 Every response includes `X-Request-ID`. API responses use `Cache-Control: no-store` and standard browser security headers.
 
 ## Authentication and CSRF
@@ -400,7 +424,7 @@ uses the same fail-closed return validation.
 
 Creating an upgrade accepts a target version and returns a durable guided
 operation. The operator performs the native/systemd or Docker upgrade, then
-validates with the current node record version. Atlas freshly reads the
+validates with the current node record version. AGH HA Controller freshly reads the
 installed version before return checks. Unsupported installation types return
 a capability error and failed validation leaves maintenance enabled.
 

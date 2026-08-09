@@ -32,6 +32,12 @@ measured API-ingestion limitations and a new review before implementation.
 - `api`: HTTP transport and DTO mapping.
 - `operationalhealth`: shared health states, aggregation, freshness mapping,
   bounded worker tracking, and presentation models.
+- `useradmin`: administrator lifecycle validation and audit construction.
+- `backup`: versioned encrypted archive creation, validation, compatibility,
+  and empty-database offline restore.
+- `updates`: bounded/cached stable-release metadata and installation-specific
+  guidance without command execution.
+- `systemsettings`: optimistic persisted controller settings and audit pairing.
 
 ### Release 0.1 concrete packages
 
@@ -54,6 +60,9 @@ Release 0.3 adds narrow writes for shared schema-v1 DNS and filtering fields. Re
 Release 0.4 keeps those boundaries and adds schema-v2 mapping/writes inside `internal/adguard`, richer canonical types in `internal/configuration`, capability gating and DHCP ordering in `internal/controlplane`, and one audited explicit refresh method in `internal/inventory`. The API and React client exchange canonical documents, never raw AdGuard responses. No new service or settings repository was introduced.
 
 `cmd/controller` wires these boundaries and owns graceful process lifecycle. `cmd/migrate` is a thin explicit migration entry point.
+`cmd/agh-ha-backup` is the Release 0.9 system-administration boundary for
+portable create, preflight, and offline restore. Web backup and preflight reuse
+the same `internal/backup` implementation; no online restore API exists.
 
 ## Domain services
 
@@ -133,3 +142,13 @@ existing transactional node management boundary for optimistic/audited state
 changes, then persist separate lifecycle events. Notifications are derived from
 durable events, encrypted at rest, bounded, idempotent per channel/event, and
 suppressed for expected maintenance DNS failures.
+
+Release 0.9 keeps the existing administrator-only permission model. User
+disable/password reset and session revocation commit with their audit record;
+the repository locks administrator state while enforcing the final-enabled-
+administrator invariant. Backup uses PostgreSQL custom dumps and an `age`
+scrypt recipient, includes the external credential key only inside the
+authenticated encrypted payload, and excludes sessions. Restore is offline,
+targets a new empty database, and uses a single PostgreSQL transaction. Update
+awareness accepts only the project's stable GitHub release URL, caches results,
+and returns inert host guidance.

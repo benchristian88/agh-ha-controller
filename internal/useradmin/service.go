@@ -1,0 +1,147 @@
+package useradmin
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/benchristian88/agh-ha-controller/internal/auth"
+	"github.com/benchristian88/agh-ha-controller/internal/domain"
+)
+
+type Repository interface {
+	ListUsers(context.Context) ([]domain.User, error)
+	UserByID(context.Context, string) (domain.User, error)
+	CreateUser(context.Context, domain.User, domain.AuditEvent) error
+	UpdateUser(context.Context, string, string, string, bool, time.Time, domain.AuditEvent) (domain.User, error)
+	ResetUserPassword(context.Context, string, string, time.Time, domain.AuditEvent) error
+}
+
+type Service struct {
+	repository Repository
+	now        func() time.Time
+}
+
+type CreateInput struct {
+	Email       string
+	DisplayName string
+	Password    string
+	Role        domain.UserRole
+}
+
+type UpdateInput struct {
+	Email       string
+	DisplayName string
+	Role        domain.UserRole
+	Enabled     bool
+}
+
+func NewService(repository Repository) *Service {
+	return &Service{repository: repository, now: time.Now}
+}
+
+func (s *Service) List(ctx context.Context) ([]domain.User, error) {
+	return s.repository.ListUsers(ctx)
+}
+
+func (s *Service) Create(ctx context.Context, actor domain.Actor, input CreateInput) (domain.User, error) {
+	email, err := domain.NormaliseEmail(input.Email)
+	if err != nil {
+		return domain.User{}, err
+	}
+	displayName := strings.TrimSpace(input.DisplayName)
+	if err := domain.ValidateDisplayName(displayName); err != nil {
+		return domain.User{}, err
+	}
+	if input.Role != domain.RoleAdministrator {
+		return domain.User{}, domain.Validation("role", "must be administrator")
+	}
+	passwordHash, err := auth.HashPassword(input.Password)
+	if err != nil {
+		return domain.User{}, err
+	}
+	id, err := domain.NewID()
+	if err != nil {
+		return domain.User{}, err
+	}
+	now := s.now().UTC()
+	user := domain.User{ID: id, Email: email, DisplayName: displayName, PasswordHash: passwordHash, Role: input.Role, Enabled: true, CreatedAt: now, UpdatedAt: now}
+	event, err := event(actor, "user.created", id, map[string]any{"role": input.Role}, now)
+	if err != nil {
+		return domain.User{}, err
+	}
+	if err := s.repository.CreateUser(ctx, user, event); err != nil {
+		return domain.User{}, err
+	}
+	return user, nil
+}
+
+func (s *Service) Update(ctx context.Context, actor domain.Actor, targetID string, input UpdateInput) (domain.User, error) {
+	if !domain.ValidID(targetID) {
+		return domain.User{}, domain.Validation("userId", "must be a valid identifier")
+	}
+	email, err := domain.NormaliseEmail(input.Email)
+	if err != nil {
+		return domain.User{}, err
+	}
+	displayName := strings.TrimSpace(input.DisplayName)
+	if err := domain.ValidateDisplayName(displayName); err != nil {
+		return domain.User{}, err
+	}
+	if input.Role != domain.RoleAdministrator {
+		return domain.User{}, domain.Validation("role", "must be administrator")
+	}
+	if actor.UserID == targetID && !input.Enabled {
+		return domain.User{}, domain.NewError(domain.ErrorConflict, "you cannot disable your current account")
+	}
+	current, err := s.repository.UserByID(ctx, targetID)
+	if err != nil {
+		return domain.User{}, err
+	}
+	now := s.now().UTC()
+	action := "user.updated"
+	if current.Enabled != input.Enabled {
+		if input.Enabled {
+			action = "user.enabled"
+		} else {
+			action = "user.disabled"
+		}
+	} else if current.Email != email {
+		action = "user.login_identifier_changed"
+	}
+	e, err := event(actor, action, targetID, map[string]any{
+		"role": input.Role, "enabled": input.Enabled,
+		"loginIdentifierChanged": current.Email != email,
+		"displayNameChanged":     current.DisplayName != displayName,
+	}, now)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return s.repository.UpdateUser(ctx, targetID, email, displayName, input.Enabled, now, e)
+}
+
+func (s *Service) ResetPassword(ctx context.Context, actor domain.Actor, targetID, password string) error {
+	if !domain.ValidID(targetID) {
+		return domain.Validation("userId", "must be a valid identifier")
+	}
+	passwordHash, err := auth.HashPassword(password)
+	if err != nil {
+		return err
+	}
+	now := s.now().UTC()
+	e, err := event(actor, "user.password_reset", targetID, map[string]any{"sessionsRevoked": true}, now)
+	if err != nil {
+		return err
+	}
+	return s.repository.ResetUserPassword(ctx, targetID, passwordHash, now, e)
+}
+
+func event(actor domain.Actor, action, targetID string, metadata map[string]any, now time.Time) (domain.AuditEvent, error) {
+	id, err := domain.NewID()
+	if err != nil {
+		return domain.AuditEvent{}, fmt.Errorf("create user audit identifier: %w", err)
+	}
+	actorID := actor.UserID
+	return domain.AuditEvent{ID: id, ActorType: "user", ActorUserID: &actorID, Action: action, ResourceType: "user", ResourceID: &targetID, RequestID: actor.RequestID, Metadata: metadata, CreatedAt: now}, nil
+}
