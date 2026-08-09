@@ -11,6 +11,7 @@ export type RouteResolution =
   | { kind: "dashboard" }
   | { kind: "nodes" }
   | { kind: "statistics" }
+  | { kind: "query-log" }
   | { kind: "configuration" }
   | { kind: "deployments" }
   | { kind: "drift" }
@@ -121,7 +122,6 @@ const settingsRoutes: Readonly<
 const plannedRoutes: Readonly<
   Record<string, { title: string; release?: string }>
 > = {
-  "/query-log": { title: "Query Log", release: "Release 0.6" },
   "/setup-guide": { title: "Setup Guide" },
   "/system/users": { title: "Users" },
   "/system/settings": { title: "System Settings" },
@@ -148,6 +148,8 @@ export function resolveRoute(pathname: string): RouteResolution {
       return { kind: "dashboard" };
     case "/statistics":
       return { kind: "statistics" };
+    case "/query-log":
+      return { kind: "query-log" };
     case "/ha/nodes":
       return { kind: "nodes" };
     case "/ha/configuration":

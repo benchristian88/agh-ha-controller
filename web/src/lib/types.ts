@@ -568,6 +568,73 @@ export interface StatisticsReport {
   }[];
 }
 
+export type QueryEventStatus =
+  | "allowed"
+  | "blocked"
+  | "rewritten"
+  | "safe_search"
+  | "safe_browsing"
+  | "parental"
+  | "error"
+  | "other";
+
+export interface QueryEvent {
+  id: string;
+  nodeId: string;
+  nodeName: string;
+  timestamp: string;
+  ingestedAt: string;
+  query: string;
+  queryType: string;
+  clientIdentifier: string;
+  clientDisplayName?: string;
+  clientProtocol?: string;
+  status: QueryEventStatus;
+  responseCode?: string;
+  processingTimeMs: number;
+  upstream?: string;
+  filteringReason?: string;
+  serviceName?: string;
+  rules: { text: string; filterListId?: number }[];
+  answers: { type: string; value: string; ttl?: number }[];
+  cached: boolean;
+  answerDnssec: boolean;
+}
+
+export interface QueryLogCoverage {
+  status: "complete" | "partial" | "unavailable";
+  collectionEnabled: boolean;
+  retentionSeconds: number;
+  expectedNodes: number;
+  includedNodes: number;
+  staleNodes: number;
+  unsupportedNodes: number;
+  disabledNodes: number;
+  maintenanceNodes: number;
+  errorNodes: number;
+  gapNodes: number;
+  currentThrough?: string;
+  staleAfterSeconds: number;
+  nodes: {
+    nodeId: string;
+    nodeName: string;
+    status: string;
+    reasonCode?: string;
+    lastAttemptAt?: string;
+    lastSuccessAt?: string;
+    currentThrough?: string;
+    gapDetected: boolean;
+  }[];
+}
+
+export interface QueryEventPage {
+  items: QueryEvent[];
+  nextCursor?: string;
+  generatedAt: string;
+  coverage: QueryLogCoverage;
+  filters: { statuses: QueryEventStatus[]; queryTypes: string[] };
+}
+
 export type OperationalTarget =
   | { scope: "node"; nodeId: string }
   | { scope: "all_compatible_enabled_nodes" };

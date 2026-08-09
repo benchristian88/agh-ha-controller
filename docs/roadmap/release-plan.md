@@ -58,4 +58,5 @@ Recommended:
 | 0.4 | Complete | Schema v2 and broader control-plane behavior remain the foundation for 0.4.1; functional, Docker, and native/systemd installation validation completed 3 August 2026. |
 | 0.4.1 | Implemented; external release gates pending | UI alignment, distinct HA page responsibilities, and local regression/WCAG/visual/race/vet/build/dependency/documentation gates pass. PostgreSQL upgrade and controlled real-node checks remain. |
 | 0.5 | Implemented; external release gates pending | Exact-range polling/storage/aggregation, coverage-aware API/UI, retention, local unit/frontend/build gates, and deployment documentation are complete. PostgreSQL upgrade, controlled real-node reconciliation, and packaged browser/install checks remain. |
-| 0.6–1.0 | Planned | Query-log ingestion remains the next telemetry milestone; later historical scope and sequencing are unchanged. |
+| 0.6 | Implemented; external release gates pending | API-polled normalized ingestion, retention, search/filter/keyset API, coverage-aware Query Log UI, draft handoffs, local tests, and documentation are implemented. PostgreSQL upgrade, controlled real-node, and packaged browser/install checks remain. |
+| 0.7–1.0 | Planned | Forwarder fidelity, production event delivery, operational HA, and community-release sequencing are unchanged. |

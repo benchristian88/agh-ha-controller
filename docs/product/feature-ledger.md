@@ -116,11 +116,29 @@ Custom ranges and Query Log ingestion remain deliberately deferred. Detailed
 behavior and operator recovery are documented in
 `docs/backend/statistics-aggregation.md` and `docs/operations/runbook.md`.
 
+## Release 0.6 combined Query Log
+
+| Feature | Status | Implementation and evidence | Remaining release validation |
+|---|---|---|---|
+| Central ingestion | Implemented; automated checks pass | Immediate/configurable worker, four-node bound, source `older_than` paging, durable checkpoints/attempts, overlap, safe errors, reset/retention/cursor gap evidence | Controlled two-node outage, restart, clear, high-volume, and time-regression exercise |
+| Identity and storage | Implemented; migration added | Normalized cluster/node events, SHA-256 stable-field fingerprint plus occurrence ordinal, node-scoped uniqueness, batch insert, bounded seven-day default cleanup, no credentials/raw payload | PostgreSQL 0.5-to-0.6 upgrade, uniqueness, retention, size, and vacuum exercise |
+| Query API | Implemented; unit checks pass | Authenticated cluster/node scope, parameterized domain/client search, status/type/client filters, bounded timestamp/UUID keyset cursor, detail, explicit coverage/freshness | PostgreSQL-backed ordering/search plan and multi-cluster isolation run |
+| Query Log UI | Implemented; local checks pass | Canonical route, mandatory Node column, responsive table, debounced search, filters, previous/next cursor stack, conservative refresh/new-record notice, structured detail, partial/disabled/gap states | Packaged desktop/mobile light/dark browser and real-node smoke |
+| Contextual configuration | Implemented | Allow/block proposals enter Custom Filter Rules; rewrite opens validated prefilled dialog; client uses safe search; all remain mutable-draft-only | End-to-end optimistic-concurrency, duplicate-rule, save/publish/deploy separation exercise |
+| Privacy boundary | Implemented | Node anonymisation preserved, same-origin authenticated controller reads, bounded normalization, no routine event logging/support bundle inclusion, independent collection and retention | Future fine-grained RBAC before multiple user roles |
+
+API polling cannot recover events already removed by node-local retention and
+cannot derive a perfect stable identity for completely indistinguishable
+records because AdGuard Home supplies no event ID. These limitations are
+represented conservatively and the higher-fidelity forwarder remains Release
+0.7+ scope. See `docs/backend/query-ingestion.md`, ADR-0015, and the operations
+runbook.
+
 ## Deliberately deferred
 
 - Field-level drift ignore rules, selectable partial-deployment recovery, parallel/rolling strategies, scheduled maintenance windows, and intra-mutation automatic retries: later operational work.
 - TLS certificate/key mutation: deferred pending controller-managed secret references; 0.4 provides redacted modelling only.
-- Custom statistics ranges and query-log ingestion: later work; fixed-range statistics are implemented in 0.5 and node-local telemetry policy remains managed configuration.
+- Custom statistics ranges and query-derived analytics/rollups: later work; fixed-range statistics are implemented in 0.5, API-polled query ingestion in 0.6, and node-local telemetry policy remains managed configuration.
 - Additional local-user management, password change/recovery, durable or distributed login throttling, OIDC, and RBAC: follow-on security scope.
 - Automated backup/restore tooling and an audit export: later operational releases; the supported recovery path remains manual.
 - Proxmox community installer, signed/prebuilt artifacts, and automated upgrade/rollback remain later release work.

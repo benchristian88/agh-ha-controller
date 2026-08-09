@@ -22,10 +22,10 @@ services:
     build:
       context: .
       args:
-        VERSION: 0.5.0
+        VERSION: 0.6.0
         COMMIT: ${CONTROLLER_COMMIT:-git-checkout}
         BUILT_AT: ${CONTROLLER_BUILT_AT:-local}
-    image: agh-ha-controller:0.5.0
+    image: agh-ha-controller:0.6.0
     restart: unless-stopped
     depends_on:
       postgres:
@@ -41,6 +41,9 @@ services:
       NODE_HEALTH_INTERVAL: ${NODE_HEALTH_INTERVAL:-30s}
       NODE_REQUEST_TIMEOUT: ${NODE_REQUEST_TIMEOUT:-10s}
       STATISTICS_POLL_INTERVAL: ${STATISTICS_POLL_INTERVAL:-1h}
+      QUERY_LOG_COLLECTION_ENABLED: ${QUERY_LOG_COLLECTION_ENABLED:-true}
+      QUERY_LOG_POLL_INTERVAL: ${QUERY_LOG_POLL_INTERVAL:-30s}
+      QUERY_LOG_RETENTION: ${QUERY_LOG_RETENTION:-168h}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       AUTO_MIGRATE: "true"
       WEB_DIST_DIR: /usr/local/share/agh-ha-controller/web

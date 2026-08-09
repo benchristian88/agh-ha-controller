@@ -2,7 +2,7 @@
 
 AGH HA Controller is a management plane for running two or more AdGuard Home instances as a coordinated, highly available DNS service.
 
-AdGuard Home remains the DNS engine. AGH HA Controller currently provides the shared control plane for configuration, authentication, revision history, deployment, drift detection, and controller-collected cluster statistics. Central query-log ingestion remains planned for Release 0.6.
+AdGuard Home remains the DNS engine. AGH HA Controller currently provides the shared control plane for configuration, authentication, revision history, deployment, drift detection, controller-collected cluster statistics, and a centrally retained, node-attributed Query Log.
 
 ## Why this project exists
 
@@ -21,7 +21,7 @@ AGH HA Controller is intended to solve that gap by providing:
 
 ## Project status
 
-Release 0.5 adds immediate and hourly exact-range polling, normalized PostgreSQL snapshots/buckets, mathematically valid aggregation, explicit coverage/freshness, cluster/node scope, and the complete `/statistics` experience. It builds on Release 0.4.1's horizontal navigation, global context, schema-v2 Configuration Control, and operator-focused settings. AdGuard Home remains the only DNS engine; the controller can be stopped without interrupting DNS. Current evidence is tracked in the [feature ledger](docs/product/feature-ledger.md), [statistics design](docs/backend/statistics-aggregation.md), and [ADR-0028](docs/decisions/ADR-0028-aggregate-exact-node-statistics-in-the-controller.md).
+Release 0.6 adds bounded API polling of every enabled compatible node, normalized PostgreSQL query events, restart-safe checkpoints, central retention, server-side search/filtering, keyset pagination, explicit coverage/gaps, and the complete `/query-log` cluster/node experience. Query detail links observed domains into existing mutable-draft rule and rewrite workflows without publishing, deploying, or changing a node. Release 0.5 exact-range statistics remain independent. AdGuard Home remains the only DNS engine; the controller can be stopped without interrupting DNS. Current evidence is tracked in the [feature ledger](docs/product/feature-ledger.md), [query-ingestion design](docs/backend/query-ingestion.md), and [ADR-0015](docs/decisions/ADR-0015-make-central-query-log-collection-privacy-conscious-and-configurable.md).
 
 The first meaningful product milestone is the configuration-control MVP:
 
@@ -62,15 +62,15 @@ The complete architecture is documented in [docs/architecture/architecture.md](d
 
 ## Technology stack
 
-### Services implemented through 0.5
+### Services implemented through 0.6
 
-- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, health and statistics polling, schema-versioned configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, audited filter refresh, session cleanup, audit access, and operational probes.
-- PostgreSQL 17: the system of record for users/sessions, clusters/nodes, encrypted credential envelopes, capability profiles, immutable observations/revisions, optimistic drafts, deployments and ordered per-node tasks, drift events, audit history, and normalized node-attributed statistics.
+- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, health/statistics/query-log polling, schema-versioned configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, audited filter refresh, retention, session cleanup, audit access, and operational probes.
+- PostgreSQL 17: the system of record for users/sessions, clusters/nodes, encrypted credential envelopes, capability profiles, immutable observations/revisions, optimistic drafts, deployments and ordered per-node tasks, drift events, audit history, normalized node-attributed statistics, query events, and query-ingestion evidence.
 - AdGuard Home adapter: bounded direct HTTP(S) reads and version-aware writes. Schema v2 manages broader DNS behavior, blocklists/allowlists, custom rules, persistent clients, rewrites, blocked-service schedules, safety services, Safe Search, query-log/statistics policy, and guarded DHCP configuration/static leases. DNS bind hosts/port remain verification-only. TLS responses are reduced to public status and certificate metadata before entering domain state.
 - Deployment worker: claims durable jobs, validates and observes all targets before mutation, applies one node at a time, skips already-converged DHCP configuration writes, stops on first failure, honors cancellation only between nodes, verifies by a new immutable observation, and activates the revision only after total success. Rejected mutations retain a safe method/path/status diagnostic on the per-node task without storing AdGuard Home response bodies.
 - Reconciliation worker: periodically compares the active revision's effective configuration with fresh node observations, deduplicates structured drift, and applies Manual, Alert, or Enforce policy while excluding maintenance nodes.
 
-AdGuard Home remains the live DNS service and never sends normal DNS traffic through the controller. Release 0.5 reads bounded aggregate statistics directly from supported nodes without query-log ingestion. Central query-log ingestion and the optional forwarder remain later milestones.
+AdGuard Home remains the live DNS service and never sends normal DNS traffic through the controller. Release 0.5 reads bounded aggregate statistics directly from supported nodes. Release 0.6 separately polls bounded query-log pages; the optional higher-fidelity forwarder remains a later milestone.
 
 ### Controller backend
 
@@ -91,8 +91,8 @@ AdGuard Home remains the live DNS service and never sends normal DNS traffic thr
 - Responsive desktop-first administration interface
 
 Canonical navigation is grouped under Settings, Filters, and HA Controller.
-Statistics is a complete cluster/node experience. Query Log retains an
-explicit future-release state and does not imply ingestion is available.
+Statistics and Query Log are complete cluster/node experiences. Query Log
+always preserves source-node attribution and presents collection coverage.
 Previous Release 0.4 settings URLs remain usable through documented
 compatibility redirects.
 
@@ -160,6 +160,26 @@ sudo PUBLIC_BASE_URL=https://controller.example.test ./scripts/install-systemd.s
 ```
 
 The installer builds from source without requiring ripgrep, creates the `aghha` service account and PostgreSQL database, generates protected secrets, installs the binary/UI, enables the hardened service, and preserves `/etc/agh-ha-controller/agh-ha-controller.env` on reruns. Inspect it with `systemctl status agh-ha-controller` and `journalctl -u agh-ha-controller -f`.
+
+## Combined Query Log
+
+Open `/query-log` and use the global scope selector for the entire cluster or a
+single node. Every row retains its source node. Domain/client search and status,
+query-type, client, and node filters execute on the controller; older results
+use bounded cursor pagination. Coverage distinguishes current, stale,
+unsupported, maintenance, node-logging-disabled, failed, and known-gap nodes.
+
+Central collection defaults to every 30 seconds and central retention to seven
+days. Configure these with `QUERY_LOG_COLLECTION_ENABLED`,
+`QUERY_LOG_POLL_INTERVAL`, and `QUERY_LOG_RETENTION`; they do not change the
+node-local query-log enablement, anonymisation, ignore, or retention policy in
+the schema-v2 General Settings draft. Atlas preserves anonymised client data as
+received and excludes raw events from routine logs and support bundles.
+
+Query detail can propose an allow/block custom rule, prefill a DNS rewrite, or
+search managed clients. These links enter existing mutable desired-state
+workflows. Operators must still add and save the draft, publish an immutable
+revision, and explicitly deploy it.
 
 ## Authoritative configuration workflow
 

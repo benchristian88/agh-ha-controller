@@ -33,11 +33,13 @@ windows it can supply.
 
 ## Query events
 
-Suggested default:
+Release 0.6 enforces a separate central retention window. Collection defaults
+to enabled and normalized raw events default to seven days. Operators may set
+`QUERY_LOG_COLLECTION_ENABLED=false` without deleting retained data and may set
+`QUERY_LOG_RETENTION` from one hour through 90 days. These settings never alter
+schema-v2 node-local query-log policy.
 
-- Disabled until explicitly enabled.
-- Raw events: 30 days.
-- Hourly aggregate statistics: 1 year.
-- Daily aggregate statistics: indefinitely.
-
-The operator must be able to reduce retention.
+Each poll deletes at most 10,000 expired events and 10,000 expired ingestion
+attempts; attempt evidence uses a fixed 32-day window. Cleanup failure is logged
+and does not block ingestion. Query-derived rollups are intentionally not part
+of Release 0.6.

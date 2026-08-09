@@ -396,6 +396,10 @@ Deliberately deferred:
 
 ## Release 0.6 — Combined query log via API polling
 
+**Current status (9 August 2026): Implemented; local release validation in
+progress. PostgreSQL, real-node, Docker, and systemd operator validation remain
+external gates.**
+
 ### Outcomes
 
 - Query log from every node is searchable in one interface.
@@ -405,15 +409,19 @@ Deliberately deferred:
 - Cursor-based polling.
 - Deduplication.
 - Combined query-event table.
-- Filters by node, client, domain, status, and time.
+- Filters by node, client, domain, and status with cursor/time navigation.
 - Retention configuration.
 - Ingestion lag reporting.
+- Structured query detail and explicit partial/gap coverage.
+- Draft-only contextual allow, block, rewrite, and client-search handoffs.
 
 ### Exit criteria
 
 - Duplicate events are controlled.
 - Polling resumes after controller restart.
 - Node attribution is preserved.
+- Automated backend/frontend checks and packaged validation pass before the
+  release is marked complete.
 
 ## Release 0.7 — Forwarder preview
 

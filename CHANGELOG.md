@@ -4,6 +4,38 @@ All notable changes to AGH HA Controller will be documented in this file.
 
 The project intends to follow Semantic Versioning once the first public release is made.
 
+## 0.6.0 - Unreleased
+
+### Added
+
+- Immediate and configurable collection of normalized query events from every
+  enabled compatible AdGuard Home node, using source `older_than` cursors,
+  restart-safe per-node checkpoints, bounded concurrency, overlap, conservative
+  node-scoped deduplication, and explicit gap evidence.
+- Append-only migration `000010_release_0_6_query_log` for query events,
+  ingestion checkpoints, attempts, keyset/search indexes, and bounded retention.
+- Authenticated cluster-scoped query-event list and detail APIs with server-side
+  domain/client search, node/status/type/client filters, deterministic cursor
+  pagination, and node-attributed coverage/freshness.
+- Responsive `/query-log` interface with mandatory node attribution, structured
+  details, conservative refresh, older/newer navigation, partial-state notices,
+  and contextual links into mutable draft authoring workflows.
+
+### Changed
+
+- Default controller, image, installer, and web version is 0.6.0.
+- Central query-event retention defaults to seven days and is independent from
+  node-local query-log enablement, anonymisation, ignore rules, and retention.
+
+### Known limitations
+
+- AdGuard Home does not expose a stable query-event identifier. Atlas combines a
+  strong normalized fingerprint with the event's occurrence ordinal, preferring
+  preservation of legitimate identical events over aggressive collapsing.
+- API polling cannot recover events already removed by node-local retention;
+  Atlas records and presents detected gaps. The later forwarder remains the
+  higher-fidelity ingestion path.
+
 ## 0.5.0 - Unreleased
 
 ### Added

@@ -1,5 +1,29 @@
 # AdGuard Home Node API Adapter
 
+## Release 0.6 Query Log reads
+
+For the explicitly reviewed v0.107.52–v0.107.78 range, Atlas reads
+`GET /control/querylog` with `limit` (maximum 500), empty `search`,
+`response_status=all`, and the previous response's `oldest` value as
+`older_than`. Results are newest-first. Offset exists in portions of the
+upstream contract but is intentionally not used because offsets shift while a
+live log receives new records. The source supplies timestamps and a timestamp
+cursor, not a stable event ID.
+
+The adapter accepts the version-variable `question.name`/legacy
+`question.host`, `client`, `client_id`, optional `client_info.name`,
+`client_proto`, `elapsedMs` number/string, `status`, `reason`, upstream, answer,
+rule/rules/filter ID, service, cache, and DNSSEC fields. It bounds each record
+to 64 KiB and normalizes only controller-domain values. Legacy
+`GET /control/querylog_info` (including fractional day intervals) and current
+`GET /control/querylog/config` are read only for enabled/anonymisation state.
+
+The source can repeat records across overlapping windows, discard history due
+to node policy or clear, reset after restart, and cannot distinguish completely
+identical events with an ID. Atlas documents and exposes those limitations via
+checkpoint/gap coverage; it does not log raw payloads or attempt to reverse
+client anonymisation.
+
 ## Release 0.2 purpose
 
 The adapter is the only package that consumes raw AdGuard Home HTTP payloads. Release 0.1 performs a read-only status probe at:

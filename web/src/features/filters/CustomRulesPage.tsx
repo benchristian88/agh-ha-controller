@@ -73,6 +73,9 @@ export function CustomRulesPage({ cluster }: { cluster: Cluster }) {
   const [submittedInput, setSubmittedInput] = useState<TestInput>();
   const [commandBusy, setCommandBusy] = useState(false);
   const [commandResult, setCommandResult] = useState<DNSOperationalCommand>();
+  const [proposal, setProposal] = useState(() =>
+    ruleProposalFromSearch(window.location.search),
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -318,6 +321,43 @@ export function CustomRulesPage({ cluster }: { cluster: Cluster }) {
       ) : (
         <>
           <UnsavedChangesNotice dirty={dirty} saving={saving} saved={saved} />
+          {proposal && (
+            <Banner
+              tone="info"
+              title={`${proposal.action === "allow" ? "Allow" : "Block"} domain proposal`}
+              actions={
+                <>
+                  <button
+                    type="button"
+                    className="button"
+                    disabled={(
+                      draft.document.shared.filtering.userRules ?? []
+                    ).includes(proposal.rule)}
+                    onClick={() => {
+                      updateRules([
+                        ...(draft.document.shared.filtering.userRules ?? []),
+                        proposal.rule,
+                      ]);
+                      setProposal(undefined);
+                    }}
+                  >
+                    Add to Draft
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--quiet"
+                    onClick={() => setProposal(undefined)}
+                  >
+                    Dismiss
+                  </button>
+                </>
+              }
+            >
+              Review <code>{proposal.rule}</code>. Adding it changes only the
+              mutable draft; Save Draft, publication, and deployment remain
+              separate steps.
+            </Banner>
+          )}
           {commandResult && (
             <HostFilterResultPanel
               operation={commandResult}
@@ -486,6 +526,25 @@ export function CustomRulesPage({ cluster }: { cluster: Cluster }) {
       )}
     </PageContainer>
   );
+}
+
+export function ruleProposalFromSearch(
+  search: string,
+): { action: "allow" | "block"; rule: string } | undefined {
+  const parameters = new URLSearchParams(search);
+  const action = parameters.get("action");
+  const domain = parameters.get("domain")?.trim().toLowerCase();
+  if (
+    (action !== "allow" && action !== "block") ||
+    !domain ||
+    domain.length > 253 ||
+    /[^a-z0-9._-]/u.test(domain)
+  )
+    return undefined;
+  return {
+    action,
+    rule: action === "allow" ? `@@||${domain}^` : `||${domain}^`,
+  };
 }
 
 function HostFilterResultPanel({

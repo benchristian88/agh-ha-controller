@@ -20,6 +20,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 	"github.com/benchristian88/agh-ha-controller/internal/jobs"
 	"github.com/benchristian88/agh-ha-controller/internal/operations"
+	"github.com/benchristian88/agh-ha-controller/internal/querylog"
 	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
 	"github.com/benchristian88/agh-ha-controller/internal/version"
 )
@@ -81,8 +82,16 @@ func run() error {
 	healthPoller := jobs.NewHealthPoller(store, credentialCipher, probe, configuration.NodeHealthInterval, logger)
 	statisticsService := telemetry.NewService(store, configuration.StatisticsPollInterval, configuration.NodeRequestTimeout)
 	statisticsPoller := jobs.NewStatisticsPoller(store, credentialCipher, configurationAdapter, configuration.StatisticsPollInterval, configuration.NodeRequestTimeout, logger)
+	queryLogService := querylog.NewService(store, configuration.QueryLogPollInterval, querylog.Options{
+		CollectionEnabled: configuration.QueryLogCollection,
+		Retention:         configuration.QueryLogRetention,
+	})
 	go healthPoller.Run(rootContext)
 	go statisticsPoller.Run(rootContext)
+	if configuration.QueryLogCollection {
+		queryLogPoller := jobs.NewQueryLogPoller(store, credentialCipher, configurationAdapter, configuration.QueryLogPollInterval, configuration.NodeRequestTimeout, configuration.QueryLogRetention, logger)
+		go queryLogPoller.Run(rootContext)
+	}
 	go jobs.RunDeploymentExecutor(rootContext, deploymentExecutor, logger)
 	go jobs.RunOperationalCommandExecutor(rootContext, operationExecutor, logger)
 	go jobs.RunReconciler(rootContext, reconciler, configuration.NodeHealthInterval, logger)
@@ -96,6 +105,7 @@ func run() error {
 	)
 	apiServer.SetDNSOperations(operationService)
 	apiServer.SetStatistics(statisticsService)
+	apiServer.SetQueryLog(queryLogService)
 	httpServer := &http.Server{
 		Addr:              configuration.HTTPAddress,
 		Handler:           apiServer.Handler(),

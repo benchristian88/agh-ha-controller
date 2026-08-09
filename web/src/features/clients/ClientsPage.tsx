@@ -110,7 +110,9 @@ export function ClientsPage({ cluster }: { cluster: Cluster }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<unknown>();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(
+    () => new URLSearchParams(window.location.search).get("client") ?? "",
+  );
   const [editor, setEditor] = useState<ClientEditor>();
   const [removeIndex, setRemoveIndex] = useState<number>();
 

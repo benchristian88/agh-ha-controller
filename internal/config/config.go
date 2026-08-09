@@ -21,6 +21,9 @@ type Config struct {
 	NodeHealthInterval      time.Duration
 	NodeRequestTimeout      time.Duration
 	StatisticsPollInterval  time.Duration
+	QueryLogCollection      bool
+	QueryLogPollInterval    time.Duration
+	QueryLogRetention       time.Duration
 	WebDistDirectory        string
 	LogLevel                string
 	AutoMigrate             bool
@@ -57,6 +60,24 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	queryLogCollection, err := boolean("QUERY_LOG_COLLECTION_ENABLED", true)
+	if err != nil {
+		return Config{}, err
+	}
+	queryLogInterval, err := duration("QUERY_LOG_POLL_INTERVAL", 30*time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+	if queryLogInterval < 5*time.Second || queryLogInterval > time.Hour {
+		return Config{}, fmt.Errorf("QUERY_LOG_POLL_INTERVAL must be between 5s and 1h")
+	}
+	queryLogRetention, err := duration("QUERY_LOG_RETENTION", 7*24*time.Hour)
+	if err != nil {
+		return Config{}, err
+	}
+	if queryLogRetention < time.Hour || queryLogRetention > 90*24*time.Hour {
+		return Config{}, fmt.Errorf("QUERY_LOG_RETENTION must be between 1h and 2160h")
+	}
 	autoMigrate, err := boolean("AUTO_MIGRATE", true)
 	if err != nil {
 		return Config{}, err
@@ -75,6 +96,9 @@ func Load() (Config, error) {
 		NodeHealthInterval:      healthInterval,
 		NodeRequestTimeout:      requestTimeout,
 		StatisticsPollInterval:  statisticsInterval,
+		QueryLogCollection:      queryLogCollection,
+		QueryLogPollInterval:    queryLogInterval,
+		QueryLogRetention:       queryLogRetention,
 		WebDistDirectory:        env("WEB_DIST_DIR", "web/dist"),
 		LogLevel:                env("LOG_LEVEL", "info"),
 		AutoMigrate:             autoMigrate,

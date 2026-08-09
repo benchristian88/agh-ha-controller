@@ -156,6 +156,33 @@ It must exclude:
 - Node credentials.
 - TLS private keys.
 - Raw query logs by default.
+
+## Release 0.6 Query Log operations
+
+The controller polls immediately after startup and every
+`QUERY_LOG_POLL_INTERVAL` (default 30 seconds), up to four nodes concurrently.
+Use `/query-log` coverage to distinguish unsupported nodes, node-local logging
+disabled, maintenance, stale collection, request failure, and known gaps. DNS
+continues on every node during controller or ingestion failure.
+
+Runtime controls are `QUERY_LOG_COLLECTION_ENABLED`, `QUERY_LOG_POLL_INTERVAL`,
+and `QUERY_LOG_RETENTION`. The seven-day retention default is independent of
+the node-local policy in General Settings. Disabling collection preserves
+retained events until normal expiry. After changing systemd configuration,
+restart the service; for Compose, recreate the controller container.
+
+Investigate repeated gaps by comparing poll interval and DNS volume with the
+10,000-record per-node pass bound, checking node-local retention/clear history,
+and checking time synchronization. `QUERY_LOG_SOURCE_WINDOW_TRUNCATED` means
+poll capacity was insufficient; shorten the interval. A retention gap or reset
+cannot be reconstructed through the node API. `QUERY_LOG_CURSOR_STALLED` or
+malformed-record gaps should be captured with node/controller versions, never
+with credentials or raw household query history.
+
+Monitor PostgreSQL database/index size and autovacuum. Budget roughly 1–3 GiB
+per million events including indexes and headroom, then validate against actual
+traffic. Cleanup is bounded to 10,000 events and attempts per pass; failure is
+logged and retried on the next poll without stopping ingestion.
 The 29 July 2026 production validation completed both Docker and systemd installs successfully. A non-fatal `make: rg: no such file or directory` message on systemd came from Make source discovery; Release 0.2 uses portable `find` and does not require ripgrep for installation.
 
 ## Release 0.2 configuration inventory checks

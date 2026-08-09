@@ -64,7 +64,9 @@ export function RewritesPage({ cluster }: { cluster: Cluster }) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<unknown>();
   const [search, setSearch] = useState("");
-  const [editor, setEditor] = useState<RewriteEditor>();
+  const [editor, setEditor] = useState<RewriteEditor | undefined>(() =>
+    rewriteProposalFromSearch(window.location.search),
+  );
   const [removeIndex, setRemoveIndex] = useState<number>();
 
   const load = useCallback(async () => {
@@ -490,6 +492,21 @@ export function RewritesPage({ cluster }: { cluster: Cluster }) {
       </ConfirmDialog>
     </PageContainer>
   );
+}
+
+export function rewriteProposalFromSearch(
+  search: string,
+): RewriteEditor | undefined {
+  const parameters = new URLSearchParams(search);
+  const domain = parameters.get("domain")?.trim().toLowerCase() ?? "";
+  if (
+    parameters.get("action") !== "create" ||
+    domain === "" ||
+    domain.length > 253 ||
+    /[^a-z0-9._-]/u.test(domain)
+  )
+    return undefined;
+  return { mode: "add", rewrite: { ...emptyRewrite(), domain } };
 }
 
 function RewriteDialog({

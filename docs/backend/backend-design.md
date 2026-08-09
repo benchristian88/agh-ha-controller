@@ -101,6 +101,13 @@ Release 0.1 uses a transaction for initial administrator creation, successful lo
 
 Release 0.3 transactions pair draft edits, revision publication, deployment creation/cancellation/completion, drift detection/resolution, policy changes, and maintenance changes with their audit records. Revision activation occurs in the successful deployment completion transaction.
 
+Release 0.6 records a node poll atomically: normalized events are batch-inserted
+with node-scoped conflict handling, then its attempt and checkpoint are written
+in the same transaction. A failed transaction advances no checkpoint. The
+query-log worker is independent from health, statistics, deployment, and
+reconciliation; it runs one pass at a time, bounds node concurrency and source
+pages, propagates cancellation/timeouts, and never mutates a node.
+
 ## Release 0.1 failure behaviour
 
 - Startup fails before serving when required configuration, secrets, PostgreSQL connectivity, or migrations are invalid.

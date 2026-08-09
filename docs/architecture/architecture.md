@@ -47,6 +47,17 @@ no DNS listener, no node mutation, and no query-log dependency. Controller
 downtime pauses collection while every node continues serving DNS. ADR-0028
 defines its compatibility, mathematics, retention, and failure boundaries.
 
+Release 0.6 adds `internal/querylog` plus a bounded independent polling worker.
+The version-aware adapter follows each node's `oldest`/`older_than` source
+cursor, PostgreSQL stores normalized node/cluster-attributed events separately
+from desired/observed configuration, and the API performs parameterized search
+and keyset pagination over retained data. Durable per-node checkpoints and
+attempts drive honest freshness/gap coverage after restart or failure. The
+browser never calls a node, and contextual rule/rewrite actions enter existing
+mutable draft workflows without publication or deployment. ADR-0015 and
+`docs/backend/query-ingestion.md` define identity, privacy, retention, and
+source-fidelity limitations.
+
 ### 3.1 Controller API
 
 Responsibilities:
@@ -108,6 +119,7 @@ PostgreSQL stores:
 - Drift events.
 - Statistics snapshots.
 - Query events during the polling phase.
+- Query-ingestion checkpoints and attempts.
 - Audit records.
 - Forwarder checkpoints.
 

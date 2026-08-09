@@ -27,7 +27,7 @@ describe("canonical route safety", () => {
       "/filters/rewrites": "settings",
       "/filters/blocked-services": "blocked-services",
       "/filters/custom-rules": "settings",
-      "/query-log": "planned",
+      "/query-log": "query-log",
       "/ha/nodes": "nodes",
       "/ha/configuration": "configuration",
       "/ha/revisions": "revisions",

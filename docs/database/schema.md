@@ -1,5 +1,23 @@
 # Schema Notes
 
+## Release 0.6 combined Query Log
+
+Migration `000010_release_0_6_query_log` installs the trusted `pg_trgm`
+extension and adds three record families separate from desired state:
+
+- `query_events`: normalized immutable, cluster/node-attributed source events;
+- `query_ingestion_checkpoints`: one restart-safe cursor/coverage record per
+  node; and
+- `query_ingestion_attempts`: bounded collection evidence and safe failures.
+
+`query_events` uses UUID identity, UTC `timestamptz`, bounded scalar fields, and
+bounded JSONB arrays only for rules and answers. Node-scoped uniqueness combines
+the SHA-256 source fingerprint and source occurrence. Composite descending
+cluster/time and cluster/node/time indexes support keyset pagination; status and
+type indexes support filters; lower-case trigram GIN indexes support parameterized
+domain/client substring search. Administrative credentials, node URLs, raw
+payloads, and unrelated configuration are not stored.
+
 ## Release 0.5 statistics
 
 Migration `000009_release_0_5_statistics` keeps telemetry concerns separate:

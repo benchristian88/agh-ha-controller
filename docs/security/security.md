@@ -122,6 +122,21 @@ The UI must clearly show:
 - Who can access it.
 - Whether raw events or aggregates are stored.
 
+Release 0.6 exposes normalized raw events only through authenticated,
+cluster-scoped controller APIs and the same-origin UI. The controller preserves
+node anonymisation exactly as received and does not attempt reversal. Event
+rows exclude administrative credentials, node URLs, full source payloads, and
+unrelated configuration. Routine logs include node IDs, safe status/error codes,
+and inserted counts—not query names, clients, answers, credentials, or response
+bodies. Search is length-validated and parameterized.
+
+The single local administrator role is the current authorization boundary;
+fine-grained Query Log RBAC remains later scope and must be introduced before
+multi-role access. Existing Query Log clear commands remain separately
+confirmed, CSRF-protected, durable, and audited. Retention cleanup is not a
+node-clear operation. Query events remain excluded from normal diagnostic and
+support bundles unless a future explicit redacted export is designed.
+
 ## Threats to consider
 
 - Compromised controller.

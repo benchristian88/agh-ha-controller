@@ -210,31 +210,28 @@ Node overrides may be embedded in the revision document initially. If independen
 
 ### query_events
 
-- event_id
+- id
+- cluster_id
 - node_id
 - source_timestamp
-- received_at
-- client_address
-- client_name
-- domain
+- ingested_at
+- source_fingerprint and source_occurrence
+- query_name
 - query_type
-- status
+- client_identifier, display name, and protocol
+- response status and code
+- processing milliseconds
 - upstream
-- elapsed_ms
-- result
-- rule
-- source_identity
+- filtering reason and service
+- bounded rule and answer JSON arrays
+- cache and answer-DNSSEC flags
 
-### ingestion_checkpoints
+### query_ingestion_checkpoints and attempts
 
-- id
-- node_id
-- mode
-- checkpoint_json
-- last_event_at
-- last_success_at
-- lag_seconds
-- updated_at
+- one checkpoint per node with cluster, high-water/source bounds, last
+  attempt/success, safe state/error/gap, logging state, and node version;
+- immutable UUID attempts with start/completion, status/error, bounded counts,
+  page count, and gap evidence.
 
 ## Indexing
 
@@ -255,13 +252,12 @@ Initial indexes:
 
 ## High-volume strategy
 
-For query events:
-
-1. Start with a PostgreSQL partitioned table by time.
-2. Keep recent raw records.
-3. Build hourly and daily rollups.
-4. Make retention configurable.
-5. Measure before introducing ClickHouse.
+Release 0.6 deliberately starts with one indexed PostgreSQL table rather than
+premature partitions. Retention is short (seven days by default, 90-day hard
+maximum), cleanup is bounded, list queries use keyset pagination, and source
+inserts use one PostgreSQL batch per node poll. Time partitioning should be
+introduced only with measured sustained volume and an append-only migration;
+query-derived rollups and ClickHouse remain later scope.
 
 ## Secrets
 

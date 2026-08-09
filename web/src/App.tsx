@@ -18,6 +18,7 @@ import { CustomRulesPage } from "./features/filters/CustomRulesPage";
 import { GeneralSettingsPage } from "./features/general/GeneralSettingsPage";
 import { RevisionsPage } from "./features/history/HistoryPage";
 import { NodesPage } from "./features/nodes/NodesPage";
+import { QueryLogPage } from "./features/query-log/QueryLogPage";
 import { RewritesPage } from "./features/rewrites/RewritesPage";
 import { StatisticsPage } from "./features/statistics/StatisticsPage";
 import { ApiError, api } from "./lib/api";
@@ -178,6 +179,9 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
         break;
       case "statistics":
         content = <StatisticsPage cluster={selected} />;
+        break;
+      case "query-log":
+        content = <QueryLogPage cluster={selected} />;
         break;
       case "configuration":
         content = <ConfigurationPage cluster={selected} />;
