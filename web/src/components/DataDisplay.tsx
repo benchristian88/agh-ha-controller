@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { EmptyState, ErrorState, LoadingSkeleton } from "./Feedback";
 import { StatusBadge, type StatusKind } from "./StatusBadge";
 
@@ -24,6 +24,9 @@ export function DataTable<Row>({
   emptyDescription,
   filteredEmpty = false,
   pagination,
+  expandedRowKey,
+  renderExpandedRow,
+  expandedRowId,
 }: {
   columns: readonly DataTableColumn<Row>[];
   rows: readonly Row[];
@@ -38,6 +41,9 @@ export function DataTable<Row>({
   emptyDescription?: ReactNode;
   filteredEmpty?: boolean;
   pagination?: ReactNode;
+  expandedRowKey?: string;
+  renderExpandedRow?: (row: Row) => ReactNode;
+  expandedRowId?: (row: Row) => string;
 }) {
   if (loading) return <LoadingSkeleton label={loadingLabel} rows={4} />;
   if (error !== undefined) return <ErrorState error={error} retry={retry} />;
@@ -72,19 +78,43 @@ export function DataTable<Row>({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={rowKey(row)}>
-                {columns.map((column) => (
-                  <td
-                    key={column.id}
-                    className={column.className}
-                    data-align={column.align}
+            {rows.map((row) => {
+              const key = rowKey(row);
+              const expanded =
+                renderExpandedRow !== undefined && key === expandedRowKey;
+              return (
+                <Fragment key={key}>
+                  <tr
+                    className={
+                      expanded ? "table-summary-row--expanded" : undefined
+                    }
+                    data-expanded={expanded || undefined}
                   >
-                    {column.render(row)}
-                  </td>
-                ))}
-              </tr>
-            ))}
+                    {columns.map((column) => (
+                      <td
+                        key={column.id}
+                        className={column.className}
+                        data-align={column.align}
+                      >
+                        {column.render(row)}
+                      </td>
+                    ))}
+                  </tr>
+                  {expanded && (
+                    <tr className="table-inline-detail-row">
+                      <td colSpan={columns.length}>
+                        <div
+                          className="table-inline-detail"
+                          id={expandedRowId?.(row)}
+                        >
+                          {renderExpandedRow(row)}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>

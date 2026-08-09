@@ -12,7 +12,7 @@ Check:
 - Disk capacity.
 - Query ingestion lag.
 
-`/health` proves the process is serving and `/ready` additionally proves PostgreSQL connectivity. Deployment state is visible in **Deployments & drift**; query ingestion checks do not exist yet.
+`/health` proves the process is serving and `/ready` additionally proves PostgreSQL connectivity. Deployment execution is visible in **HA Controller > Deployments** and continuing convergence incidents in **HA Controller > Drift**; query ingestion checks do not exist yet.
 
 If readiness fails, the controller must not be treated as able to accept state changes. AdGuard Home DNS remains independent.
 
@@ -145,6 +145,11 @@ If validation reports a missing/invalid DNS port or bind address after upgrading
 Release 0.3, including Docker and systemd installation and functional validation, was completed by the operator on 30 July 2026.
 
 ## Release 0.4 broader configuration checks
+
+The operator completed Release 0.4 functional, Docker-installation, and
+native/systemd-installation validation on 3 August 2026. The procedure below is
+retained for repeatable upgrades and incident diagnosis; it is no longer an
+open Release 0.4 completion gate.
 
 1. Upgrade PostgreSQL through migration `000004_release_0_4` and confirm existing schema-v1 revisions still compare, preview, roll back, and reconcile.
 2. Refresh every node. v0.107.52 must report schema v1 with an upgrade warning; v0.107.53–v0.107.78 must report schema v2 and explicit patch-level feature flags. A newer unverified contract must report unknown and block deployment.

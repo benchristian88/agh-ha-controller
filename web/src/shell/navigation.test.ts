@@ -33,4 +33,19 @@ describe("application navigation", () => {
       expect(isGroupActive(group, "/")).toBe(false);
     }
   });
+
+  it("orders the HA lifecycle consistently with Revisions terminology", () => {
+    const group = PRIMARY_NAVIGATION.find(
+      (item) => item.label === "HA Controller",
+    );
+    expect(group && isNavigationGroup(group)).toBe(true);
+    if (!group || !isNavigationGroup(group)) return;
+    expect(group.children).toEqual([
+      { label: "Nodes", href: "/ha/nodes" },
+      { label: "Configuration Control", href: "/ha/configuration" },
+      { label: "Revisions", href: "/ha/revisions" },
+      { label: "Deployments", href: "/ha/deployments" },
+      { label: "Drift", href: "/ha/drift" },
+    ]);
+  });
 });

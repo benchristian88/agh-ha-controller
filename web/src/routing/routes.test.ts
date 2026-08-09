@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { CANONICAL_PATHS, LEGACY_REDIRECTS, resolveRoute } from "./routes";
+import {
+  CANONICAL_PATHS,
+  LEGACY_REDIRECTS,
+  preserveRouteState,
+  resolveRoute,
+} from "./routes";
 
 describe("canonical route safety", () => {
   it("resolves every canonical route without a redirect or fallback", () => {
@@ -25,9 +30,9 @@ describe("canonical route safety", () => {
       "/query-log": "planned",
       "/ha/nodes": "nodes",
       "/ha/configuration": "configuration",
-      "/ha/deployments": "control-plane",
-      "/ha/drift": "control-plane",
-      "/ha/history": "history",
+      "/ha/revisions": "revisions",
+      "/ha/deployments": "deployments",
+      "/ha/drift": "drift",
       "/setup-guide": "planned",
       "/system/users": "planned",
       "/system/audit": "audit",
@@ -39,10 +44,8 @@ describe("canonical route safety", () => {
     expect(Object.keys(expectedKinds)).toEqual([...CANONICAL_PATHS]);
     for (const [path, kind] of Object.entries(expectedKinds))
       expect(resolveRoute(path).kind).toBe(kind);
-    expect(resolveRoute("/ha/deployments")).toMatchObject({
-      focus: "deployments",
-    });
-    expect(resolveRoute("/ha/drift")).toMatchObject({ focus: "drift" });
+    expect(resolveRoute("/ha/deployments")).toEqual({ kind: "deployments" });
+    expect(resolveRoute("/ha/drift")).toEqual({ kind: "drift" });
   });
 
   it("renders an explicit not-found result for unknown paths", () => {
@@ -68,6 +71,23 @@ describe("route migration", () => {
       expect(resolveRoute(from)).toEqual({ kind: "redirect", to });
       expect(resolveRoute(to).kind).not.toBe("not-found");
     }
+  });
+
+  it("makes revisions canonical and preserves history as a compatibility redirect", () => {
+    expect(resolveRoute("/ha/revisions")).toEqual({ kind: "revisions" });
+    expect(resolveRoute("/ha/history")).toEqual({
+      kind: "redirect",
+      to: "/ha/revisions",
+    });
+    expect(
+      preserveRouteState(
+        "/ha/revisions",
+        "?revisionId=revision-42&source=bookmark",
+        "#full-configuration",
+      ),
+    ).toBe(
+      "/ha/revisions?revisionId=revision-42&source=bookmark#full-configuration",
+    );
   });
 
   it("normalises trailing slashes without changing route identity", () => {

@@ -438,6 +438,7 @@ export interface Deployment {
   failurePolicy: "stop";
   origin: "manual" | "rollback" | "reconciliation";
   rollbackOfRevisionId?: string;
+  requestedBy?: string;
   requestId: string;
   cancelRequested: boolean;
   errorCode?: string;

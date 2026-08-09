@@ -167,3 +167,34 @@ For every released schema:
 - Preserve data.
 - Start application.
 - Run smoke workflow.
+
+## 3 August 2026 HA responsibility separation
+
+The information-architecture split passed 195 frontend tests across 32 files,
+including exact distinct-route resolution, responsibility exclusions, enriched
+Nodes presentation, semantic diff contexts, and Axe structural WCAG A/AA checks
+for Configuration Control, Revisions, Deployments, and Drift. TypeScript,
+Biome, the Vite production build, and the production dependency audit also
+passed with zero vulnerabilities.
+
+The complete Go suite and uncached race suite passed, including the existing
+PostgreSQL integration packages through their compiled environment-gated skip
+path. `go vet`, controller/migrator builds, systemd installer shell syntax, and
+`git diff --check` passed. `TEST_DATABASE_URL` is unset and Docker is not
+installed in this workspace, so a PostgreSQL execution run and Compose
+validation were not rerun. No backend or migration changed. New authenticated
+real-browser per-page screenshots and browser-history automation remain
+explicit follow-on work; DOM interaction, keyboard shell, Axe, responsive
+feature regressions, and the existing light/dark baseline suite passed.
+
+## 9 August 2026 revision lifecycle presentation
+
+Focused frontend coverage verifies `/ha/revisions` canonical routing and the
+query/hash-preserving `/ha/history` redirect; navigation order and terminology;
+backward-compatible expandable `DataTable` rows; returned-revision publication
+handoff without deployment; deep-linked inline revision detail and nested full
+configuration disclosure; invalid preview blocking; explicit deployment
+confirmation and returned-deployment navigation; active deployment automatic
+selection; and collapsed drift rows with exact related-resource links. Axe
+coverage continues across the four separated HA lifecycle pages, including
+their table semantics and dialog infrastructure.

@@ -8,19 +8,21 @@ import { BlocklistsPage } from "./features/blocklists/BlocklistsPage";
 import { ClientsPage } from "./features/clients/ClientsPage";
 import { ClusterCreate } from "./features/clusters/ClusterCreate";
 import { ConfigurationPage } from "./features/configuration/ConfigurationPage";
-import { ControlPlanePage } from "./features/controlplane/ControlPlanePage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { DeploymentsPage } from "./features/deployments/DeploymentsPage";
 import { DHCPPage } from "./features/dhcp/DHCPPage";
 import { DNSSettingsPage } from "./features/dns/DNSSettingsPage";
+import { DriftPage } from "./features/drift/DriftPage";
 import { EncryptionPage } from "./features/encryption/EncryptionPage";
 import { CustomRulesPage } from "./features/filters/CustomRulesPage";
 import { GeneralSettingsPage } from "./features/general/GeneralSettingsPage";
+import { RevisionsPage } from "./features/history/HistoryPage";
 import { NodesPage } from "./features/nodes/NodesPage";
 import { RewritesPage } from "./features/rewrites/RewritesPage";
 import { ApiError, api } from "./lib/api";
 import type { Cluster, User } from "./lib/types";
 import { NotFoundPage, PlannedPage } from "./routing/RouteStatePages";
-import { resolveRoute } from "./routing/routes";
+import { preserveRouteState, resolveRoute } from "./routing/routes";
 import { ApplicationShell } from "./shell/ApplicationShell";
 
 type BootState =
@@ -174,11 +176,16 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
         content = <NodesPage cluster={selected} />;
         break;
       case "configuration":
-      case "history":
         content = <ConfigurationPage cluster={selected} />;
         break;
-      case "control-plane":
-        content = <ControlPlanePage cluster={selected} focus={route.focus} />;
+      case "revisions":
+        content = <RevisionsPage cluster={selected} />;
+        break;
+      case "deployments":
+        content = <DeploymentsPage cluster={selected} />;
+        break;
+      case "drift":
+        content = <DriftPage cluster={selected} />;
         break;
       case "blocked-services":
         content = <BlockedServicesPage cluster={selected} />;
@@ -229,7 +236,7 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
 function RouteRedirect({ to }: { to: string }) {
   useEffect(() => {
     window.location.replace(
-      `${to}${window.location.search}${window.location.hash}`,
+      preserveRouteState(to, window.location.search, window.location.hash),
     );
   }, [to]);
   return <Loading label="Redirecting to the current page…" />;

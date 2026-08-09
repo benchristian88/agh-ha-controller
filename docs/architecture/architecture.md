@@ -106,21 +106,11 @@ PostgreSQL stores:
 
 The frontend provides an AdGuard Home-inspired dark interface with added HA concepts.
 
-Primary navigation:
-
-- Dashboard
-- Query log
-- Statistics
-- DNS settings
-- Filters
-- Clients
-- DNS rewrites
-- Nodes
-- Configuration
-- Change history
-- Log forwarders
-- Users
-- System settings
+Primary navigation follows ADR-0026. HA Controller has five distinct task
+surfaces: Nodes for infrastructure, Configuration Control for forward-looking
+draft approval/publication, Deployments for execution events, Drift for current
+convergence, and Change History for immutable revisions/comparison/rollback.
+Routine authoring remains under the grouped Settings and Filters routes.
 
 ### 3.6 Optional forwarder
 

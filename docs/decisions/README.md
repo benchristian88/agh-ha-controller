@@ -29,3 +29,5 @@ Architecture Decision Records capture durable decisions and their rationale.
 | [ADR-0023](ADR-0023-freeze-release-0-2-read-only-configuration-inventory.md) | Accepted | Freeze Release 0.2 as a read-only configuration inventory |
 | [ADR-0024](ADR-0024-release-0-3-authoritative-deployment-and-reconciliation-boundary.md) | Accepted | Define the Release 0.3 authoritative deployment and reconciliation boundary |
 | [ADR-0025](ADR-0025-version-configuration-schema-and-guard-dhcp-handoffs.md) | Accepted | Version broader configuration and guard DHCP handoffs |
+| [ADR-0026](ADR-0026-adopt-adguard-v2-inspired-ui-language.md) | Accepted | Adopt an AdGuard Home v2-inspired operator model |
+| [ADR-0027](ADR-0027-use-query-backed-inline-details-for-the-ha-revision-lifecycle.md) | Accepted | Use query-backed inline details for the HA revision lifecycle |

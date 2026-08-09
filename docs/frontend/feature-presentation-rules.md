@@ -112,3 +112,12 @@ Never put:
 - plaintext node credentials
 
 into browser state, desired-state documents, diagnostics, or audit metadata.
+
+## HA lifecycle records
+
+Revisions, Deployments, and Drift use compact summary tables with at most one
+adjacent inline detail row. Selection is query-backed with exact opaque IDs;
+configuration content and secrets never enter URLs. Publishing links to the
+exact returned immutable revision but does not deploy. Revision deployment
+requires an API preview and accessible confirmation, then links to the exact
+returned deployment. Drift adoption changes only the mutable draft.

@@ -123,6 +123,13 @@ without changing the corresponding desired policy.
 - `ProgressTimeline`
 - `PartialSuccessPanel`
 
+`DataTable` optionally renders one expanded record as an adjacent table row.
+Feature code owns the record-specific disclosure button and operational detail;
+the shared table owns row adjacency, full-column span, selected styling, and
+backward compatibility for non-expandable consumers. Revisions, Deployments,
+and Drift combine this with query-backed selection. Large immutable revision
+JSON remains a nested, collapsed native disclosure.
+
 ## Feedback and overlays
 
 - `Banner`

@@ -22,9 +22,9 @@
 
 /ha/nodes
 /ha/configuration
+/ha/revisions
 /ha/deployments
 /ha/drift
-/ha/history
 
 /setup-guide
 
@@ -48,14 +48,13 @@ uses existing controller reads for cluster, selected-node scope, active
 revision, node health, and active deployment. A context-read failure is shown
 as unavailable and does not block the feature page.
 
-Phase 10 confirms that every selected feature route uses its migrated
-operator-facing presentation. Encryption is now a dedicated redacted,
-observed-only inventory page rather than the final branch of the superseded
-broad settings component. Deployments and Drift share one control-plane
-implementation but each canonical URL focuses its corresponding section.
-Change History shares Configuration Control, where immutable history and
-comparison remain available. Statistics and Query Log remain explicit planned
-states owned by Releases 0.5 and 0.6.
+Phase 10 confirmed every selected feature route used its migrated
+operator-facing presentation. The 3 August 2026 responsibility pass then
+removed its two remaining combined-page compromises: Deployments and Drift now
+render distinct execution and convergence pages, and Revisions no longer
+renders Configuration Control. They continue to share typed controller APIs
+and semantic presentation primitives. Statistics and Query Log remain explicit
+planned states owned by Releases 0.5 and 0.6.
 
 ## Route migrations
 
@@ -68,15 +67,16 @@ The browser retains the query string and fragment during these redirects.
 | `/settings/services` | `/filters/blocked-services` |
 | `/settings/privacy` | `/settings/general` |
 | `/settings/infrastructure` | `/settings/encryption` |
-| `/ha/revisions` | `/ha/history` |
+| `/ha/history` | `/ha/revisions` |
 | Any canonical path with a trailing slash | The same path without the trailing slash |
 
 ## Configuration Control
 
 `/ha/configuration` is lifecycle control, not a duplicate settings editor. It
 contains the complete read-only schema-v2 draft/change summary, validation,
-observation and import, publication, immutable revision history and comparison,
-deployment preview/deploy, and rollback.
+advanced observation and import/adoption, and immutable publication. Revision
+history/comparison/rollback belong to `/ha/revisions`; execution progress belongs
+to `/ha/deployments`; continuing divergence belongs to `/ha/drift`.
 
 ## Route principles
 
@@ -84,7 +84,8 @@ deployment preview/deploy, and rollback.
 - Cluster and selected-node scope remain application context; secrets never
   appear in URLs.
 - Active submenu children highlight their parent.
-- Detail routes may add UUIDs in later releases.
+- Revision, deployment, and drift selection use `revisionId`, `deploymentId`,
+  and `driftId` query parameters and preserve unrelated query state.
 - Unknown routes fail visibly.
 
 ## Breadcrumbs
@@ -93,6 +94,6 @@ Use breadcrumbs on future detail pages, not top-level pages.
 
 ```text
 Nodes / AGH Node A
-Change History / Revision 42
+Revisions / Revision 42
 Deployments / Deployment 8f...
 ```
