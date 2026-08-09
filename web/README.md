@@ -1,6 +1,6 @@
 # Web Frontend
 
-This directory contains the React and TypeScript administration interface for Release 0.6.0.
+This directory contains the React and TypeScript administration interface for Release 0.8.0.
 
 Read:
 

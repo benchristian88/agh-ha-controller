@@ -55,3 +55,14 @@ stored as mutable database resources; a UI setting would introduce a second
 configuration authority. Use autovacuum and regular `ANALYZE`; do not schedule
 manual `VACUUM FULL` in normal operation. Monitor table and index growth,
 autovacuum lag, and backup duration as event volume grows.
+
+## HA lifecycle evidence
+
+DNS probe samples are retained for 30 days and transition-oriented HA events
+and their delivery attempts for 365 days. Cleanup deletes at most 10,000 events
+in a pass and cascades only their internal deliveries. Upgrade operations and
+audits are not automatically shortened in Release 0.8 because they are
+operator/action evidence; capacity must be reviewed before introducing a
+destructive policy. Probe rows contain no query answers or
+client activity—the configured test name, credentials, and raw packets are not
+persisted.

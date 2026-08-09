@@ -25,8 +25,15 @@ Release 0.7 adds authenticated Operational Status for API/PostgreSQL, node
 connectivity versus full observation, per-node Statistics and Query Log
 collection, known gaps, workers, retention, and storage growth. The Dashboard
 links a compact summary, cleanup is bounded, and opt-in bearer-protected
-Prometheus worker metrics are available. Releases 0.5 Statistics and 0.6 Query
-Log are complete and validated. AdGuard Home remains the only DNS engine; the
+Prometheus worker metrics are available. Releases 0.5 Statistics, 0.6 Query
+Log, and 0.7 operational hardening are complete and operator-validated.
+
+Release 0.8 adds active UDP/TCP DNS health distinct from management API health,
+N-node HA capacity/history, maintenance and fail-closed return workflows,
+certificate and AdGuard version awareness, encrypted webhook notifications,
+and durable guided native/systemd or Docker upgrades. Atlas coordinates these
+workflows but still carries no live DNS traffic and runs no remote upgrade
+commands. AdGuard Home remains the only DNS engine; the
 controller can stop without interrupting DNS. See the [operational-health
 design](docs/backend/operational-health.md), [feature
 ledger](docs/product/feature-ledger.md), and [ADR-0029](docs/decisions/ADR-0029-remain-agentless-by-default.md).
@@ -71,9 +78,9 @@ The complete architecture is documented in [docs/architecture/architecture.md](d
 
 ## Technology stack
 
-### Services implemented through 0.7
+### Services implemented through 0.8
 
-- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, health/statistics/query-log polling, schema-versioned configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, audited filter refresh, bounded retention, Operational Status, protected metrics, session cleanup, audit access, and operational probes.
+- `agh-ha-controller`: one Go process providing the `/api/v1` REST API, same-origin React UI, authentication, cluster/node management, API/DNS health, statistics/query-log polling, schema-versioned configuration observation/capabilities, desired drafts, immutable revisions, durable deployment execution, semantic read-back verification, drift evaluation/reconciliation, lifecycle coordination/guided upgrades, webhook notifications, bounded retention, Operational Status, protected metrics, session cleanup, audit access, and operational probes.
 - PostgreSQL 17: the system of record for users/sessions, clusters/nodes, encrypted credential envelopes, capability profiles, immutable observations/revisions, optimistic drafts, deployments and ordered per-node tasks, drift events, audit history, normalized node-attributed statistics, query events, and query-ingestion evidence.
 - AdGuard Home adapter: bounded direct HTTP(S) reads and version-aware writes. Schema v2 manages broader DNS behavior, blocklists/allowlists, custom rules, persistent clients, rewrites, blocked-service schedules, safety services, Safe Search, query-log/statistics policy, and guarded DHCP configuration/static leases. DNS bind hosts/port remain verification-only. TLS responses are reduced to public status and certificate metadata before entering domain state.
 - Deployment worker: claims durable jobs, validates and observes all targets before mutation, applies one node at a time, skips already-converged DHCP configuration writes, stops on first failure, honors cancellation only between nodes, verifies by a new immutable observation, and activates the revision only after total success. Rejected mutations retain a safe method/path/status diagnostic on the per-node task without storing AdGuard Home response bodies.
@@ -121,7 +128,7 @@ HA Controller contains five distinct pages:
 
 ### Operational health
 
-Administration -> Operational Status answers whether Atlas itself is healthy.
+Administration -> Operational Status answers whether AGH DNS Controller itself is healthy.
 `/health` is liveness, `/ready` is PostgreSQL-aware readiness, and the detailed
 cluster endpoint is authenticated. Set a random `METRICS_BEARER_TOKEN` of at
 least 32 characters to enable `/metrics`; it otherwise returns 404. Restrict
@@ -200,6 +207,19 @@ Query detail can propose an allow/block custom rule, prefill a DNS rewrite, or
 search managed clients. These links enter existing mutable desired-state
 workflows. Operators must still add and save the draft, publish an immutable
 revision, and explicitly deploy it.
+
+## HA operations workflow
+
+Use **HA -> HA Operations** for verified serving capacity, certificate/version
+warnings, event history, webhook channels, and guided upgrade history. Open a
+node lifecycle detail before maintenance. Preflight blocks active deployments
+and active DHCP ownership and warns about remaining DNS capacity. Returning a
+node to service is allowed only after fresh API, observation/capability, DNS,
+active-revision convergence, drift, DHCP, TLS, and collector checks pass.
+Native/systemd and Docker upgrades are guided: Atlas records and validates the
+operation while the operator uses the platform's own install and rollback
+mechanism. See the [HA operations design](docs/backend/ha-operations.md) and
+[runbook](docs/operations/runbook.md).
 
 ## Authoritative configuration workflow
 

@@ -2,6 +2,8 @@ package operationalhealth
 
 import "time"
 
+import "github.com/benchristian88/agh-ha-controller/internal/haoperations"
+
 type State string
 
 const (
@@ -88,14 +90,16 @@ type Summary struct {
 }
 
 type Status struct {
-	GeneratedAt time.Time         `json:"generatedAt"`
-	ClusterID   string            `json:"clusterId"`
-	Summary     Summary           `json:"summary"`
-	API         State             `json:"api"`
-	Database    Database          `json:"database"`
-	Nodes       []NodeSubsystem   `json:"nodes"`
-	Observation CollectionSummary `json:"observation"`
-	Statistics  CollectionSummary `json:"statistics"`
-	QueryLog    CollectionSummary `json:"queryLog"`
-	Workers     []Worker          `json:"workers"`
+	GeneratedAt time.Time              `json:"generatedAt"`
+	ClusterID   string                 `json:"clusterId"`
+	Summary     Summary                `json:"summary"`
+	API         State                  `json:"api"`
+	Database    Database               `json:"database"`
+	Nodes       []NodeSubsystem        `json:"nodes"`
+	DNSService  CollectionSummary      `json:"dnsService"`
+	HA          haoperations.HASummary `json:"ha"`
+	Observation CollectionSummary      `json:"observation"`
+	Statistics  CollectionSummary      `json:"statistics"`
+	QueryLog    CollectionSummary      `json:"queryLog"`
+	Workers     []Worker               `json:"workers"`
 }

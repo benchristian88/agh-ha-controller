@@ -16,6 +16,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/auth"
 	"github.com/benchristian88/agh-ha-controller/internal/controlplane"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/haoperations"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
 	"github.com/benchristian88/agh-ha-controller/internal/operations"
@@ -87,6 +88,29 @@ type OperationalHealthService interface {
 	Status(context.Context, string) (operationalhealth.Status, error)
 }
 
+type HAOperationsService interface {
+	Summary(context.Context, string) (haoperations.HASummary, error)
+	Lifecycle(context.Context, string) (haoperations.NodeLifecycle, error)
+	Settings(context.Context, string) (haoperations.NodeSettings, error)
+	UpdateSettings(context.Context, domain.Actor, string, haoperations.NodeSettings, int) (haoperations.NodeSettings, error)
+	ProbeNode(context.Context, string) (haoperations.DNSProbeResult, error)
+	Certificates(context.Context, string) ([]haoperations.Certificate, error)
+	Versions(context.Context, string) ([]haoperations.VersionState, error)
+	MaintenancePreflight(context.Context, string) (haoperations.MaintenancePreflight, error)
+	EnterMaintenance(context.Context, domain.Actor, string, int, bool, string) (domain.Node, error)
+	ReturnToService(context.Context, domain.Actor, string, int) (haoperations.ReturnValidation, error)
+	History(context.Context, string, string, int) ([]haoperations.Event, error)
+	StartUpgrade(context.Context, domain.Actor, string, string) (haoperations.Upgrade, error)
+	CompleteUpgrade(context.Context, domain.Actor, string, int) (haoperations.Upgrade, error)
+	Upgrades(context.Context, string, int) ([]haoperations.Upgrade, error)
+}
+
+type NotificationSettingsService interface {
+	List(context.Context, string) ([]haoperations.NotificationChannel, error)
+	Save(context.Context, domain.Actor, string, string, string, string, bool, int) (haoperations.NotificationChannel, error)
+	Delete(context.Context, domain.Actor, string, int) error
+}
+
 type Server struct {
 	auth           *auth.Service
 	management     *domain.ManagementService
@@ -101,6 +125,8 @@ type Server struct {
 	statistics     StatisticsService
 	queryLog       QueryLogService
 	operational    OperationalHealthService
+	haOperations   HAOperationsService
+	notifications  NotificationSettingsService
 	metrics        *operationalhealth.Tracker
 	metricsToken   string
 	controlplane   *controlplane.Service
@@ -118,6 +144,10 @@ func (s *Server) SetDNSOperations(service DNSOperationService)          { s.dnsO
 func (s *Server) SetStatistics(service StatisticsService)               { s.statistics = service }
 func (s *Server) SetQueryLog(service QueryLogService)                   { s.queryLog = service }
 func (s *Server) SetOperationalHealth(service OperationalHealthService) { s.operational = service }
+func (s *Server) SetHAOperations(service HAOperationsService)           { s.haOperations = service }
+func (s *Server) SetNotificationSettings(service NotificationSettingsService) {
+	s.notifications = service
+}
 func (s *Server) SetMetrics(tracker *operationalhealth.Tracker, token string) {
 	s.metrics, s.metricsToken = tracker, token
 }
@@ -160,11 +190,26 @@ func (s *Server) routes() {
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/query-events", s.authenticated(false, http.HandlerFunc(s.handleQueryEvents)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/query-events/{eventId}", s.authenticated(false, http.HandlerFunc(s.handleQueryEventDetail)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/operational-status", s.authenticated(false, http.HandlerFunc(s.handleOperationalStatus)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/ha-status", s.authenticated(false, http.HandlerFunc(s.handleHAStatus)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/ha-history", s.authenticated(false, http.HandlerFunc(s.handleHAHistory)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/certificates", s.authenticated(false, http.HandlerFunc(s.handleCertificates)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/versions", s.authenticated(false, http.HandlerFunc(s.handleVersions)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/upgrades", s.authenticated(false, http.HandlerFunc(s.handleUpgrades)))
+	s.mux.Handle("GET /api/v1/clusters/{clusterId}/notification-channels", s.authenticated(false, http.HandlerFunc(s.handleNotificationChannels)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/notification-channels", s.authenticated(true, http.HandlerFunc(s.handleSaveNotificationChannel)))
 	s.mux.Handle("GET /api/v1/nodes/{nodeId}", s.authenticated(false, http.HandlerFunc(s.handleGetNode)))
+	s.mux.Handle("GET /api/v1/nodes/{nodeId}/lifecycle", s.authenticated(false, http.HandlerFunc(s.handleNodeLifecycle)))
+	s.mux.Handle("PUT /api/v1/nodes/{nodeId}/lifecycle-settings", s.authenticated(true, http.HandlerFunc(s.handleLifecycleSettings)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/dns-probe", s.authenticated(true, http.HandlerFunc(s.handleDNSProbe)))
+	s.mux.Handle("GET /api/v1/nodes/{nodeId}/maintenance-preflight", s.authenticated(false, http.HandlerFunc(s.handleMaintenancePreflight)))
 	s.mux.Handle("PATCH /api/v1/nodes/{nodeId}", s.authenticated(true, http.HandlerFunc(s.handleUpdateNode)))
 	s.mux.Handle("DELETE /api/v1/nodes/{nodeId}", s.authenticated(true, http.HandlerFunc(s.handleDeleteNode)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/test-connection", s.authenticated(true, http.HandlerFunc(s.handleTestNode)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/maintenance", s.authenticated(true, http.HandlerFunc(s.handleNodeMaintenance)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/return-to-service", s.authenticated(true, http.HandlerFunc(s.handleReturnToService)))
+	s.mux.Handle("POST /api/v1/nodes/{nodeId}/upgrades", s.authenticated(true, http.HandlerFunc(s.handleStartUpgrade)))
+	s.mux.Handle("POST /api/v1/upgrades/{upgradeId}/validate", s.authenticated(true, http.HandlerFunc(s.handleValidateUpgrade)))
+	s.mux.Handle("DELETE /api/v1/notification-channels/{channelId}", s.authenticated(true, http.HandlerFunc(s.handleDeleteNotificationChannel)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/observations", s.authenticated(true, http.HandlerFunc(s.handleObserveNode)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/filter-refresh", s.authenticated(true, http.HandlerFunc(s.handleFilterRefresh)))
 	s.mux.Handle("GET /api/v1/nodes/{nodeId}/dhcp/interfaces", s.authenticated(false, http.HandlerFunc(s.handleDHCPInterfaces)))

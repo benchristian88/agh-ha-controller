@@ -29,6 +29,7 @@ describe("canonical route safety", () => {
       "/filters/custom-rules": "settings",
       "/query-log": "query-log",
       "/ha/nodes": "nodes",
+      "/ha/operations": "ha-operations",
       "/ha/configuration": "configuration",
       "/ha/revisions": "revisions",
       "/ha/deployments": "deployments",
@@ -47,6 +48,12 @@ describe("canonical route safety", () => {
       expect(resolveRoute(path).kind).toBe(kind);
     expect(resolveRoute("/ha/deployments")).toEqual({ kind: "deployments" });
     expect(resolveRoute("/ha/drift")).toEqual({ kind: "drift" });
+    expect(
+      resolveRoute("/ha/nodes/11111111-1111-4111-8111-111111111111"),
+    ).toEqual({
+      kind: "node-lifecycle",
+      nodeId: "11111111-1111-4111-8111-111111111111",
+    });
   });
 
   it("renders an explicit not-found result for unknown paths", () => {

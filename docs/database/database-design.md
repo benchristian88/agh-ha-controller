@@ -286,3 +286,13 @@ Release 0.1 uses AES-256-GCM. The node UUID is authenticated additional data, pr
 Drafts and mutable settings should have a version integer or updated-at precondition.
 
 An update with a stale version returns a conflict and does not overwrite another operator's work.
+
+Release 0.8 deliberately adds parallel *DNS service* health evidence because a
+successful management API request does not prove that the node answers DNS.
+`node_lifecycle_settings` is mutable and optimistic;
+`dns_probe_results`, `ha_operational_events`, and `upgrade_operations` are
+durable operational history. `upstream_release_cache` bounds external lookups.
+`notification_channels` stores only encrypted destinations and
+`notification_deliveries` stores bounded state/error codes. Node/history
+foreign keys are restrictive; internal deliveries cascade when their channel is
+removed or their one-year parent event expires.

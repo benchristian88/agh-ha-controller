@@ -213,7 +213,9 @@ export function NodesPage({ cluster }: { cluster: Cluster }) {
                 {nodes.map((node) => (
                   <tr key={node.id}>
                     <td>
-                      <strong>{node.name}</strong>
+                      <a href={`/ha/nodes/${encodeURIComponent(node.id)}`}>
+                        <strong>{node.name}</strong>
+                      </a>
                       <span className="table-subtitle">{node.baseUrl}</span>
                     </td>
                     <td>

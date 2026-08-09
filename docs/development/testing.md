@@ -3,6 +3,13 @@
 Release 0.7 operational-health validation and its remaining packaged/real-node
 gates are tracked in `docs/development/release-0.7-validation.md`.
 
+Release 0.8 validation and its external gate distinction are tracked in
+`docs/development/release-0.8-validation.md`. Unit/contract coverage includes
+DNS wire validation and malformed responses, upstream release caching/failure,
+API authentication/CSRF through the shared middleware, lifecycle UI states,
+DHCP preflight blocking, and accessibility. PostgreSQL, real-node DNS failure,
+and packaged install evidence remain release gates rather than simulated claims.
+
 ## Unit tests
 
 Target:

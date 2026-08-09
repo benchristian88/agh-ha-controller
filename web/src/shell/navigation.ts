@@ -37,6 +37,7 @@ export const PRIMARY_NAVIGATION: readonly (NavigationLink | NavigationGroup)[] =
       label: "HA Controller",
       children: [
         { label: "Nodes", href: "/ha/nodes" },
+        { label: "HA Operations", href: "/ha/operations" },
         { label: "Configuration Control", href: "/ha/configuration" },
         { label: "Revisions", href: "/ha/revisions" },
         { label: "Deployments", href: "/ha/deployments" },
@@ -65,5 +66,9 @@ export function isGroupActive(
   group: NavigationGroup,
   pathname: string,
 ): boolean {
-  return group.children.some((child) => child.href === pathname);
+  return group.children.some(
+    (child) =>
+      child.href === pathname ||
+      (child.href === "/ha/nodes" && pathname.startsWith("/ha/nodes/")),
+  );
 }

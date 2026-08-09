@@ -103,6 +103,14 @@ Lower-frequency controller administration:
 
 - Users
 - Operational Status
+- HA Operations
+
+`/ha/operations` is the fleet-level lifecycle surface: verified DNS capacity,
+API/convergence/maintenance counts, certificate/version warnings, upgrade
+history, notification configuration, and HA events. `/ha/nodes/{nodeId}` is the
+node lifecycle detail for probe settings, preflight, maintenance, return checks,
+certificate/version state, guided upgrades, and node-attributed history. The
+existing `/nodes` page remains infrastructure inventory and links to detail.
 - Audit Log
 - System Settings
 - Backups

@@ -17,6 +17,7 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/controlplane"
 	"github.com/benchristian88/agh-ha-controller/internal/database"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/agh-ha-controller/internal/haoperations"
 	"github.com/benchristian88/agh-ha-controller/internal/inventory"
 	"github.com/benchristian88/agh-ha-controller/internal/jobs"
 	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
@@ -69,6 +70,10 @@ func run() error {
 	management := domain.NewManagementService(store, credentialCipher, probe)
 	configurationAdapter := adguard.NewConfigurationReader(probe)
 	inventoryService := inventory.NewService(store, credentialCipher, configurationAdapter)
+	haOperationsService := haoperations.NewService(store, management, inventoryService, probe, credentialCipher, haoperations.NewWireDNSProber(2*time.Second))
+	haOperationsService.SetVersionCompatibility(adguard.ConfigurationCompatibility)
+	notificationService := haoperations.NewNotificationService(store, credentialCipher)
+	releaseChecker := haoperations.NewReleaseChecker(store)
 	operationService := operations.NewService(store, credentialCipher)
 	operationExecutor := operations.NewExecutor(store, credentialCipher, credentialCipher, configurationAdapter, inventoryService)
 	if err := operationExecutor.RecoverInterrupted(rootContext); err != nil {
@@ -81,7 +86,7 @@ func run() error {
 	}
 	reconciler := controlplane.NewReconciler(store, controlplaneService, inventoryService, logger)
 	workerHealth := operationalhealth.NewTracker()
-	for _, worker := range []string{"node_connectivity", "statistics_collection", "statistics_retention", "query_log_collection", "query_log_retention", "deployment", "operational_commands", "drift_reconciliation", "session_cleanup"} {
+	for _, worker := range []string{"node_connectivity", "dns_service_health", "adguard_release_check", "notification_delivery", "statistics_collection", "statistics_retention", "query_log_collection", "query_log_retention", "deployment", "operational_commands", "drift_reconciliation", "session_cleanup"} {
 		workerHealth.Register(worker, (worker == "query_log_collection" || worker == "query_log_retention") && !configuration.QueryLogCollection)
 	}
 	healthPoller := jobs.NewHealthPoller(store, credentialCipher, probe, configuration.NodeHealthInterval, logger, workerHealth)
@@ -97,7 +102,11 @@ func run() error {
 		StatisticsRetention: 400 * 24 * time.Hour, QueryLogRetention: configuration.QueryLogRetention,
 		QueryLogEnabled: configuration.QueryLogCollection,
 	})
+	operationalService.SetHAOperations(haOperationsService)
 	go healthPoller.Run(rootContext)
+	go jobs.RunHAOperations(rootContext, haOperationsService, configuration.NodeHealthInterval, logger, workerHealth)
+	go jobs.RunReleaseChecks(rootContext, releaseChecker, logger, workerHealth)
+	go jobs.RunNotificationDelivery(rootContext, notificationService, logger, workerHealth)
 	go statisticsPoller.Run(rootContext)
 	if configuration.QueryLogCollection {
 		queryLogPoller := jobs.NewQueryLogPoller(store, credentialCipher, configurationAdapter, configuration.QueryLogPollInterval, configuration.NodeRequestTimeout, configuration.QueryLogRetention, logger, workerHealth)
@@ -118,6 +127,8 @@ func run() error {
 	apiServer.SetStatistics(statisticsService)
 	apiServer.SetQueryLog(queryLogService)
 	apiServer.SetOperationalHealth(operationalService)
+	apiServer.SetHAOperations(haOperationsService)
+	apiServer.SetNotificationSettings(notificationService)
 	apiServer.SetMetrics(workerHealth, configuration.MetricsToken)
 	httpServer := &http.Server{
 		Addr:              configuration.HTTPAddress,

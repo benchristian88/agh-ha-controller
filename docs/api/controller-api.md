@@ -365,8 +365,46 @@ credentials, node URLs, query contents, or client identifiers.
 `GET /metrics` returns 404 unless `METRICS_BEARER_TOKEN` is configured and
 requires that bearer token when enabled. Metrics use bounded worker labels.
 
-## Later contracts
+## HA Operations and Lifecycle
 
-Statistics and query-event contracts began in 0.5 and 0.6. Full notification
-delivery, HA lifecycle automation, and mutable system settings remain later
-contracts.
+All routes below require an authenticated administrator. Mutations also require
+same-origin CSRF protection and carry the normal request ID. Responses expose
+stable codes and never return node credentials or webhook destinations.
+
+```text
+GET  /api/v1/clusters/{clusterId}/ha-status
+GET  /api/v1/clusters/{clusterId}/ha-history?nodeId={nodeId}&limit=100
+GET  /api/v1/clusters/{clusterId}/certificates
+GET  /api/v1/clusters/{clusterId}/versions
+GET  /api/v1/clusters/{clusterId}/upgrades
+GET  /api/v1/clusters/{clusterId}/notification-channels
+POST /api/v1/clusters/{clusterId}/notification-channels
+DELETE /api/v1/notification-channels/{channelId}
+
+GET  /api/v1/nodes/{nodeId}/lifecycle
+GET  /api/v1/nodes/{nodeId}/maintenance-preflight
+PUT  /api/v1/nodes/{nodeId}/lifecycle-settings
+POST /api/v1/nodes/{nodeId}/dns-probe
+POST /api/v1/nodes/{nodeId}/maintenance
+POST /api/v1/nodes/{nodeId}/return-to-service
+POST /api/v1/nodes/{nodeId}/upgrades
+POST /api/v1/upgrades/{upgradeId}/validate
+```
+
+Lifecycle settings use optimistic `recordVersion` and configure DNS host/port,
+query name/type, expected RCODE, UDP/TCP, and installation type. An empty host
+uses the node URL hostname. Maintenance accepts `maintenance`, `recordVersion`,
+and, only when required, `breakGlass: true` plus the exact confirmation
+`CONTINUE_WITHOUT_DNS_REDUNDANCY`. Clearing maintenance through the legacy route
+uses the same fail-closed return validation.
+
+Creating an upgrade accepts a target version and returns a durable guided
+operation. The operator performs the native/systemd or Docker upgrade, then
+validates with the current node record version. Atlas freshly reads the
+installed version before return checks. Unsupported installation types return
+a capability error and failed validation leaves maintenance enabled.
+
+Notification channel creation accepts a name, HTTPS webhook destination, and
+enabled flag. The destination is write-only; list responses report only
+`destinationSet`. Delete accepts `{ "recordVersion": 1 }`. Delivery history is
+internal durable state in Release 0.8.

@@ -10,6 +10,8 @@ export type SettingsArea =
 export type RouteResolution =
   | { kind: "dashboard" }
   | { kind: "nodes" }
+  | { kind: "ha-operations" }
+  | { kind: "node-lifecycle"; nodeId: string }
   | { kind: "statistics" }
   | { kind: "query-log" }
   | { kind: "configuration" }
@@ -45,6 +47,7 @@ export const CANONICAL_PATHS = [
   "/filters/custom-rules",
   "/query-log",
   "/ha/nodes",
+  "/ha/operations",
   "/ha/configuration",
   "/ha/revisions",
   "/ha/deployments",
@@ -145,6 +148,10 @@ export function resolveRoute(pathname: string): RouteResolution {
   const planned = plannedRoutes[pathname];
   if (planned !== undefined) return { kind: "planned", ...planned };
 
+  const nodeLifecycle = pathname.match(/^\/ha\/nodes\/([0-9a-f-]{36})$/i);
+  if (nodeLifecycle?.[1] !== undefined)
+    return { kind: "node-lifecycle", nodeId: nodeLifecycle[1] };
+
   switch (pathname) {
     case "/":
       return { kind: "dashboard" };
@@ -154,6 +161,8 @@ export function resolveRoute(pathname: string): RouteResolution {
       return { kind: "query-log" };
     case "/ha/nodes":
       return { kind: "nodes" };
+    case "/ha/operations":
+      return { kind: "ha-operations" };
     case "/ha/configuration":
       return { kind: "configuration" };
     case "/ha/deployments":

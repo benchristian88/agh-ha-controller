@@ -6,6 +6,7 @@ import type {
   BlockedServicesCatalogue,
   BlocklistPresentation,
   CapabilityProfile,
+  CertificateHealth,
   CertificatePolicy,
   Cluster,
   ConfigurationDifference,
@@ -20,13 +21,21 @@ import type {
   DhcpOperation,
   DNSOperationalCommand,
   DriftEvent,
+  HAEvent,
+  HASummary,
+  LifecycleSettings,
+  MaintenancePreflight,
   Node,
+  NodeLifecycle,
+  NotificationChannel,
   OperationalStatus,
   OperationalTarget,
   QueryEvent,
   QueryEventPage,
   StatisticsReport,
+  UpgradeOperation,
   ValidationIssue,
+  VersionHealth,
 } from "./types";
 
 export class ApiError extends Error {
@@ -147,6 +156,93 @@ export const api = {
   operationalStatus: (clusterId: string) =>
     request<OperationalStatus>(
       `/api/v1/clusters/${clusterId}/operational-status`,
+    ),
+  haStatus: (clusterId: string) =>
+    request<HASummary>(`/api/v1/clusters/${clusterId}/ha-status`),
+  haHistory: (clusterId: string, nodeId = "") => {
+    const query = new URLSearchParams({ limit: "100" });
+    if (nodeId) query.set("nodeId", nodeId);
+    return request<{ items: HAEvent[] }>(
+      `/api/v1/clusters/${clusterId}/ha-history?${query.toString()}`,
+    );
+  },
+  certificates: (clusterId: string) =>
+    request<{ items: CertificateHealth[] }>(
+      `/api/v1/clusters/${clusterId}/certificates`,
+    ),
+  versions: (clusterId: string) =>
+    request<{ items: VersionHealth[] }>(
+      `/api/v1/clusters/${clusterId}/versions`,
+    ),
+  nodeLifecycle: (nodeId: string) =>
+    request<NodeLifecycle>(`/api/v1/nodes/${nodeId}/lifecycle`),
+  maintenancePreflight: (nodeId: string) =>
+    request<MaintenancePreflight>(
+      `/api/v1/nodes/${nodeId}/maintenance-preflight`,
+    ),
+  probeDNS: (nodeId: string) =>
+    request<import("./types").DNSProbeResult>(
+      `/api/v1/nodes/${nodeId}/dns-probe`,
+      { method: "POST", body: "{}" },
+    ),
+  saveLifecycleSettings: (nodeId: string, settings: LifecycleSettings) =>
+    request<LifecycleSettings>(`/api/v1/nodes/${nodeId}/lifecycle-settings`, {
+      method: "PUT",
+      body: JSON.stringify(settings),
+    }),
+  enterMaintenance: (node: Node, breakGlass = false, confirmation = "") =>
+    request<Node>(`/api/v1/nodes/${node.id}/maintenance`, {
+      method: "POST",
+      body: JSON.stringify({
+        enabled: true,
+        recordVersion: node.recordVersion,
+        breakGlass,
+        confirmation,
+      }),
+    }),
+  returnToService: (node: Node) =>
+    request<{
+      nodeId: string;
+      succeeded: boolean;
+      checks: import("./types").LifecycleCheck[];
+    }>(`/api/v1/nodes/${node.id}/return-to-service`, {
+      method: "POST",
+      body: JSON.stringify({ recordVersion: node.recordVersion }),
+    }),
+  upgrades: (clusterId: string) =>
+    request<{ items: UpgradeOperation[] }>(
+      `/api/v1/clusters/${clusterId}/upgrades`,
+    ),
+  startUpgrade: (nodeId: string, targetVersion: string) =>
+    request<UpgradeOperation>(`/api/v1/nodes/${nodeId}/upgrades`, {
+      method: "POST",
+      body: JSON.stringify({ targetVersion }),
+    }),
+  validateUpgrade: (upgradeId: string, recordVersion: number) =>
+    request<UpgradeOperation>(`/api/v1/upgrades/${upgradeId}/validate`, {
+      method: "POST",
+      body: JSON.stringify({ recordVersion }),
+    }),
+  notificationChannels: (clusterId: string) =>
+    request<{ items: NotificationChannel[] }>(
+      `/api/v1/clusters/${clusterId}/notification-channels`,
+    ),
+  saveNotificationChannel: (
+    clusterId: string,
+    input: {
+      id?: string;
+      name: string;
+      destination: string;
+      enabled: boolean;
+      recordVersion?: number;
+    },
+  ) =>
+    request<NotificationChannel>(
+      `/api/v1/clusters/${clusterId}/notification-channels`,
+      {
+        method: "POST",
+        body: JSON.stringify({ id: "", recordVersion: 0, ...input }),
+      },
     ),
   statistics: (clusterId: string, range: string, nodeId = "") => {
     const query = new URLSearchParams({ range, limit: "10" });

@@ -14,3 +14,8 @@ cards, and responsive data tables. Error codes are safe stable summaries.
 Dashboard contains only a compact controller/Statistics/Query Log summary and
 links to the page. Statistics and Query Log retain their established coverage
 presentations and semantics.
+
+Release 0.8 adds a compact HA summary and a distinct DNS Service table here so
+management API reachability and actual DNS answers cannot be conflated. Detailed
+maintenance, certificate, version, notification, and upgrade actions live on HA
+Operations rather than expanding this diagnostic page.

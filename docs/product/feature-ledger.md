@@ -138,7 +138,7 @@ conditional on measured need rather than assigning it a release. See
 
 | Feature | Status | Implementation and evidence | Remaining release validation |
 |---|---|---|---|
-| Operational health model/API | Implemented; automated checks pass | Shared eight-state model; authenticated cluster-scoped `/operational-status`; overall aggregation; safe bounded payload | Packaged PostgreSQL outage and multi-cluster browser exercise |
+| Operational health model/API | Complete and validated | Shared eight-state model; authenticated cluster-scoped `/operational-status`; overall aggregation; safe bounded payload | Completed 9 August 2026 |
 | Operational Status UI | Implemented; frontend checks pass | Administration route, core services, observation/Statistics/Query Log tables, known gaps, workers, storage/retention, loading/error/degraded states | Packaged mobile/desktop light/dark browser captures |
 | Collector and observation health | Implemented | Existing 0.5/0.6 freshness reused; node reachability separated from immutable full observation; attempts/checkpoints remain restart source of truth | Controlled stale/failure/recovery run against two nodes |
 | Worker health and backoff | Implemented; unit checks pass | Process-local bounded tracker, running/last success/failure/streak/next run/duration, reset on recovery; deployment/command exponential backoff capped at 30s | Shutdown and repeated real database failure exercise |
@@ -149,6 +149,26 @@ conditional on measured need rather than assigning it a release. See
 
 Release 0.7 does not add an agent, local spool, machine credentials, notification
 platform, controller HA, node upgrade automation, or DNS traffic handling.
+
+Operator-supplied validation on 9 August 2026 completes Release 0.7. Its
+historical validation report retains the earlier local limitations rather than
+rewriting them.
+
+## Release 0.8 HA operations and lifecycle
+
+| Feature | Status | Implementation and evidence | Remaining release validation |
+|---|---|---|---|
+| Active DNS and HA summary | Implemented; automated checks pass | Independent bounded UDP/TCP queries, observed/default listener, per-node evidence, N-node serving capacity, transition history, 30-day probe/one-year event retention | Real-node UDP/TCP failure/recovery and controller-offline DNS exercise |
+| Maintenance lifecycle | Implemented | Deployment, remaining DNS, break-glass, drift and active-DHCP preflight; maintenance exclusion/suppression; fail-closed fresh API/observation/DNS/convergence/TLS/DHCP/collector return checks | Two-node planned maintenance and DHCP handoff exercise |
+| Failure/certificate/version awareness | Implemented | Failed-node/redundancy transitions, redacted TLS expiry state, 30/7-day warnings, six-hour official upstream release cache, explicit Atlas compatibility | Real certificate and upstream outage exercise |
+| Guided upgrades | Implemented; intentionally not automated | Durable native/systemd and Docker operator-guided workflow, fresh target-version and full return validation; unsupported installation types explicit | Platform upgrade/rollback exercise and version-mismatch recovery |
+| Notifications | Implemented | Optional encrypted write-only HTTPS webhook, durable event/delivery, maintenance suppression, five-attempt bound, safe payload/errors | Receiver failure/retry/redaction exercise |
+| API and frontend | Implemented; automated checks pass | Authenticated/CSRF-protected lifecycle APIs, HA Operations, node lifecycle detail, Operational Status/Dashboard integration, accessibility tests | Packaged desktop/mobile light/dark browser exercise |
+| Migration and packaging | Implemented | Append-only 000012, 0.8.0 version alignment, Docker/systemd build sources | 0.7 database up/down/up copy, clean/upgrade Docker and native/systemd validation |
+
+Release 0.8 is not marked complete until the remaining real-node, PostgreSQL,
+browser, Docker, and systemd gates in `development/release-0.8-validation.md`
+are recorded.
 
 ## Deliberately deferred
 
