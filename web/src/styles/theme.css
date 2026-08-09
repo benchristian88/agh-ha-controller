@@ -115,11 +115,12 @@ h3 { font-size: 1rem; }
 .legend-blocked::before { background: var(--aghha-warning); }
 .statistics-chart__range { margin-left: auto; }
 .statistics-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--aghha-space-4); }
-.statistics-ranking { min-width: 0; }
-.statistics-ranking ol { display: grid; gap: var(--aghha-space-3); margin: 0; padding: 0; list-style: none; }
-.statistics-ranking li > div { display: flex; justify-content: space-between; gap: var(--aghha-space-4); min-width: 0; font-size: .82rem; }
-.statistics-ranking li > div span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.statistics-ranking li strong { flex: 0 0 auto; font-weight: 600; }
+.statistics-ranking { min-width: 0; overflow: hidden; }
+.statistics-ranking ol { display: grid; min-width: 0; gap: var(--aghha-space-3); margin: 0; padding: 0; list-style: none; }
+.statistics-ranking li { min-width: 0; max-width: 100%; }
+.statistics-ranking li > div { display: flex; min-width: 0; max-width: 100%; justify-content: space-between; gap: var(--aghha-space-4); font-size: .82rem; }
+.statistics-ranking li > div span { display: block; min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.statistics-ranking li strong { min-width: max-content; flex: 0 0 auto; font-weight: 600; }
 .statistics-bar { display: block; height: 5px; margin-top: var(--aghha-space-2); overflow: hidden; border-radius: 3px; background: var(--aghha-neutral-soft); }
 .statistics-bar span { display: block; height: 100%; border-radius: inherit; background: var(--aghha-primary); }
 .dashboard-statistics { display: grid; grid-template-columns: minmax(150px, .7fr) minmax(300px, 2fr) auto; gap: var(--aghha-space-5); align-items: center; margin-bottom: var(--aghha-space-6); }
