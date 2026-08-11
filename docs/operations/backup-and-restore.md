@@ -1,81 +1,49 @@
 # Backup and Restore
 
-## Required backup items
+Portable backups protect controller state; they do not replace node-independent
+DNS resilience. Create and preflight a backup before every controller upgrade or
+material configuration/lifecycle change.
 
-- PostgreSQL database.
-- Credential encryption key.
-- Session secret.
-- Runtime environment configuration.
-- Controller TLS material.
-- Installation version.
+## What to preserve
 
-## Backup frequency
+- A Standard or Full `.aghhabackup` archive.
+- Runtime environment configuration (`.env` or
+  `/etc/agh-ha-controller/agh-ha-controller.env`).
+- Database/runtime TLS material and deployment configuration.
+- Source application version, restore target, and the preflight result.
 
-Suggested initial policy:
+The portable archive contains the PostgreSQL dump and credential-encryption key
+inside one passphrase-encrypted authenticated envelope. Runtime database URL,
+session secret, public origin, and TLS are target configuration and remain
+separate.
 
-- Database: daily.
-- Encryption key: after creation and every rotation.
-- Configuration files: after change.
-- Pre-upgrade backup before every release upgrade.
+## Standard versus Full
 
-## Restore validation
+- **Standard** contains the control plane: users/password hashes/enabled state,
+  nodes/encrypted credentials, drafts, immutable observations/revisions,
+  revision/deployment archive metadata, deployments/results, drift, audit,
+  lifecycle/upgrades, notification channels, and system settings.
+- **Full** includes the same control plane plus retained Statistics, Query Log,
+  DNS probes, HA events, and notification delivery history.
 
-A backup is not considered valid until:
+Sessions and controller-release cache data are excluded from restore. Safely
+hard-deleted unused revisions/deployments are absent from backups created after
+deletion and do not reappear. Archive status restores as control-plane state.
 
-- PostgreSQL restores successfully.
-- Controller starts.
-- Revisions are readable.
-- Credentials decrypt.
-- Nodes can be observed.
-- Enforcement can remain disabled during validation.
+## Create and preflight in the UI
 
-Release 0.1 has no configuration enforcement, so restore validation is observation-only by construction. A 0.1 restore must additionally confirm that an existing browser session is invalid if `SESSION_SECRET` changed and that stored node credentials decrypt only when the original credential key is restored.
+System → Backup & Restore creates a Standard or Full download with a new
+passphrase of at least 16 characters. Store the download away from controller
+temporary workspace. Upload it with the passphrase to **Restore preflight**;
+preflight validates the envelope, manifests, checksums, source/schema
+compatibility, type, components, time, and size without mutating PostgreSQL.
 
-Through Release 0.8, automated backup and restore commands were not implemented.
-Releases 0.1 and 0.1.1 were declared complete after operator production-build
-validation on 29 July 2026; the legacy PostgreSQL-native procedure remains
-useful for diagnosing or recovering those installations. Release 0.9 adds the
-portable workflow below.
+Do not regard an archive as usable until preflight succeeds and a periodic
+clean-database restore exercise has completed.
 
-For Docker Compose, back up PostgreSQL from the `postgres-data` volume with PostgreSQL-native tooling and preserve the untracked `.env`. For systemd, use PostgreSQL-native tooling and preserve `/etc/agh-ha-controller/agh-ha-controller.env`. A database without its original credential encryption key cannot decrypt stored node credentials.
+## CLI create and preflight
 
-## Release 0.7 operational-history policy
-
-Configuration/revisions, deployments, drift, node state, users, credentials,
-and audit records are essential. Statistics and Query Log are operational
-history: include them in the default whole-database backup, but they may be
-deliberately excluded when size or recovery time requires it. Losing them
-removes history and may create a Query Log gap; it does not change desired
-configuration or stop DNS. Reset checkpoints consistently if events are
-excluded.
-
-After restore, verify `/ready`, open Operational Status, read the active
-revision/deployments, test one node credential, refresh an observation, and
-confirm new Statistics and Query Log records arrive. Keep Enforce disabled
-until desired and observed state are reviewed. Record restore duration,
-database size, excluded tables, and resulting freshness/gap behavior.
-
-## Release 0.9 portable recovery
-
-System → Backup & Restore creates a Standard or Full `.aghhabackup` download.
-Both require a new operator passphrase of at least 16 characters and protect the
-database plus credential-encryption key as one authenticated `age` payload.
-Standard excludes operational-history table data; Full includes it. Sessions
-and release caches are never restored.
-
-The Compose package provides a controller-owned work volume because the
-read-only container and small `/tmp` tmpfs cannot hold a production dump. It is
-temporary workspace, not backup retention: successful and failed operations
-remove their restricted work directories, and the downloaded archive must be
-stored and protected by the operator. Capacity-plan that volume for several
-working copies of the custom dump while tar/encryption/envelope stages overlap.
-
-Before relying on an archive, upload it to Restore preflight with its passphrase.
-Preflight does not mutate PostgreSQL. Record its format, source application,
-schema, type, creation time, included/excluded components, and size.
-
-The CLI accepts passphrases only from a bounded `0600` regular file that is not
-a symlink:
+Passphrases must come from a bounded `0600` regular file that is not a symlink:
 
 ```bash
 agh-ha-backup create --type standard --output controller.aghhabackup \
@@ -85,12 +53,19 @@ agh-ha-backup preflight --archive controller.aghhabackup \
   --passphrase-file /run/aghha-backup-passphrase
 ```
 
-Restore requires the controller to remain stopped and a separately created,
-empty PostgreSQL database. It refuses any database with public tables and runs
-`pg_restore` in one transaction. If restore fails, the database remains empty
-and the newly written credential-key output is removed. Put the target URL,
-including any database password, in its own bounded `0600` non-symlink file so
-it never appears in process arguments:
+Use `--type full` only when operational history is required and storage/privacy
+policy permits it. Never place the passphrase or target database URL directly in
+process arguments.
+
+## Restore safety contract
+
+Restore is intentionally offline and requires:
+
+1. The controller is stopped for the entire operation.
+2. A separately created PostgreSQL database with no public tables.
+3. A protected passphrase file and protected file containing the target database
+   URL.
+4. An explicit `RESTORE_TO_EMPTY_DATABASE` confirmation.
 
 ```bash
 agh-ha-backup restore --archive controller.aghhabackup \
@@ -100,18 +75,16 @@ agh-ha-backup restore --archive controller.aghhabackup \
   --confirm RESTORE_TO_EMPTY_DATABASE
 ```
 
-Install the recovered key as `CREDENTIAL_ENCRYPTION_KEY`, point `DATABASE_URL`
-at the restored database, preserve the target's session secret/public URL/TLS,
-and restart. Keep the old database until administrator login, disabled accounts,
-node credential decryption/connectivity, draft/revisions/active deployment,
-drift, settings, collectors, and expected history are verified. Enforce should
-remain disabled until desired and observed state have been reviewed.
+Restore uses `pg_restore` in one transaction. Failure leaves the target empty and
+removes newly written key output. Configure the recovered value as
+`CREDENTIAL_ENCRYPTION_KEY`, point `DATABASE_URL` to the restored database, and
+preserve the target's session secret/public URL/TLS.
 
-### Docker Compose clean-install recovery
+## Docker clean-database recovery
 
-Keep the archive and both protected input files in a root-owned `0700` recovery
-directory. Stop only the controller, create a new database alongside the old
-one, and run the image's backup CLI as a one-off offline administration process:
+Place the archive and protected files in a root-owned `0700` `recovery`
+directory. Stop only the controller and create a new database alongside the old
+one:
 
 ```bash
 docker compose stop controller
@@ -126,9 +99,24 @@ docker compose run --rm --no-deps --user 0:0 \
   --confirm RESTORE_TO_EMPTY_DATABASE
 ```
 
-Use the actual Compose database user and a database URL whose host is
-`postgres`. Put the recovered key value and restored database name into the
-protected `.env`, then recreate only the controller. The temporary root user is
-limited to this stopped-controller recovery command; the normal container
-continues to run as UID/GID 10001 with a read-only root filesystem. Do not mount
-the Docker socket into the controller.
+The target database URL must use Compose host `postgres`. Put the restored
+database name and recovered key into protected `.env`, then recreate only the
+controller. The temporary root user is limited to this stopped-controller
+command; normal runtime remains unprivileged and must not mount the Docker
+socket.
+
+## Post-restore verification
+
+Keep the old database and archive unchanged until all checks pass:
+
+1. `/ready`, About version/schema, and administrator login.
+2. Disabled accounts and session invalidation expectations.
+3. Node credential decryption, connection test, and fresh observation.
+4. Draft, active/archived revisions, deployments, per-node results, and drift.
+5. Lifecycle settings/upgrades, webhook summaries, system settings, and audit.
+6. Statistics/Query Log/HA/delivery history expected for the chosen backup type.
+7. New collector records and no unexpected known gaps.
+
+Keep Enforce disabled until desired and observed state are reviewed. Record
+duration, archive type/size, excluded history, source/target versions, and any
+freshness gap. The [backup format](backup-format.md) defines the archive contract.

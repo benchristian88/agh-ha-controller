@@ -115,6 +115,7 @@ const revision: ConfigurationRevision = {
   createdBy: "operator-1",
   createdAt: "2026-08-09T01:00:00Z",
   active: false,
+  lifecycle: { canArchive: true, canRestore: false, canDelete: true },
 };
 
 const deployment: Deployment = {
@@ -128,6 +129,7 @@ const deployment: Deployment = {
   requestId: "request-1",
   cancelRequested: false,
   requestedAt: "2026-08-09T02:00:00Z",
+  lifecycle: { canArchive: false, canRestore: false, canDelete: false },
   nodes: [],
 };
 
@@ -329,6 +331,40 @@ describe("revision lifecycle workflow", () => {
     );
   });
 
+  it("uses explicit revision archive and strongly confirmed unused-delete actions", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(
+      null,
+      "",
+      "/ha/revisions?revisionId=revision-42",
+    );
+    vi.spyOn(api, "configurationRevisions").mockResolvedValue({
+      items: [revision],
+    });
+    vi.spyOn(api, "deployments").mockResolvedValue({ items: [] });
+    const archive = vi
+      .spyOn(api, "archiveConfigurationRevision")
+      .mockResolvedValue(undefined);
+    const remove = vi
+      .spyOn(api, "deleteConfigurationRevision")
+      .mockResolvedValue(undefined);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(window, "prompt").mockReturnValue("DELETE REVISION #42");
+
+    render(<RevisionsPage cluster={cluster} />);
+    await user.click(
+      await screen.findByRole("button", { name: "Archive Revision" }),
+    );
+    await waitFor(() => expect(archive).toHaveBeenCalledWith(revision.id));
+
+    await user.click(
+      await screen.findByRole("button", { name: "Delete Unused Revision" }),
+    );
+    await waitFor(() =>
+      expect(remove).toHaveBeenCalledWith(revision.id, "DELETE REVISION #42"),
+    );
+  });
+
   it("auto-expands the active deployment only when no explicit selection exists", async () => {
     window.history.replaceState(null, "", "/ha/deployments");
     vi.spyOn(api, "deployments").mockResolvedValue({ items: [deployment] });
@@ -350,6 +386,66 @@ describe("revision lifecycle workflow", () => {
     expect(
       screen.getByRole("link", { name: "View revision" }).getAttribute("href"),
     ).toBe("/ha/revisions?revisionId=revision-42");
+  });
+
+  it("archives terminal deployment history and only offers hard delete for an unstarted deployment", async () => {
+    const user = userEvent.setup();
+    const terminal = {
+      ...deployment,
+      status: "succeeded",
+      lifecycle: { canArchive: true, canRestore: false, canDelete: false },
+    } as Deployment;
+    window.history.replaceState(
+      null,
+      "",
+      "/ha/deployments?deploymentId=deployment-108",
+    );
+    vi.spyOn(api, "deployments").mockResolvedValue({ items: [terminal] });
+    vi.spyOn(api, "deployment").mockResolvedValue(terminal);
+    vi.spyOn(api, "configurationRevisions").mockResolvedValue({
+      items: [revision],
+    });
+    mockNodes();
+    const archive = vi
+      .spyOn(api, "archiveDeployment")
+      .mockResolvedValue(undefined);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    const rendered = render(<DeploymentsPage cluster={cluster} />);
+    await user.click(
+      await screen.findByRole("button", { name: "Archive Deployment" }),
+    );
+    await waitFor(() => expect(archive).toHaveBeenCalledWith(terminal.id));
+    expect(
+      screen.queryByRole("button", { name: "Delete Unstarted Deployment" }),
+    ).toBeNull();
+
+    rendered.unmount();
+    const unstarted = {
+      ...deployment,
+      status: "queued",
+      lifecycle: { canArchive: false, canRestore: false, canDelete: true },
+    } as Deployment;
+    vi.mocked(api.deployments).mockResolvedValue({ items: [unstarted] });
+    vi.mocked(api.deployment).mockResolvedValue(unstarted);
+    const remove = vi
+      .spyOn(api, "deleteDeployment")
+      .mockResolvedValue(undefined);
+    vi.spyOn(window, "prompt").mockReturnValue(
+      "DELETE DEPLOYMENT deployment-108",
+    );
+    render(<DeploymentsPage cluster={cluster} />);
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Delete Unstarted Deployment",
+      }),
+    );
+    await waitFor(() =>
+      expect(remove).toHaveBeenCalledWith(
+        unstarted.id,
+        "DELETE DEPLOYMENT deployment-108",
+      ),
+    );
   });
 
   it("presents drift as collapsed rows with exact related-resource links", async () => {

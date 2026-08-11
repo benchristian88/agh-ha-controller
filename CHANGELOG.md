@@ -4,6 +4,46 @@ All notable changes to AGH HA Controller will be documented in this file.
 
 The project intends to follow Semantic Versioning once the first public release is made.
 
+## 0.9.2 - Unreleased
+
+### Added
+
+- Standardized Node Detail on shared page, header, settings-group, field,
+  status, action, responsive, and accessibility primitives with canonical links
+  to configuration, drift, deployments, telemetry, status, and audit.
+- Complete encrypted webhook administration: edit with hidden-destination
+  preservation or explicit replacement, enable/disable, exact-name deletion,
+  bounded no-redirect test, safe endpoint summary, audit, and retained delivery
+  identity after channel deletion.
+- Audited archive/restore for immutable revisions and terminal deployments, plus
+  transactionally restricted hard deletion of only unreferenced unused revisions
+  and never-started, effect-free deployments.
+- Append-only migration `000014_release_0_9_2_lifecycle_polish` for archive
+  metadata, webhook endpoint summaries, and non-cascading delivery snapshots.
+
+### Changed
+
+- Product documentation is organized by operator task and capability, with one
+  feature catalogue, product-front-door README, authoritative Docker/native
+  install guides, current architecture/security/user/admin guides, a
+  forward-looking roadmap, and a classified pre-1.0 history index.
+- Default development version is `0.9.2-dev`. The technical product name remains
+  AGH HA Controller; the Release 1.0 rename inventory does not execute the rename.
+
+### Security
+
+- Lifecycle mutations are administrator-only, CSRF-protected, strongly
+  confirmed, audited, and recheck references under transaction locks.
+- Webhook secrets are never echoed; summaries omit userinfo/path/query/fragment,
+  tests are bounded, and deletion preserves operational/audit evidence.
+
+### Validation
+
+- Local automated and documentation validation is recorded in
+  `docs/development/release-0.9.2-validation.md`. Inherited external browser,
+  iOS, packaged install, PostgreSQL, backup/restore, and real-node gates remain
+  explicit rather than being inferred from local checks.
+
 ## 0.9.1 - Unreleased
 
 ### Added

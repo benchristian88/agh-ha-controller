@@ -478,6 +478,15 @@ export interface ConfigurationRevision {
   createdBy: string;
   createdAt: string;
   active: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
+  lifecycle: RecordLifecycle;
+}
+
+export interface RecordLifecycle {
+  canArchive: boolean;
+  canRestore: boolean;
+  canDelete: boolean;
 }
 
 export interface DeploymentNode {
@@ -511,6 +520,9 @@ export interface Deployment {
   requestedAt: string;
   startedAt?: string;
   completedAt?: string;
+  archivedAt?: string;
+  archivedBy?: string;
+  lifecycle: RecordLifecycle;
   nodes: DeploymentNode[];
 }
 
@@ -943,9 +955,18 @@ export interface NotificationChannel {
   channelType: "webhook";
   enabled: boolean;
   destinationSet: boolean;
+  destinationSummary: string;
+  subscribedEvents: string[];
   recordVersion: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface NotificationTestResult {
+  channelId: string;
+  success: boolean;
+  errorCode?: string;
+  testedAt: string;
 }
 
 export type OperationalTarget =

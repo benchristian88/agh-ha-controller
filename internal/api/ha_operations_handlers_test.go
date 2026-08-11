@@ -25,6 +25,9 @@ func TestHAOperationsRoutesRequireAuthentication(t *testing.T) {
 		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/return-to-service"},
 		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/upgrades"},
 		{http.MethodPost, "/api/v1/clusters/11111111-1111-4111-8111-111111111111/notification-channels"},
+		{http.MethodPatch, "/api/v1/notification-channels/22222222-2222-4222-8222-222222222222"},
+		{http.MethodPost, "/api/v1/notification-channels/22222222-2222-4222-8222-222222222222/test"},
+		{http.MethodDelete, "/api/v1/notification-channels/22222222-2222-4222-8222-222222222222"},
 	}
 	for _, test := range tests {
 		t.Run(test.method+test.path, func(t *testing.T) {
@@ -55,23 +58,32 @@ func TestHAOperationsMutationRequiresMatchingCSRF(t *testing.T) {
 	}
 	server := &Server{auth: authService, logger: slog.New(slog.NewTextHandler(io.Discard, nil)), mux: http.NewServeMux()}
 	server.routes()
-	path := "/api/v1/nodes/22222222-2222-4222-8222-222222222222/dns-probe"
-
-	without := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{}`))
-	without.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
-	withoutResponse := httptest.NewRecorder()
-	server.mux.ServeHTTP(withoutResponse, without)
-	if withoutResponse.Code != http.StatusForbidden || !strings.Contains(withoutResponse.Body.String(), `"code":"AUTHORISATION_DENIED"`) {
-		t.Fatalf("missing CSRF status=%d body=%s", withoutResponse.Code, withoutResponse.Body.String())
+	tests := []struct{ method, path string }{
+		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/dns-probe"},
+		{http.MethodPost, "/api/v1/clusters/11111111-1111-4111-8111-111111111111/notification-channels"},
+		{http.MethodPatch, "/api/v1/notification-channels/22222222-2222-4222-8222-222222222222"},
+		{http.MethodPost, "/api/v1/notification-channels/22222222-2222-4222-8222-222222222222/test"},
+		{http.MethodDelete, "/api/v1/notification-channels/22222222-2222-4222-8222-222222222222"},
 	}
+	for _, test := range tests {
+		t.Run(test.method+test.path, func(t *testing.T) {
+			without := httptest.NewRequest(test.method, test.path, strings.NewReader(`{}`))
+			without.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+			withoutResponse := httptest.NewRecorder()
+			server.mux.ServeHTTP(withoutResponse, without)
+			if withoutResponse.Code != http.StatusForbidden || !strings.Contains(withoutResponse.Body.String(), `"code":"AUTHORISATION_DENIED"`) {
+				t.Fatalf("missing CSRF status=%d body=%s", withoutResponse.Code, withoutResponse.Body.String())
+			}
 
-	with := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{}`))
-	with.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
-	with.AddCookie(&http.Cookie{Name: csrfCookieName, Value: csrf})
-	with.Header.Set(csrfHeader, csrf)
-	withResponse := httptest.NewRecorder()
-	server.mux.ServeHTTP(withResponse, with)
-	if withResponse.Code != http.StatusNotFound || !strings.Contains(withResponse.Body.String(), `"code":"NOT_FOUND"`) {
-		t.Fatalf("matching CSRF did not reach handler: status=%d body=%s", withResponse.Code, withResponse.Body.String())
+			with := httptest.NewRequest(test.method, test.path, strings.NewReader(`{}`))
+			with.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+			with.AddCookie(&http.Cookie{Name: csrfCookieName, Value: csrf})
+			with.Header.Set(csrfHeader, csrf)
+			withResponse := httptest.NewRecorder()
+			server.mux.ServeHTTP(withResponse, with)
+			if withResponse.Code != http.StatusNotFound || !strings.Contains(withResponse.Body.String(), `"code":"NOT_FOUND"`) {
+				t.Fatalf("matching CSRF did not reach handler: status=%d body=%s", withResponse.Code, withResponse.Body.String())
+			}
+		})
 	}
 }

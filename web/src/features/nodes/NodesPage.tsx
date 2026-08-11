@@ -34,7 +34,7 @@ export function NodesPage({ cluster }: { cluster: Cluster }) {
         await Promise.all([
           api.nodes(cluster.id),
           api.configurationInventory(cluster.id),
-          api.configurationRevisions(cluster.id),
+          api.configurationRevisions(cluster.id, true),
           api.driftEvents(cluster.id),
         ]);
       setNodes(nodeResult.items);

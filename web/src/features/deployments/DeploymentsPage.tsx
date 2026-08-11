@@ -25,13 +25,14 @@ export function DeploymentsPage({ cluster }: { cluster: Cluster }) {
     useQuerySelection("deploymentId");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState<unknown>();
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const [deploymentResult, nodeResult, revisionResult] = await Promise.all([
-        api.deployments(cluster.id),
+        api.deployments(cluster.id, includeArchived),
         api.nodes(cluster.id),
-        api.configurationRevisions(cluster.id),
+        api.configurationRevisions(cluster.id, true),
       ]);
       const detailResults = await Promise.allSettled(
         deploymentResult.items
@@ -58,7 +59,7 @@ export function DeploymentsPage({ cluster }: { cluster: Cluster }) {
     } catch (caught) {
       setError(caught);
     }
-  }, [cluster.id]);
+  }, [cluster.id, includeArchived]);
 
   useEffect(() => {
     void load();
@@ -103,6 +104,53 @@ export function DeploymentsPage({ cluster }: { cluster: Cluster }) {
     setBusy(deployment.id);
     try {
       await api.cancelDeployment(deployment.id);
+      await load();
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function archiveDeployment(deployment: Deployment) {
+    if (
+      !window.confirm(
+        "Archive this completed deployment? Its revision, per-node results, verification evidence, and audit history remain intact.",
+      )
+    )
+      return;
+    setBusy(`lifecycle-${deployment.id}`);
+    try {
+      await api.archiveDeployment(deployment.id);
+      await load();
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function restoreDeployment(deployment: Deployment) {
+    setBusy(`lifecycle-${deployment.id}`);
+    try {
+      await api.restoreDeployment(deployment.id);
+      await load();
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function deleteDeployment(deployment: Deployment) {
+    const phrase = `DELETE DEPLOYMENT ${deployment.id}`;
+    const confirmation = window.prompt(
+      `This queued deployment has not started. Type ${phrase} to permanently delete it.`,
+    );
+    if (confirmation === null) return;
+    setBusy(`lifecycle-${deployment.id}`);
+    try {
+      await api.deleteDeployment(deployment.id, confirmation);
       await load();
     } catch (caught) {
       setError(caught);
@@ -187,6 +235,16 @@ export function DeploymentsPage({ cluster }: { cluster: Cluster }) {
         eyebrow="Execution events"
         title="Deployments"
         description="Track sequential node mutation and read-back verification in one operational list."
+        secondaryActions={
+          <button
+            className="button button--secondary"
+            type="button"
+            aria-pressed={includeArchived}
+            onClick={() => setIncludeArchived((value) => !value)}
+          >
+            {includeArchived ? "Hide archived" : "Show archived"}
+          </button>
+        }
       />
       {error !== undefined && (
         <ErrorState error={error} retry={() => void load()} />
@@ -238,6 +296,9 @@ export function DeploymentsPage({ cluster }: { cluster: Cluster }) {
               error={detailErrors.get(deployment.id)}
               busy={busy}
               onCancel={cancel}
+              onArchive={archiveDeployment}
+              onRestore={restoreDeployment}
+              onDelete={deleteDeployment}
               onRetry={load}
             />
           )}
@@ -261,6 +322,9 @@ function DeploymentDetail({
   error,
   busy,
   onCancel,
+  onArchive,
+  onRestore,
+  onDelete,
   onRetry,
 }: {
   deployment: Deployment;
@@ -269,6 +333,9 @@ function DeploymentDetail({
   error?: unknown;
   busy: string;
   onCancel: (deployment: Deployment) => Promise<void>;
+  onArchive: (deployment: Deployment) => Promise<void>;
+  onRestore: (deployment: Deployment) => Promise<void>;
+  onDelete: (deployment: Deployment) => Promise<void>;
   onRetry: () => Promise<void>;
 }) {
   const complete = completedTasks(deployment);
@@ -294,6 +361,9 @@ function DeploymentDetail({
           status={deploymentStatus(deployment.status)}
           label={deployment.status.replaceAll("_", " ")}
         />
+        {deployment.archivedAt && (
+          <StatusBadge status="disabled" label="Archived" />
+        )}
       </div>
       {error !== undefined && (
         <ErrorState
@@ -419,6 +489,46 @@ function DeploymentDetail({
           </a>
         )}
       </div>
+      <section className="inline-detail-section">
+        <h4>Lifecycle</h4>
+        <p className="muted">
+          Archive hides terminal operational history from the default list.
+          Permanent deletion is limited to a server-verified deployment that
+          never started.
+        </p>
+        <div className="row-actions row-actions--start">
+          {deployment.lifecycle.canArchive && (
+            <button
+              className="button button--secondary"
+              type="button"
+              disabled={busy !== ""}
+              onClick={() => void onArchive(deployment)}
+            >
+              Archive Deployment
+            </button>
+          )}
+          {deployment.lifecycle.canRestore && (
+            <button
+              className="button button--secondary"
+              type="button"
+              disabled={busy !== ""}
+              onClick={() => void onRestore(deployment)}
+            >
+              Restore from Archive
+            </button>
+          )}
+          {deployment.lifecycle.canDelete && (
+            <button
+              className="button button--danger"
+              type="button"
+              disabled={busy !== ""}
+              onClick={() => void onDelete(deployment)}
+            >
+              Delete Unstarted Deployment
+            </button>
+          )}
+        </div>
+      </section>
     </article>
   );
 }

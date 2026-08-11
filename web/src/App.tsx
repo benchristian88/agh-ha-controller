@@ -32,7 +32,7 @@ import { UpdatesPage } from "./features/system/UpdatesPage";
 import { UsersPage } from "./features/users/UsersPage";
 import { ApiError, api } from "./lib/api";
 import type { Cluster, User } from "./lib/types";
-import { NotFoundPage, PlannedPage } from "./routing/RouteStatePages";
+import { NotFoundPage } from "./routing/RouteStatePages";
 import { preserveRouteState, resolveRoute } from "./routing/routes";
 import { ApplicationShell } from "./shell/ApplicationShell";
 
@@ -161,8 +161,6 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
   if (route.kind === "redirect") content = <RouteRedirect to={route.to} />;
   else if (route.kind === "not-found")
     content = <NotFoundPage pathname={path} />;
-  else if (route.kind === "planned")
-    content = <PlannedPage title={route.title} release={route.release} />;
   else if (clusters === undefined && error === undefined)
     content = <Loading label="Loading clusters…" />;
   else if (clusters === undefined && error !== undefined)

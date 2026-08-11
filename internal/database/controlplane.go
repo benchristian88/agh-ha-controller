@@ -69,8 +69,8 @@ func (s *Store) PublishRevision(ctx context.Context, draft inventory.Draft, revi
 	return tx.Commit(ctx)
 }
 
-func (s *Store) ListRevisions(ctx context.Context, clusterID string) ([]controlplane.Revision, error) {
-	rows, err := s.pool.Query(ctx, revisionSelect+` WHERE r.cluster_id=$1 ORDER BY r.revision_number DESC`, clusterID)
+func (s *Store) ListRevisions(ctx context.Context, clusterID string, includeArchived bool) ([]controlplane.Revision, error) {
+	rows, err := s.pool.Query(ctx, revisionSelect+` WHERE r.cluster_id=$1 AND ($2 OR r.archived_at IS NULL) ORDER BY r.revision_number DESC`, clusterID, includeArchived)
 	if err != nil {
 		return nil, fmt.Errorf("list revisions: %w", err)
 	}
@@ -93,19 +93,91 @@ func (s *Store) RevisionByID(ctx context.Context, id string) (controlplane.Revis
 
 const revisionSelect = `SELECT r.id,r.cluster_id,r.revision_number,r.schema_version,
 	r.document_json,r.canonical_hash,r.summary,r.created_by,r.created_at,
-	COALESCE(c.active_revision_id=r.id,false)
+	COALESCE(c.active_revision_id=r.id,false),r.archived_at,r.archived_by,
+	(c.active_revision_id IS DISTINCT FROM r.id
+		AND NOT EXISTS(SELECT 1 FROM nodes n WHERE n.applied_revision_id=r.id)
+		AND NOT EXISTS(SELECT 1 FROM configuration_drafts d WHERE d.base_revision_id=r.id)
+		AND NOT EXISTS(SELECT 1 FROM deployments p WHERE p.revision_id=r.id OR p.rollback_of_revision_id=r.id)
+		AND NOT EXISTS(SELECT 1 FROM drift_events e WHERE e.desired_revision_id=r.id))
 	FROM configuration_revisions r JOIN clusters c ON c.id=r.cluster_id`
 
 func scanRevision(row rowScanner) (controlplane.Revision, error) {
 	var item controlplane.Revision
 	var document []byte
-	if err := row.Scan(&item.ID, &item.ClusterID, &item.RevisionNumber, &item.SchemaVersion, &document, &item.CanonicalHash, &item.Summary, &item.CreatedBy, &item.CreatedAt, &item.Active); err != nil {
+	if err := row.Scan(&item.ID, &item.ClusterID, &item.RevisionNumber, &item.SchemaVersion, &document, &item.CanonicalHash, &item.Summary, &item.CreatedBy, &item.CreatedAt, &item.Active, &item.ArchivedAt, &item.ArchivedBy, &item.Lifecycle.CanDelete); err != nil {
 		return item, err
 	}
 	if err := json.Unmarshal(document, &item.Document); err != nil {
 		return item, fmt.Errorf("decode configuration revision: %w", err)
 	}
+	item.Lifecycle.CanArchive = !item.Active && item.ArchivedAt == nil
+	item.Lifecycle.CanRestore = item.ArchivedAt != nil
 	return item, nil
+}
+
+func (s *Store) SetRevisionArchived(ctx context.Context, id, actorID string, archived bool, at time.Time, event domain.AuditEvent) error {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	var active bool
+	var archivedAt *time.Time
+	err = tx.QueryRow(ctx, `SELECT c.active_revision_id=r.id,r.archived_at FROM configuration_revisions r JOIN clusters c ON c.id=r.cluster_id WHERE r.id=$1 FOR UPDATE OF r,c`, id).Scan(&active, &archivedAt)
+	if err != nil {
+		return mapDatabaseError(err, "configuration revision")
+	}
+	if archived {
+		if active {
+			return domain.NewError(domain.ErrorConflict, "the active revision cannot be archived")
+		}
+		if archivedAt != nil {
+			return domain.NewError(domain.ErrorConflict, "the revision is already archived")
+		}
+		_, err = tx.Exec(ctx, `UPDATE configuration_revisions SET archived_at=$2,archived_by=$3 WHERE id=$1`, id, at, actorID)
+	} else {
+		if archivedAt == nil {
+			return domain.NewError(domain.ErrorConflict, "the revision is not archived")
+		}
+		_, err = tx.Exec(ctx, `UPDATE configuration_revisions SET archived_at=NULL,archived_by=NULL WHERE id=$1`, id)
+	}
+	if err != nil {
+		return fmt.Errorf("update revision archive state: %w", err)
+	}
+	if err := audit(ctx, tx, event); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (s *Store) DeleteUnusedRevision(ctx context.Context, id string, event domain.AuditEvent) error {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	var referenced bool
+	err = tx.QueryRow(ctx, `SELECT
+		(c.active_revision_id=r.id
+		 OR EXISTS(SELECT 1 FROM nodes n WHERE n.applied_revision_id=r.id)
+		 OR EXISTS(SELECT 1 FROM configuration_drafts d WHERE d.base_revision_id=r.id)
+		 OR EXISTS(SELECT 1 FROM deployments p WHERE p.revision_id=r.id OR p.rollback_of_revision_id=r.id)
+		 OR EXISTS(SELECT 1 FROM drift_events e WHERE e.desired_revision_id=r.id))
+		FROM configuration_revisions r JOIN clusters c ON c.id=r.cluster_id
+		WHERE r.id=$1 FOR UPDATE OF r,c`, id).Scan(&referenced)
+	if err != nil {
+		return mapDatabaseError(err, "configuration revision")
+	}
+	if referenced {
+		return domain.NewError(domain.ErrorConflict, "the revision is active or retained by configuration, deployment, node, or drift history")
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM configuration_revisions WHERE id=$1`, id); err != nil {
+		return fmt.Errorf("delete unused revision: %w", err)
+	}
+	if err := audit(ctx, tx, event); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (s *Store) CreateDeployment(ctx context.Context, deployment controlplane.Deployment, event domain.AuditEvent) error {
@@ -138,8 +210,8 @@ func (s *Store) ClusterHasActiveDeployment(ctx context.Context, clusterID string
 	return exists, err
 }
 
-func (s *Store) ListDeployments(ctx context.Context, clusterID string) ([]controlplane.Deployment, error) {
-	rows, err := s.pool.Query(ctx, deploymentSelect+` WHERE cluster_id=$1 ORDER BY requested_at DESC`, clusterID)
+func (s *Store) ListDeployments(ctx context.Context, clusterID string, includeArchived bool) ([]controlplane.Deployment, error) {
+	rows, err := s.pool.Query(ctx, deploymentSelect+` WHERE d.cluster_id=$1 AND ($2 OR d.archived_at IS NULL) ORDER BY d.requested_at DESC`, clusterID, includeArchived)
 	if err != nil {
 		return nil, fmt.Errorf("list deployments: %w", err)
 	}
@@ -156,7 +228,7 @@ func (s *Store) ListDeployments(ctx context.Context, clusterID string) ([]contro
 }
 
 func (s *Store) DeploymentByID(ctx context.Context, id string) (controlplane.Deployment, error) {
-	item, err := scanDeployment(s.pool.QueryRow(ctx, deploymentSelect+` WHERE id=$1`, id))
+	item, err := scanDeployment(s.pool.QueryRow(ctx, deploymentSelect+` WHERE d.id=$1`, id))
 	if err != nil {
 		return item, mapDatabaseError(err, "deployment")
 	}
@@ -176,12 +248,85 @@ func (s *Store) DeploymentByID(ctx context.Context, id string) (controlplane.Dep
 	return item, rows.Err()
 }
 
-const deploymentSelect = `SELECT id,cluster_id,revision_id,status,strategy,failure_policy,origin,rollback_of_revision_id,requested_by,request_id,cancel_requested,error_code,requested_at,started_at,completed_at FROM deployments`
+const deploymentSelect = `SELECT d.id,d.cluster_id,d.revision_id,d.status,d.strategy,d.failure_policy,d.origin,d.rollback_of_revision_id,d.requested_by,d.request_id,d.cancel_requested,d.error_code,d.requested_at,d.started_at,d.completed_at,d.archived_at,d.archived_by,
+	(d.status='queued' AND d.started_at IS NULL
+		AND NOT EXISTS(SELECT 1 FROM deployment_nodes n WHERE n.deployment_id=d.id AND (n.status<>'pending' OR n.attempt_count<>0 OR n.started_at IS NOT NULL))
+		AND NOT EXISTS(SELECT 1 FROM drift_events e WHERE e.related_deployment_id=d.id))
+	FROM deployments d`
 
 func scanDeployment(row rowScanner) (controlplane.Deployment, error) {
 	var item controlplane.Deployment
-	err := row.Scan(&item.ID, &item.ClusterID, &item.RevisionID, &item.Status, &item.Strategy, &item.FailurePolicy, &item.Origin, &item.RollbackOfRevisionID, &item.RequestedBy, &item.RequestID, &item.CancelRequested, &item.ErrorCode, &item.RequestedAt, &item.StartedAt, &item.CompletedAt)
+	err := row.Scan(&item.ID, &item.ClusterID, &item.RevisionID, &item.Status, &item.Strategy, &item.FailurePolicy, &item.Origin, &item.RollbackOfRevisionID, &item.RequestedBy, &item.RequestID, &item.CancelRequested, &item.ErrorCode, &item.RequestedAt, &item.StartedAt, &item.CompletedAt, &item.ArchivedAt, &item.ArchivedBy, &item.Lifecycle.CanDelete)
+	terminal := item.Status == "partially_succeeded" || item.Status == "succeeded" || item.Status == "failed" || item.Status == "cancelled" || item.Status == "interrupted"
+	item.Lifecycle.CanArchive = terminal && item.ArchivedAt == nil
+	item.Lifecycle.CanRestore = item.ArchivedAt != nil
 	return item, err
+}
+
+func (s *Store) SetDeploymentArchived(ctx context.Context, id, actorID string, archived bool, at time.Time, event domain.AuditEvent) error {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	var status string
+	var archivedAt *time.Time
+	err = tx.QueryRow(ctx, `SELECT status,archived_at FROM deployments WHERE id=$1 FOR UPDATE`, id).Scan(&status, &archivedAt)
+	if err != nil {
+		return mapDatabaseError(err, "deployment")
+	}
+	if archived {
+		terminal := status == "partially_succeeded" || status == "succeeded" || status == "failed" || status == "cancelled" || status == "interrupted"
+		if !terminal {
+			return domain.NewError(domain.ErrorConflict, "only terminal deployment history can be archived")
+		}
+		if archivedAt != nil {
+			return domain.NewError(domain.ErrorConflict, "the deployment is already archived")
+		}
+		_, err = tx.Exec(ctx, `UPDATE deployments SET archived_at=$2,archived_by=$3 WHERE id=$1`, id, at, actorID)
+	} else {
+		if archivedAt == nil {
+			return domain.NewError(domain.ErrorConflict, "the deployment is not archived")
+		}
+		_, err = tx.Exec(ctx, `UPDATE deployments SET archived_at=NULL,archived_by=NULL WHERE id=$1`, id)
+	}
+	if err != nil {
+		return fmt.Errorf("update deployment archive state: %w", err)
+	}
+	if err := audit(ctx, tx, event); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (s *Store) DeleteUnstartedDeployment(ctx context.Context, id string, event domain.AuditEvent) error {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	var eligible bool
+	err = tx.QueryRow(ctx, `SELECT
+		(d.status='queued' AND d.started_at IS NULL
+		 AND NOT EXISTS(SELECT 1 FROM deployment_nodes n WHERE n.deployment_id=d.id AND (n.status<>'pending' OR n.attempt_count<>0 OR n.started_at IS NOT NULL))
+		 AND NOT EXISTS(SELECT 1 FROM drift_events e WHERE e.related_deployment_id=d.id))
+		FROM deployments d WHERE d.id=$1 FOR UPDATE`, id).Scan(&eligible)
+	if err != nil {
+		return mapDatabaseError(err, "deployment")
+	}
+	if !eligible {
+		return domain.NewError(domain.ErrorConflict, "the deployment has started or is retained by operational history")
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM deployment_nodes WHERE deployment_id=$1`, id); err != nil {
+		return fmt.Errorf("delete unstarted deployment tasks: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM deployments WHERE id=$1`, id); err != nil {
+		return fmt.Errorf("delete unstarted deployment: %w", err)
+	}
+	if err := audit(ctx, tx, event); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (s *Store) RequestDeploymentCancel(ctx context.Context, id string, event domain.AuditEvent) error {

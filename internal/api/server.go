@@ -111,8 +111,10 @@ type HAOperationsService interface {
 
 type NotificationSettingsService interface {
 	List(context.Context, string) ([]haoperations.NotificationChannel, error)
-	Save(context.Context, domain.Actor, string, string, string, string, bool, int) (haoperations.NotificationChannel, error)
-	Delete(context.Context, domain.Actor, string, int) error
+	Create(context.Context, domain.Actor, string, string, string, bool) (haoperations.NotificationChannel, error)
+	Update(context.Context, domain.Actor, string, string, *string, bool, int) (haoperations.NotificationChannel, error)
+	Delete(context.Context, domain.Actor, string, string, int) error
+	Test(context.Context, domain.Actor, string) (haoperations.NotificationTestResult, error)
 }
 
 type UserAdministrationService interface {
@@ -238,7 +240,7 @@ func (s *Server) routes() {
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/versions", s.authenticated(false, http.HandlerFunc(s.handleVersions)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/upgrades", s.authenticated(false, http.HandlerFunc(s.handleUpgrades)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}/notification-channels", s.authenticated(false, http.HandlerFunc(s.handleNotificationChannels)))
-	s.mux.Handle("POST /api/v1/clusters/{clusterId}/notification-channels", s.authenticated(true, http.HandlerFunc(s.handleSaveNotificationChannel)))
+	s.mux.Handle("POST /api/v1/clusters/{clusterId}/notification-channels", s.administrator(true, http.HandlerFunc(s.handleCreateNotificationChannel)))
 	s.mux.Handle("GET /api/v1/nodes/{nodeId}", s.authenticated(false, http.HandlerFunc(s.handleGetNode)))
 	s.mux.Handle("GET /api/v1/nodes/{nodeId}/lifecycle", s.authenticated(false, http.HandlerFunc(s.handleNodeLifecycle)))
 	s.mux.Handle("PUT /api/v1/nodes/{nodeId}/lifecycle-settings", s.authenticated(true, http.HandlerFunc(s.handleLifecycleSettings)))
@@ -251,7 +253,9 @@ func (s *Server) routes() {
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/return-to-service", s.authenticated(true, http.HandlerFunc(s.handleReturnToService)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/upgrades", s.authenticated(true, http.HandlerFunc(s.handleStartUpgrade)))
 	s.mux.Handle("POST /api/v1/upgrades/{upgradeId}/validate", s.authenticated(true, http.HandlerFunc(s.handleValidateUpgrade)))
-	s.mux.Handle("DELETE /api/v1/notification-channels/{channelId}", s.authenticated(true, http.HandlerFunc(s.handleDeleteNotificationChannel)))
+	s.mux.Handle("PATCH /api/v1/notification-channels/{channelId}", s.administrator(true, http.HandlerFunc(s.handleUpdateNotificationChannel)))
+	s.mux.Handle("POST /api/v1/notification-channels/{channelId}/test", s.administrator(true, http.HandlerFunc(s.handleTestNotificationChannel)))
+	s.mux.Handle("DELETE /api/v1/notification-channels/{channelId}", s.administrator(true, http.HandlerFunc(s.handleDeleteNotificationChannel)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/observations", s.authenticated(true, http.HandlerFunc(s.handleObserveNode)))
 	s.mux.Handle("POST /api/v1/nodes/{nodeId}/filter-refresh", s.authenticated(true, http.HandlerFunc(s.handleFilterRefresh)))
 	s.mux.Handle("GET /api/v1/nodes/{nodeId}/dhcp/interfaces", s.authenticated(false, http.HandlerFunc(s.handleDHCPInterfaces)))
@@ -278,6 +282,9 @@ func (s *Server) routes() {
 		s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-revisions", s.authenticated(true, http.HandlerFunc(s.handlePublishConfigurationRevision)))
 		s.mux.Handle("GET /api/v1/clusters/{clusterId}/configuration-revisions", s.authenticated(false, http.HandlerFunc(s.handleListConfigurationRevisions)))
 		s.mux.Handle("GET /api/v1/configuration-revisions/{revisionId}", s.authenticated(false, http.HandlerFunc(s.handleGetConfigurationRevision)))
+		s.mux.Handle("POST /api/v1/configuration-revisions/{revisionId}/archive", s.administrator(true, http.HandlerFunc(s.handleArchiveConfigurationRevision)))
+		s.mux.Handle("POST /api/v1/configuration-revisions/{revisionId}/restore", s.administrator(true, http.HandlerFunc(s.handleRestoreConfigurationRevision)))
+		s.mux.Handle("DELETE /api/v1/configuration-revisions/{revisionId}", s.administrator(true, http.HandlerFunc(s.handleDeleteConfigurationRevision)))
 		s.mux.Handle("GET /api/v1/configuration-revision-comparisons", s.authenticated(false, http.HandlerFunc(s.handleConfigurationRevisionComparison)))
 		s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-revisions/{revisionId}/deployment-preview", s.authenticated(true, http.HandlerFunc(s.handleDeploymentPreview)))
 		s.mux.Handle("POST /api/v1/clusters/{clusterId}/configuration-revisions/{revisionId}/deployments", s.authenticated(true, http.HandlerFunc(s.handleStartDeployment)))
@@ -285,6 +292,9 @@ func (s *Server) routes() {
 		s.mux.Handle("GET /api/v1/clusters/{clusterId}/deployments", s.authenticated(false, http.HandlerFunc(s.handleListDeployments)))
 		s.mux.Handle("GET /api/v1/deployments/{deploymentId}", s.authenticated(false, http.HandlerFunc(s.handleGetDeployment)))
 		s.mux.Handle("POST /api/v1/deployments/{deploymentId}/cancel", s.authenticated(true, http.HandlerFunc(s.handleCancelDeployment)))
+		s.mux.Handle("POST /api/v1/deployments/{deploymentId}/archive", s.administrator(true, http.HandlerFunc(s.handleArchiveDeployment)))
+		s.mux.Handle("POST /api/v1/deployments/{deploymentId}/restore", s.administrator(true, http.HandlerFunc(s.handleRestoreDeployment)))
+		s.mux.Handle("DELETE /api/v1/deployments/{deploymentId}", s.administrator(true, http.HandlerFunc(s.handleDeleteDeployment)))
 		s.mux.Handle("GET /api/v1/clusters/{clusterId}/drift-events", s.authenticated(false, http.HandlerFunc(s.handleListDriftEvents)))
 		s.mux.Handle("POST /api/v1/drift-events/{driftId}/restore", s.authenticated(true, http.HandlerFunc(s.handleRestoreDrift)))
 		s.mux.Handle("POST /api/v1/drift-events/{driftId}/adopt", s.authenticated(true, http.HandlerFunc(s.handleAdoptDrift)))

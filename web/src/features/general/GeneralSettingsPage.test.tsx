@@ -324,7 +324,7 @@ describe("General Settings", () => {
     expect(screen.getByText(/Ecosia cannot be changed/)).not.toBeNull();
     expect(
       screen.getByText(
-        /combined, node-attributed Query Log arrives in Release 0.6/,
+        /Controller collection and retention are configured separately/,
       ),
     ).not.toBeNull();
     expect(

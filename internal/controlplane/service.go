@@ -23,11 +23,15 @@ type Repository interface {
 	CapabilityProfiles(context.Context, string) ([]inventory.CapabilityProfile, error)
 	UpdateConfigurationDraft(context.Context, inventory.Draft, int, domain.AuditEvent) error
 	PublishRevision(context.Context, inventory.Draft, *Revision, int, domain.AuditEvent) error
-	ListRevisions(context.Context, string) ([]Revision, error)
+	ListRevisions(context.Context, string, bool) ([]Revision, error)
 	RevisionByID(context.Context, string) (Revision, error)
+	SetRevisionArchived(context.Context, string, string, bool, time.Time, domain.AuditEvent) error
+	DeleteUnusedRevision(context.Context, string, domain.AuditEvent) error
 	CreateDeployment(context.Context, Deployment, domain.AuditEvent) error
-	ListDeployments(context.Context, string) ([]Deployment, error)
+	ListDeployments(context.Context, string, bool) ([]Deployment, error)
 	DeploymentByID(context.Context, string) (Deployment, error)
+	SetDeploymentArchived(context.Context, string, string, bool, time.Time, domain.AuditEvent) error
+	DeleteUnstartedDeployment(context.Context, string, domain.AuditEvent) error
 	RequestDeploymentCancel(context.Context, string, domain.AuditEvent) error
 	ListDriftEvents(context.Context, string) ([]DriftEvent, error)
 	DriftEventByID(context.Context, string) (DriftEvent, error)
@@ -148,11 +152,11 @@ func (s *Service) Publish(ctx context.Context, actor domain.Actor, clusterID, su
 	return revision, nil
 }
 
-func (s *Service) ListRevisions(ctx context.Context, clusterID string) ([]Revision, error) {
+func (s *Service) ListRevisions(ctx context.Context, clusterID string, includeArchived ...bool) ([]Revision, error) {
 	if !domain.ValidID(clusterID) {
 		return nil, domain.Validation("clusterId", "must be a valid UUID")
 	}
-	return s.repository.ListRevisions(ctx, clusterID)
+	return s.repository.ListRevisions(ctx, clusterID, len(includeArchived) > 0 && includeArchived[0])
 }
 
 func (s *Service) Revision(ctx context.Context, id string) (Revision, error) {
@@ -160,6 +164,40 @@ func (s *Service) Revision(ctx context.Context, id string) (Revision, error) {
 		return Revision{}, domain.Validation("revisionId", "must be a valid UUID")
 	}
 	return s.repository.RevisionByID(ctx, id)
+}
+
+func (s *Service) SetRevisionArchived(ctx context.Context, actor domain.Actor, id string, archived, confirmed bool) error {
+	if !confirmed {
+		return domain.Validation("confirmed", "must be true after reviewing the lifecycle impact")
+	}
+	revision, err := s.Revision(ctx, id)
+	if err != nil {
+		return err
+	}
+	action := "configuration.revision_archived"
+	if !archived {
+		action = "configuration.revision_restored"
+	}
+	event, err := userAudit(actor, action, "configuration_revision", id, map[string]any{"clusterId": revision.ClusterID, "revisionNumber": revision.RevisionNumber}, s.now().UTC())
+	if err != nil {
+		return err
+	}
+	return s.repository.SetRevisionArchived(ctx, id, actor.UserID, archived, s.now().UTC(), event)
+}
+
+func (s *Service) DeleteUnusedRevision(ctx context.Context, actor domain.Actor, id, confirmation string) error {
+	revision, err := s.Revision(ctx, id)
+	if err != nil {
+		return err
+	}
+	if confirmation != fmt.Sprintf("DELETE REVISION #%d", revision.RevisionNumber) {
+		return domain.Validation("confirmation", "must exactly match the unused revision confirmation phrase")
+	}
+	event, err := userAudit(actor, "configuration.revision_deleted_unused", "configuration_revision", id, map[string]any{"clusterId": revision.ClusterID, "revisionNumber": revision.RevisionNumber}, s.now().UTC())
+	if err != nil {
+		return err
+	}
+	return s.repository.DeleteUnusedRevision(ctx, id, event)
 }
 
 func (s *Service) CompareRevisions(ctx context.Context, leftID, rightID string) ([]configuration.Difference, error) {
@@ -295,11 +333,11 @@ func (s *Service) Rollback(ctx context.Context, actor domain.Actor, clusterID, r
 	return s.StartDeployment(ctx, actor, clusterID, revisionID, "rollback", cluster.ActiveRevisionID, nil)
 }
 
-func (s *Service) ListDeployments(ctx context.Context, clusterID string) ([]Deployment, error) {
+func (s *Service) ListDeployments(ctx context.Context, clusterID string, includeArchived ...bool) ([]Deployment, error) {
 	if !domain.ValidID(clusterID) {
 		return nil, domain.Validation("clusterId", "must be a valid UUID")
 	}
-	return s.repository.ListDeployments(ctx, clusterID)
+	return s.repository.ListDeployments(ctx, clusterID, len(includeArchived) > 0 && includeArchived[0])
 }
 
 func (s *Service) Deployment(ctx context.Context, id string) (Deployment, error) {
@@ -307,6 +345,40 @@ func (s *Service) Deployment(ctx context.Context, id string) (Deployment, error)
 		return Deployment{}, domain.Validation("deploymentId", "must be a valid UUID")
 	}
 	return s.repository.DeploymentByID(ctx, id)
+}
+
+func (s *Service) SetDeploymentArchived(ctx context.Context, actor domain.Actor, id string, archived, confirmed bool) error {
+	if !confirmed {
+		return domain.Validation("confirmed", "must be true after reviewing the lifecycle impact")
+	}
+	deployment, err := s.Deployment(ctx, id)
+	if err != nil {
+		return err
+	}
+	action := "deployment.archived"
+	if !archived {
+		action = "deployment.restored"
+	}
+	event, err := userAudit(actor, action, "deployment", id, map[string]any{"clusterId": deployment.ClusterID, "revisionId": deployment.RevisionID}, s.now().UTC())
+	if err != nil {
+		return err
+	}
+	return s.repository.SetDeploymentArchived(ctx, id, actor.UserID, archived, s.now().UTC(), event)
+}
+
+func (s *Service) DeleteUnstartedDeployment(ctx context.Context, actor domain.Actor, id, confirmation string) error {
+	deployment, err := s.Deployment(ctx, id)
+	if err != nil {
+		return err
+	}
+	if confirmation != "DELETE DEPLOYMENT "+deployment.ID {
+		return domain.Validation("confirmation", "must exactly match the unstarted deployment confirmation phrase")
+	}
+	event, err := userAudit(actor, "deployment.deleted_unstarted", "deployment", id, map[string]any{"clusterId": deployment.ClusterID, "revisionId": deployment.RevisionID}, s.now().UTC())
+	if err != nil {
+		return err
+	}
+	return s.repository.DeleteUnstartedDeployment(ctx, id, event)
 }
 
 func (s *Service) CancelDeployment(ctx context.Context, actor domain.Actor, id string) error {

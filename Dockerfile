@@ -8,7 +8,7 @@ COPY web/ ./
 RUN npm run build
 
 FROM golang:1.24-bookworm AS controller
-ARG VERSION=0.9.1-dev
+ARG VERSION=0.9.2-dev
 ARG COMMIT=unknown
 ARG BUILT_AT=unknown
 WORKDIR /src

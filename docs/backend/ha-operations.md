@@ -1,48 +1,92 @@
 # HA Operations and Lifecycle
 
-Release 0.8 adds operational coordination without placing AGH HA Controller in the live DNS
-path. The existing node health worker still measures authenticated AdGuard Home
-API reachability. A separate worker sends a real DNS query to each enabled,
-non-maintenance node every 30 seconds, using the node URL host and last observed
-DNS port by default. Operators can override the host, port, name, expected
-response code, and UDP/TCP protocols per node. The default root `NS` query
-expects `NOERROR`. Each network operation has a two-second bound.
+HA Operations coordinates maintenance, active DNS evidence, certificates,
+versions, guided upgrades, events, and notifications without placing the
+controller in the DNS path or owning node package execution.
 
-The latest result and 30 days of probe evidence are durable. Only transitions
-produce HA events, which are retained for one year. A result is healthy only
-when every enabled protocol succeeds. The cluster is `healthy` with at least
-two fresh serving nodes and no other operational degradation, `degraded` while
-DNS redundancy remains but API/convergence/maintenance needs attention, and
-`at_risk` with fewer than two verified serving nodes. This calculation supports
-N nodes and does not assume a primary/secondary pair.
+## Active DNS and capacity
 
-Maintenance preflight blocks active deployments and an observed active DHCP
-owner. Open drift remains visible. Removing the last verified DNS node requires
-the exact break-glass confirmation. Maintenance excludes the node from ordinary
-polling, deployment, and reconciliation and suppresses its expected DNS-failure
-notifications. Returning to service runs fresh API, capability/configuration,
-DNS, active-revision convergence, drift, DHCP, TLS, and configured-collector
-checks. Any required failure keeps maintenance enabled.
+Node API health and active DNS health are separate. A worker sends a bounded DNS
+query to each enabled non-maintenance node every 30 seconds using the node URL
+host and observed DNS port by default. Operators can configure host, port, query
+name/type, expected RCODE, and UDP/TCP. Each network operation has a two-second
+bound.
 
-Certificate state comes from redacted observation metadata. Thresholds are 30
-days for warning and seven days for critical; expired is separate. Certificate
-material and filesystem paths never enter this model.
+Latest results and 30 days of probe evidence are durable; only transitions
+create HA events, retained for one year. A result is healthy only when every
+enabled protocol succeeds. Cluster state supports N nodes: healthy requires at
+least two fresh serving nodes and no other degradation; degraded retains serving
+redundancy with management/convergence/maintenance concerns; at-risk has fewer
+than two verified serving nodes.
 
-The upstream release checker reads the official AdGuard Home GitHub latest
-release endpoint at most every six hours and stores a safe cache. Failure keeps
-the previous version and marks it stale. Controller compatibility remains derived
-from its explicit adapter profile rather than inferred from the upstream tag.
+## Maintenance and return
 
-Native/systemd and Docker nodes receive a durable guided upgrade workflow. The
-operator performs the platform-specific install or container replacement;
-AGH HA Controller accepts only a target inside its explicit tested adapter range, then
-validates the freshly reported target version and the complete
-return-to-service sequence. Other installation types are explicitly
-unsupported. Failed validation records safe evidence and leaves the node in
-maintenance. There is no remote shell, unattended upgrade, or claimed rollback
-in Release 0.8.
+Preflight blocks active deployments and an observed active DHCP owner and keeps
+open drift visible. Removing the last verified DNS node requires the exact
+break-glass confirmation. Maintenance excludes the node from normal polling,
+deployment, and reconciliation and suppresses its expected DNS-failure alerts.
 
-Webhook delivery is optional. HTTPS destinations are AES-256-GCM encrypted and
-write-only. Payloads contain the event ID/type/severity/summary/time and node ID
-when applicable. Delivery retries are bounded to five attempts and use stable
-error codes; disabling a channel stops pending delivery.
+Return is fail-closed. It freshly checks API, capability/configuration
+observation, DNS, active-revision convergence, drift, DHCP, TLS, and configured
+collectors. Any required failure leaves maintenance enabled.
+
+## Certificate and version awareness
+
+Certificate state uses redacted observation metadata. Warning begins at 30 days,
+critical at seven days, and expired is distinct. Private material and filesystem
+paths never enter this model.
+
+The AdGuard Home release checker reads the official GitHub latest-release API at
+most every six hours and retains safe stale-cache state after failure.
+Compatibility remains derived from explicit adapter profiles, not an upstream
+tag alone.
+
+## Guided upgrades
+
+Native/systemd and Docker nodes can have a durable guided operation. The
+operator uses the platform-native install/container mechanism; the controller
+records target/progress and performs fresh installed-version plus complete
+return-to-service validation. Unsupported installation types are explicit.
+Failure records safe evidence and leaves maintenance enabled. There is no remote
+shell, automatic upgrade, Docker socket, or controller-owned rollback.
+
+## Webhook channels
+
+Webhook delivery uses the existing HA event stream. Destinations are HTTPS,
+AES-256-GCM encrypted, and write-only. Payloads contain bounded event identity,
+type, severity, summary, time, and optional node identity. Normal deliveries are
+durable and retry at most five times with safe error codes.
+
+Administration supports add, edit, enable/disable, delete, and test:
+
+- List/read returns name, safe scheme/host summary, explicit enabled state, the
+  currently fixed HA-transition subscription, timestamps, and safe delivery
+  state where available—never the destination.
+- Edit preserves the encrypted destination unless replacement is explicitly
+  requested with a valid new HTTPS value.
+- Disabled channels receive no new events and retain configuration for re-enable.
+- Test sends one bounded synthetic event directly, follows no redirect, does not
+  enqueue an HA alert, and exposes no destination or response body.
+- Delete requires exact-name confirmation. HA events remain unchanged and
+  delivery rows retain a safe channel-name snapshot with a nullable channel
+  reference.
+
+All mutations require an administrator session, CSRF, validation, and audit.
+Names must not contain secrets. Destination userinfo/fragments are rejected;
+path and query are hidden from summaries and diagnostics.
+
+## Node Detail presentation
+
+Node Detail is the operational decision surface for one node. It uses common
+page/header/group/field/status/action primitives and groups overview, DNS,
+maintenance/DHCP, TLS, software, collectors, and history. It links to the
+canonical Configuration Control, Drift, Deployments, DHCP, Statistics, Query
+Log, Operational Status, and Audit views instead of duplicating those datasets.
+
+## Retention and evidence
+
+Probe results, transition events, upgrade operations, webhook channels, and
+delivery attempts are separate from desired configuration and deployment
+history. Bounded cleanup never removes audit or configuration history as a side
+effect. Notification channel deletion preserves operational event/delivery
+evidence as described above.

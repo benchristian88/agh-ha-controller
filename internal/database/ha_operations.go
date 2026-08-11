@@ -216,8 +216,9 @@ func insertHAEvent(ctx context.Context, tx pgx.Tx, value haoperations.Event) err
 			next = &at
 		}
 		_, err = tx.Exec(ctx, `INSERT INTO notification_deliveries
-			(id,channel_id,event_id,status,attempt_count,next_attempt_at,created_at,completed_at)
-			VALUES($1,$2,$3,$4,0,$5,$6,CASE WHEN $4='suppressed' THEN $6 ELSE NULL END)
+			(id,channel_id,event_id,status,attempt_count,next_attempt_at,created_at,completed_at,channel_name)
+			SELECT $1,c.id,$3,$4,0,$5,$6,CASE WHEN $4='suppressed' THEN $6 ELSE NULL END,c.name
+			FROM notification_channels c WHERE c.id=$2
 			ON CONFLICT(channel_id,event_id) DO NOTHING`, deliveryID, channelID, value.ID, status, next, value.OccurredAt)
 		if err != nil {
 			return fmt.Errorf("queue notification: %w", err)

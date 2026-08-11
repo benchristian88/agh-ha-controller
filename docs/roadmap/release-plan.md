@@ -1,5 +1,9 @@
 # Release Plan
 
+> Historical pre-1.0 planning record. It is retained for traceability and does
+> not define current features or future commitments. See the root changelog and
+> the forward-looking [roadmap](roadmap.md).
+
 ## Versioning
 
 Pre-1.0 releases may introduce breaking changes but should still include migrations and upgrade notes.

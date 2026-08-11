@@ -559,7 +559,7 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
 
           <SettingsGroup
             title="Query Log policy"
-            description="Configures logging inside each AdGuard Home node. The combined, node-attributed Query Log arrives in Release 0.6."
+            description="Configures logging inside each AdGuard Home node. Controller collection and retention are configured separately."
             actions={
               <button
                 type="button"

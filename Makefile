@@ -1,10 +1,10 @@
-.PHONY: bootstrap fmt fmt-check test test-race test-integration lint dev build release-artifacts migrate migrate-down compose-config compose-build clean
+.PHONY: bootstrap fmt fmt-check docs-check test test-race test-integration lint dev build release-artifacts migrate migrate-down compose-config compose-build clean
 
 GO ?= go
 NPM ?= npm
 COMPOSE ?= docker compose
 GO_FILES := $(shell find . -type f -name '*.go' -not -path './web/node_modules/*')
-VERSION ?= 0.9.1-dev
+VERSION ?= 0.9.2-dev
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || printf unknown)
 BUILT_AT ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -X github.com/benchristian88/agh-ha-controller/internal/version.Version=$(VERSION) -X github.com/benchristian88/agh-ha-controller/internal/version.Commit=$(COMMIT) -X github.com/benchristian88/agh-ha-controller/internal/version.BuiltAt=$(BUILT_AT)
@@ -20,6 +20,9 @@ fmt:
 fmt-check:
 	@test -z "$$($(GO)fmt -l $(GO_FILES))" || { echo "Go files require gofmt"; $(GO)fmt -l $(GO_FILES); exit 1; }
 	cd web && $(NPM) exec -- biome format src
+
+docs-check:
+	node scripts/validate-docs.mjs
 
 test:
 	$(GO) test ./...

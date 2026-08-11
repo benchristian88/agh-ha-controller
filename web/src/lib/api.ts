@@ -30,6 +30,7 @@ import type {
   Node,
   NodeLifecycle,
   NotificationChannel,
+  NotificationTestResult,
   OperationalStatus,
   OperationalTarget,
   QueryEvent,
@@ -335,22 +336,48 @@ export const api = {
     request<{ items: NotificationChannel[] }>(
       `/api/v1/clusters/${clusterId}/notification-channels`,
     ),
-  saveNotificationChannel: (
+  createNotificationChannel: (
     clusterId: string,
     input: {
-      id?: string;
       name: string;
       destination: string;
       enabled: boolean;
-      recordVersion?: number;
     },
   ) =>
     request<NotificationChannel>(
       `/api/v1/clusters/${clusterId}/notification-channels`,
       {
         method: "POST",
-        body: JSON.stringify({ id: "", recordVersion: 0, ...input }),
+        body: JSON.stringify(input),
       },
+    ),
+  updateNotificationChannel: (
+    channelId: string,
+    input: {
+      name: string;
+      enabled: boolean;
+      recordVersion: number;
+      destination?: string;
+      replaceDestination?: boolean;
+    },
+  ) =>
+    request<NotificationChannel>(`/api/v1/notification-channels/${channelId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  deleteNotificationChannel: (
+    channelId: string,
+    recordVersion: number,
+    confirmation: string,
+  ) =>
+    request<void>(`/api/v1/notification-channels/${channelId}`, {
+      method: "DELETE",
+      body: JSON.stringify({ recordVersion, confirmation }),
+    }),
+  testNotificationChannel: (channelId: string) =>
+    request<NotificationTestResult>(
+      `/api/v1/notification-channels/${channelId}/test`,
+      { method: "POST", body: JSON.stringify({}) },
     ),
   statistics: (clusterId: string, range: string, nodeId = "") => {
     const query = new URLSearchParams({ range, limit: "10" });
@@ -610,10 +637,25 @@ export const api = {
         body: JSON.stringify({ expectedVersion, summary }),
       },
     ),
-  configurationRevisions: (clusterId: string) =>
+  configurationRevisions: (clusterId: string, includeArchived = false) =>
     request<{ items: ConfigurationRevision[] }>(
-      `/api/v1/clusters/${clusterId}/configuration-revisions`,
+      `/api/v1/clusters/${clusterId}/configuration-revisions${includeArchived ? "?includeArchived=true" : ""}`,
     ),
+  archiveConfigurationRevision: (revisionId: string) =>
+    request<void>(`/api/v1/configuration-revisions/${revisionId}/archive`, {
+      method: "POST",
+      body: JSON.stringify({ confirmed: true }),
+    }),
+  restoreConfigurationRevision: (revisionId: string) =>
+    request<void>(`/api/v1/configuration-revisions/${revisionId}/restore`, {
+      method: "POST",
+      body: JSON.stringify({ confirmed: true }),
+    }),
+  deleteConfigurationRevision: (revisionId: string, confirmation: string) =>
+    request<void>(`/api/v1/configuration-revisions/${revisionId}`, {
+      method: "DELETE",
+      body: JSON.stringify({ confirmation }),
+    }),
   compareConfigurationRevisions: (
     leftRevisionId: string,
     rightRevisionId: string,
@@ -636,9 +678,9 @@ export const api = {
       `/api/v1/clusters/${clusterId}/configuration-revisions/${revisionId}/rollback`,
       { method: "POST", body: JSON.stringify({ confirmed: true }) },
     ),
-  deployments: (clusterId: string) =>
+  deployments: (clusterId: string, includeArchived = false) =>
     request<{ items: Deployment[] }>(
-      `/api/v1/clusters/${clusterId}/deployments`,
+      `/api/v1/clusters/${clusterId}/deployments${includeArchived ? "?includeArchived=true" : ""}`,
     ),
   deployment: (deploymentId: string) =>
     request<Deployment>(`/api/v1/deployments/${deploymentId}`),
@@ -646,6 +688,21 @@ export const api = {
     request<void>(`/api/v1/deployments/${deploymentId}/cancel`, {
       method: "POST",
       body: "{}",
+    }),
+  archiveDeployment: (deploymentId: string) =>
+    request<void>(`/api/v1/deployments/${deploymentId}/archive`, {
+      method: "POST",
+      body: JSON.stringify({ confirmed: true }),
+    }),
+  restoreDeployment: (deploymentId: string) =>
+    request<void>(`/api/v1/deployments/${deploymentId}/restore`, {
+      method: "POST",
+      body: JSON.stringify({ confirmed: true }),
+    }),
+  deleteDeployment: (deploymentId: string, confirmation: string) =>
+    request<void>(`/api/v1/deployments/${deploymentId}`, {
+      method: "DELETE",
+      body: JSON.stringify({ confirmation }),
     }),
   driftEvents: (clusterId: string) =>
     request<{ items: DriftEvent[] }>(

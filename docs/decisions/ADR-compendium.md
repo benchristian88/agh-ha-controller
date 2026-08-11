@@ -1,5 +1,9 @@
 # AGH HA Controller — Architecture Decision Record Compendium
 
+> Obsolete duplicated snapshot retained for historical links. The individual
+> ADR files and [status register](README.md) are authoritative. Do not update
+> decisions here.
+
 **Version:** 0.1  
 **Date:** 26 July 2026
 

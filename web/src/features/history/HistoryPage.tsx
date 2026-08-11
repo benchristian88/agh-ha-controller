@@ -40,12 +40,13 @@ export function RevisionsPage({ cluster }: { cluster: Cluster }) {
   const [review, setReview] = useState<DeploymentReview>();
   const [busy, setBusy] = useState("");
   const [error, setError] = useState<unknown>();
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const [revisionResult, deploymentResult] = await Promise.all([
-        api.configurationRevisions(cluster.id),
-        api.deployments(cluster.id),
+        api.configurationRevisions(cluster.id, includeArchived),
+        api.deployments(cluster.id, true),
       ]);
       setRevisions(revisionResult.items);
       setDeployments(deploymentResult.items);
@@ -53,7 +54,7 @@ export function RevisionsPage({ cluster }: { cluster: Cluster }) {
     } catch (caught) {
       setError(caught);
     }
-  }, [cluster.id]);
+  }, [cluster.id, includeArchived]);
 
   useEffect(() => void load(), [load]);
 
@@ -149,6 +150,53 @@ export function RevisionsPage({ cluster }: { cluster: Cluster }) {
     }
   }
 
+  async function archiveRevision(revision: ConfigurationRevision) {
+    if (
+      !window.confirm(
+        `Archive revision #${revision.revisionNumber}? It remains immutable and available in the Archived view.`,
+      )
+    )
+      return;
+    setBusy(`lifecycle-${revision.id}`);
+    try {
+      await api.archiveConfigurationRevision(revision.id);
+      await load();
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function restoreRevision(revision: ConfigurationRevision) {
+    setBusy(`lifecycle-${revision.id}`);
+    try {
+      await api.restoreConfigurationRevision(revision.id);
+      await load();
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function deleteRevision(revision: ConfigurationRevision) {
+    const phrase = `DELETE REVISION #${revision.revisionNumber}`;
+    const confirmation = window.prompt(
+      `This revision has no retained references. Type ${phrase} to permanently delete it.`,
+    );
+    if (confirmation === null) return;
+    setBusy(`lifecycle-${revision.id}`);
+    try {
+      await api.deleteConfigurationRevision(revision.id, confirmation);
+      await load();
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusy("");
+    }
+  }
+
   if (revisions === undefined && error === undefined)
     return <Loading label="Loading configuration revisions…" />;
   if (revisions === undefined)
@@ -218,6 +266,16 @@ export function RevisionsPage({ cluster }: { cluster: Cluster }) {
         eyebrow="Immutable configuration"
         title="Configuration Revisions"
         description="Review immutable published revisions, compare what changed, and explicitly preview a deployment without modifying revision history."
+        secondaryActions={
+          <button
+            className="button button--secondary"
+            type="button"
+            aria-pressed={includeArchived}
+            onClick={() => setIncludeArchived((value) => !value)}
+          >
+            {includeArchived ? "Hide archived" : "Show archived"}
+          </button>
+        }
       />
       {error !== undefined && (
         <ErrorState error={error} retry={() => void load()} />
@@ -249,6 +307,9 @@ export function RevisionsPage({ cluster }: { cluster: Cluster }) {
               differenceError={detailError}
               busy={busy}
               onDeploy={prepareDeployment}
+              onArchive={archiveRevision}
+              onRestore={restoreRevision}
+              onDelete={deleteRevision}
             />
           )}
           emptyTitle="No published revisions"
@@ -318,6 +379,9 @@ function RevisionDetail({
   differenceError,
   busy,
   onDeploy,
+  onArchive,
+  onRestore,
+  onDelete,
 }: {
   revision: ConfigurationRevision;
   preceding?: ConfigurationRevision;
@@ -326,6 +390,9 @@ function RevisionDetail({
   differenceError?: unknown;
   busy: string;
   onDeploy: (revision: ConfigurationRevision) => Promise<void>;
+  onArchive: (revision: ConfigurationRevision) => Promise<void>;
+  onRestore: (revision: ConfigurationRevision) => Promise<void>;
+  onDelete: (revision: ConfigurationRevision) => Promise<void>;
 }) {
   const previousRevision = Boolean(
     revision.active === false && deployments.length > 0,
@@ -346,6 +413,9 @@ function RevisionDetail({
           number={revision.revisionNumber}
           active={revision.active}
         />
+        {revision.archivedAt && (
+          <StatusBadge status="disabled" label="Archived" />
+        )}
       </div>
       <dl className="summary-grid">
         <div>
@@ -434,6 +504,46 @@ function RevisionDetail({
           <a className="button button--secondary" href="/ha/deployments">
             View deployments
           </a>
+        </div>
+      </section>
+      <section className="inline-detail-section">
+        <h4>Lifecycle</h4>
+        <p className="muted">
+          Archive hides retained history from the default list. Permanent
+          deletion is available only when the server proves this revision is
+          unused and unreferenced.
+        </p>
+        <div className="row-actions row-actions--start">
+          {revision.lifecycle.canArchive && (
+            <button
+              className="button button--secondary"
+              type="button"
+              disabled={busy !== ""}
+              onClick={() => void onArchive(revision)}
+            >
+              Archive Revision
+            </button>
+          )}
+          {revision.lifecycle.canRestore && (
+            <button
+              className="button button--secondary"
+              type="button"
+              disabled={busy !== ""}
+              onClick={() => void onRestore(revision)}
+            >
+              Restore from Archive
+            </button>
+          )}
+          {revision.lifecycle.canDelete && (
+            <button
+              className="button button--danger"
+              type="button"
+              disabled={busy !== ""}
+              onClick={() => void onDelete(revision)}
+            >
+              Delete Unused Revision
+            </button>
+          )}
         </div>
       </section>
       <details className="inline-detail-section">

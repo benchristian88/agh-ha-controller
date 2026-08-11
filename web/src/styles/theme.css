@@ -206,6 +206,10 @@ h3 { font-size: 1rem; }
 .detail-list div { min-width: 0; }
 .detail-list dt { color: var(--text-muted); font-size: .75rem; }
 .detail-list dd { margin: 4px 0 0; font-size: .88rem; text-transform: capitalize; }
+.break-anywhere { overflow-wrap: anywhere; text-transform: none !important; }
+.breadcrumb { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; color: var(--text-muted); font-size: .84rem; }
+.node-detail-page .settings-group { margin-top: 24px; }
+.node-detail-page .settings-group .detail-list { margin-top: 0; }
 .error-code { color: var(--danger); font: .72rem ui-monospace, monospace; margin: 14px 0 0; }
 .independence-card { display: grid; grid-template-columns: minmax(190px, .5fr) 1fr; gap: 30px; align-items: center; }
 .independence-card p:last-child { color: var(--text-muted); margin-bottom: 0; line-height: 1.55; }

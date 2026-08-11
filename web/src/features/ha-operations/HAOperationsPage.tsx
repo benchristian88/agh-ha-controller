@@ -6,6 +6,7 @@ import {
   ErrorState,
   Loading,
 } from "../../components/Feedback";
+import { Field, SettingsGroup } from "../../components/Settings";
 import { StatusBadge } from "../../components/StatusBadge";
 import { api } from "../../lib/api";
 import type {
@@ -29,8 +30,17 @@ export function HAOperationsPage({ cluster }: { cluster: Cluster }) {
   const [channels, setChannels] = useState<NotificationChannel[]>([]);
   const [error, setError] = useState<unknown>();
   const [showWebhook, setShowWebhook] = useState(false);
+  const [editingChannel, setEditingChannel] = useState<NotificationChannel>();
   const [webhookName, setWebhookName] = useState("");
   const [webhookURL, setWebhookURL] = useState("");
+  const [webhookEnabled, setWebhookEnabled] = useState(true);
+  const [replaceDestination, setReplaceDestination] = useState(false);
+  const [webhookBusy, setWebhookBusy] = useState("");
+  const [webhookFeedback, setWebhookFeedback] = useState<{
+    tone: "success" | "warning";
+    title: string;
+    message: string;
+  }>();
 
   const load = useCallback(async () => {
     try {
@@ -290,56 +300,194 @@ export function HAOperationsPage({ cluster }: { cluster: Cluster }) {
         )}
       </section>
 
-      <section className="section-block">
-        <div className="section-heading">
-          <div>
-            <h2>Notifications</h2>
-            <small>
-              Meaningful transitions and recoveries; DNS failures during
-              maintenance are suppressed.
-            </small>
-          </div>
+      <SettingsGroup
+        title="Notifications"
+        description="Meaningful HA transitions and recoveries. Expected DNS failures during maintenance are suppressed."
+        actions={
           <button
             type="button"
             className="button button--secondary"
-            onClick={() => setShowWebhook((value) => !value)}
+            onClick={() => {
+              if (showWebhook && editingChannel === undefined) closeWebhook();
+              else openWebhook();
+            }}
           >
-            Add webhook
+            {showWebhook && editingChannel === undefined
+              ? "Cancel"
+              : "Add webhook"}
           </button>
-        </div>
+        }
+      >
+        {webhookFeedback !== undefined && (
+          <Banner tone={webhookFeedback.tone} title={webhookFeedback.title}>
+            {webhookFeedback.message}
+          </Banner>
+        )}
         {showWebhook && (
-          <form className="card" onSubmit={(event) => void saveWebhook(event)}>
-            <label>
-              Channel name
+          <form
+            className="card form-stack"
+            aria-label={editingChannel ? "Edit webhook" : "Add webhook"}
+            onSubmit={(event) => void saveWebhook(event)}
+          >
+            <h3>
+              {editingChannel ? `Edit ${editingChannel.name}` : "Add webhook"}
+            </h3>
+            <Field label="Channel name" htmlFor="webhook-name" required>
               <input
+                id="webhook-name"
                 value={webhookName}
                 onChange={(event) => setWebhookName(event.target.value)}
                 required
+                maxLength={120}
               />
-            </label>
-            <label>
-              HTTPS webhook URL
-              <input
-                type="url"
-                value={webhookURL}
-                onChange={(event) => setWebhookURL(event.target.value)}
+            </Field>
+            {editingChannel !== undefined && (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={replaceDestination}
+                  onChange={(event) => {
+                    setReplaceDestination(event.target.checked);
+                    if (!event.target.checked) setWebhookURL("");
+                  }}
+                />{" "}
+                Replace destination secret
+              </label>
+            )}
+            {(editingChannel === undefined || replaceDestination) && (
+              <Field
+                label="HTTPS webhook URL"
+                htmlFor="webhook-url"
                 required
-              />
+                help="The full URL is encrypted and is never returned by the API."
+              >
+                <input
+                  id="webhook-url"
+                  type="url"
+                  value={webhookURL}
+                  onChange={(event) => setWebhookURL(event.target.value)}
+                  required
+                  autoComplete="off"
+                />
+              </Field>
+            )}
+            <label>
+              <input
+                type="checkbox"
+                checked={webhookEnabled}
+                onChange={(event) => setWebhookEnabled(event.target.checked)}
+              />{" "}
+              Enabled
             </label>
-            <button className="button" type="submit">
-              Save encrypted webhook
-            </button>
+            <div className="row-actions row-actions--start">
+              <button
+                className="button"
+                type="submit"
+                disabled={webhookBusy !== ""}
+              >
+                {webhookBusy === "save"
+                  ? "Saving…"
+                  : editingChannel
+                    ? "Save webhook"
+                    : "Add encrypted webhook"}
+              </button>
+              {editingChannel !== undefined && (
+                <button
+                  className="button button--secondary"
+                  type="button"
+                  disabled={webhookBusy !== ""}
+                  onClick={closeWebhook}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
           </form>
         )}
-        <ul>
-          {channels.map((channel) => (
-            <li key={channel.id}>
-              <strong>{channel.name}</strong> —{" "}
-              {channel.enabled ? "Enabled" : "Paused"} · destination encrypted
-            </li>
-          ))}
-        </ul>
-      </section>
+        {channels.length === 0 && !showWebhook ? (
+          <EmptyState title="No notification webhooks">
+            <p>Add an HTTPS destination for HA lifecycle transitions.</p>
+          </EmptyState>
+        ) : channels.length > 0 ? (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Webhook</th>
+                  <th>Destination</th>
+                  <th>State</th>
+                  <th>Events</th>
+                  <th>Updated</th>
+                  <th>
+                    <span className="visually-hidden">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {channels.map((channel) => (
+                  <tr key={channel.id}>
+                    <td>
+                      <strong>{channel.name}</strong>
+                      <span className="table-subtitle">
+                        Created {formatTime(channel.createdAt)}
+                      </span>
+                    </td>
+                    <td>
+                      {channel.destinationSummary || "Encrypted destination"}
+                    </td>
+                    <td>
+                      <StatusBadge
+                        status={channel.enabled ? "success" : "disabled"}
+                        label={channel.enabled ? "Enabled" : "Disabled"}
+                      />
+                    </td>
+                    <td>All HA transitions</td>
+                    <td>{formatTime(channel.updatedAt)}</td>
+                    <td>
+                      <div className="row-actions">
+                        <button
+                          className="button button--quiet"
+                          type="button"
+                          disabled={webhookBusy !== ""}
+                          onClick={() => editWebhook(channel)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="button button--quiet"
+                          type="button"
+                          disabled={webhookBusy !== ""}
+                          onClick={() => void toggleWebhook(channel)}
+                        >
+                          {channel.enabled ? "Disable" : "Enable"}
+                        </button>
+                        <button
+                          className="button button--quiet"
+                          type="button"
+                          disabled={webhookBusy !== ""}
+                          onClick={() => void testWebhook(channel)}
+                        >
+                          {webhookBusy === `test-${channel.id}`
+                            ? "Testing…"
+                            : "Test"}
+                        </button>
+                        <button
+                          className="button button--danger"
+                          type="button"
+                          disabled={webhookBusy !== ""}
+                          onClick={() => void deleteWebhook(channel)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </SettingsGroup>
 
       <section className="section-block">
         <div className="section-heading">
@@ -392,19 +540,147 @@ export function HAOperationsPage({ cluster }: { cluster: Cluster }) {
 
   async function saveWebhook(event: React.FormEvent) {
     event.preventDefault();
+    setWebhookBusy("save");
     try {
-      await api.saveNotificationChannel(cluster.id, {
-        name: webhookName,
-        destination: webhookURL,
-        enabled: true,
+      if (editingChannel === undefined) {
+        await api.createNotificationChannel(cluster.id, {
+          name: webhookName,
+          destination: webhookURL,
+          enabled: webhookEnabled,
+        });
+      } else {
+        await api.updateNotificationChannel(editingChannel.id, {
+          name: webhookName,
+          enabled: webhookEnabled,
+          recordVersion: editingChannel.recordVersion,
+          ...(replaceDestination
+            ? { destination: webhookURL, replaceDestination: true }
+            : {}),
+        });
+      }
+      setWebhookFeedback({
+        tone: "success",
+        title: "Webhook saved",
+        message: "The encrypted notification channel is ready.",
       });
-      setWebhookName("");
-      setWebhookURL("");
-      setShowWebhook(false);
+      closeWebhook();
       await load();
     } catch (caught) {
-      setError(caught);
+      setWebhookFailure(caught);
+    } finally {
+      setWebhookBusy("");
     }
+  }
+
+  function openWebhook() {
+    setEditingChannel(undefined);
+    setWebhookName("");
+    setWebhookURL("");
+    setWebhookEnabled(true);
+    setReplaceDestination(false);
+    setShowWebhook(true);
+  }
+
+  function editWebhook(channel: NotificationChannel) {
+    setEditingChannel(channel);
+    setWebhookName(channel.name);
+    setWebhookURL("");
+    setWebhookEnabled(channel.enabled);
+    setReplaceDestination(false);
+    setShowWebhook(true);
+  }
+
+  function closeWebhook() {
+    setShowWebhook(false);
+    setEditingChannel(undefined);
+    setWebhookName("");
+    setWebhookURL("");
+    setReplaceDestination(false);
+  }
+
+  async function toggleWebhook(channel: NotificationChannel) {
+    setWebhookBusy(`toggle-${channel.id}`);
+    try {
+      await api.updateNotificationChannel(channel.id, {
+        name: channel.name,
+        enabled: !channel.enabled,
+        recordVersion: channel.recordVersion,
+      });
+      setWebhookFeedback({
+        tone: "success",
+        title: channel.enabled ? "Webhook disabled" : "Webhook enabled",
+        message: channel.enabled
+          ? "New HA notifications will not be queued for this channel. Its configuration and history are retained."
+          : "New HA notifications will be queued for this channel.",
+      });
+      await load();
+    } catch (caught) {
+      setWebhookFailure(caught);
+    } finally {
+      setWebhookBusy("");
+    }
+  }
+
+  async function testWebhook(channel: NotificationChannel) {
+    setWebhookBusy(`test-${channel.id}`);
+    try {
+      const result = await api.testNotificationChannel(channel.id);
+      setWebhookFeedback(
+        result.success
+          ? {
+              tone: "success",
+              title: "Webhook test succeeded",
+              message: `The endpoint accepted the bounded test at ${formatTime(result.testedAt)}.`,
+            }
+          : {
+              tone: "warning",
+              title: "Webhook test failed",
+              message: `The endpoint did not accept the test (${result.errorCode ?? "NOTIFICATION_TEST_FAILED"}). No destination details were exposed.`,
+            },
+      );
+    } catch (caught) {
+      setWebhookFailure(caught);
+    } finally {
+      setWebhookBusy("");
+    }
+  }
+
+  async function deleteWebhook(channel: NotificationChannel) {
+    const confirmation = window.prompt(
+      `Type ${channel.name} to delete this webhook. Historical HA events and delivery evidence will be retained.`,
+    );
+    if (confirmation === null) return;
+    setWebhookBusy(`delete-${channel.id}`);
+    try {
+      await api.deleteNotificationChannel(
+        channel.id,
+        channel.recordVersion,
+        confirmation,
+      );
+      setWebhookFeedback({
+        tone: "success",
+        title: "Webhook deleted",
+        message:
+          "The encrypted destination was destroyed. Historical operational evidence remains available.",
+      });
+      if (editingChannel?.id === channel.id) closeWebhook();
+      await load();
+    } catch (caught) {
+      setWebhookFailure(caught);
+    } finally {
+      setWebhookBusy("");
+    }
+  }
+
+  function setWebhookFailure(caught: unknown) {
+    setWebhookFeedback({
+      tone: "warning",
+      title: "Webhook action failed",
+      message:
+        caught instanceof Error
+          ? caught.message
+          : "The webhook action could not be completed.",
+    });
   }
 }
 

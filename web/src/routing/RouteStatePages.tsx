@@ -19,30 +19,3 @@ export function NotFoundPage({ pathname }: { pathname: string }) {
     </PageContainer>
   );
 }
-
-export function PlannedPage({
-  title,
-  release,
-}: {
-  title: string;
-  release?: string;
-}) {
-  return (
-    <section className="route-state" aria-labelledby="planned-title">
-      <p className="eyebrow">Planned capability</p>
-      <h1 id="planned-title">{title}</h1>
-      <p className="muted">
-        {release === undefined
-          ? "This approved route is reserved for a later implementation phase."
-          : `${release} owns this feature. Its data pipeline is not implemented in Release 0.4.1.`}
-      </p>
-      <p>
-        This page is intentionally explicit so a bookmark or typed address
-        cannot be mistaken for the Dashboard.
-      </p>
-      <a className="button button--secondary" href="/">
-        Return to Dashboard
-      </a>
-    </section>
-  );
-}
