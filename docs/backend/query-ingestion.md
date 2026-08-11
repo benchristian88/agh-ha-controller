@@ -7,11 +7,11 @@ outside the DNS request path.
 
 ## Supported source contract
 
-Atlas accepts reviewed AdGuard Home versions v0.107.52 through v0.107.78. It
+AGH HA Controller accepts reviewed AdGuard Home versions v0.107.52 through v0.107.78. It
 reads `GET /control/querylog` newest-first with a maximum page size of 500,
 using the response `oldest` timestamp as the next request's `older_than`
 cursor. The first request omits `older_than`; `search` is empty and
-`response_status=all` because filtering belongs to the central API. Atlas does
+`response_status=all` because filtering belongs to the central API. AGH HA Controller does
 not use offsets against the changing live log.
 
 The adapter normalizes timestamp, question, type, client/client ID and optional
@@ -22,7 +22,7 @@ qualified names have one trailing dot removed before case normalization.
 Malformed or oversized records are skipped and recorded as an ingestion gap,
 with only the node ID and invalid-record count written to safe warning logs.
 Legacy `querylog_info` and current `querylog/config` are used only to determine
-whether logging is enabled and whether client addresses are anonymized. Atlas
+whether logging is enabled and whether client addresses are anonymized. AGH HA Controller
 preserves the anonymized identity exactly as received and never reverses it.
 
 The node API supplies no stable event identifier or deterministic event cursor.
@@ -45,7 +45,7 @@ last attempt/success, node version, logging state, safe error, and gap state.
 Restart therefore repeats a bounded overlap and relies on database uniqueness;
 no in-memory cursor is required for correctness.
 
-Atlas detects and presents malformed records, missing/stalled cursors, a source
+AGH HA Controller detects and presents malformed records, missing/stalled cursors, a source
 window larger than the 10,000-record pass bound, an empty/reset source after a
 previous checkpoint, clock regression, and loss caused by node-local retention. A failed
 poll never removes earlier central events and never affects DNS service.
@@ -57,7 +57,7 @@ timestamp, client identifier/protocol, query and type, status/code, processing
 time, upstream, filtering reason/service, bounded rules/answers, cache, and
 DNSSEC. Mutable client display-name enrichment is deliberately excluded.
 
-Because indistinguishable legitimate events can share every source field, Atlas
+Because indistinguishable legitimate events can share every source field, AGH HA Controller
 assigns their order-of-observation occurrence within a pass. Database uniqueness
 is `(node_id, source_fingerprint, source_occurrence)`. Repeated overlap is
 discarded while multiple identical events remain represented. If AdGuard changes

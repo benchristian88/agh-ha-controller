@@ -15,12 +15,12 @@ every DNS host without evidence that the working API path is inadequate.
 
 ## Decision
 
-Atlas DNS is agentless by default. Native platform APIs are the standard
+AGH HA Controller is agentless by default. Native platform APIs are the standard
 integration whenever they provide reliable, supportable behavior:
 
 ```text
-Statistics: AdGuard API -> Atlas collector -> PostgreSQL -> API -> UI
-Query Log:  AdGuard API -> Atlas collector -> normalized event -> PostgreSQL -> API -> UI
+Statistics: AdGuard API -> controller collector -> PostgreSQL -> API -> UI
+Query Log:  AdGuard API -> controller collector -> normalized event -> PostgreSQL -> API -> UI
 ```
 
 Release 0.7 therefore delivers operational hardening and observability and
@@ -38,7 +38,7 @@ long controller outages.
 
 ## Consequences
 
-- DNS nodes need no Atlas runtime, machine credential, or spool directory.
+- DNS nodes need no controller runtime, machine credential, or spool directory.
 - Collector health, gaps, lag, storage, and retention become the immediate
   reliability boundary and are visible through Release 0.7 status surfaces.
 - API limitations remain explicit rather than hidden by optimistic fidelity

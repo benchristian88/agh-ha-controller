@@ -98,8 +98,8 @@ export function SetupPage({
       subtitle="This one-time setup creates the first local account."
     >
       <div className="notice notice--warning">
-        Back up the database, session secret, and credential encryption key
-        separately. Lost encryption keys cannot be recovered.
+        After setup, create a passphrase-encrypted Standard Backup from System →
+        Backup &amp; Restore and keep its passphrase separately.
       </div>
       <dl className="setup-checks">
         <div>
@@ -172,7 +172,7 @@ function AuthLayout({
     <main className="auth-page">
       <section className="auth-card">
         <div className="brand-mark" aria-hidden="true">
-          A
+          ◆
         </div>
         <h1>{title}</h1>
         <p className="muted">{subtitle}</p>

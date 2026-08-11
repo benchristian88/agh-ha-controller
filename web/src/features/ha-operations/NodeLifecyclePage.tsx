@@ -319,7 +319,7 @@ export function NodeLifecyclePage({
             <dd>{lifecycle.version.latestVersion || "Unavailable"}</dd>
           </div>
           <div>
-            <dt>Atlas compatibility</dt>
+            <dt>Controller compatibility</dt>
             <dd>{lifecycle.version.compatibility}</dd>
           </div>
           <div>
@@ -345,8 +345,9 @@ export function NodeLifecyclePage({
                 Start guided upgrade
               </button>
               <p>
-                Atlas records the operation and waits while you execute the
-                documented host-side update. It never runs an arbitrary command.
+                AGH HA Controller records the operation and waits while you
+                execute the documented host-side update. It never runs an
+                arbitrary command.
               </p>
             </form>
           )}

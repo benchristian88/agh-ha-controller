@@ -150,7 +150,7 @@ minimum-32-character `METRICS_BEARER_TOKEN`; enabled scrapes require that bearer
 token and should also be limited by host firewall or reverse-proxy policy. The
 token is runtime-secret material and is never logged or returned.
 
-ADR-0029 keeps Atlas agentless by default. Release 0.7 adds no node daemon,
+ADR-0029 keeps AGH HA Controller agentless by default. Release 0.7 adds no node daemon,
 machine credential, remote-shell privilege, or local DNS-host spool.
 
 ## Threats to consider
@@ -171,7 +171,10 @@ machine credential, remote-shell privilege, or local DNS-host spool.
 
 Loss of the encryption key means encrypted node credentials cannot be recovered.
 
-Backups must include the key, stored separately and securely.
+Legacy PostgreSQL-only backups require the key to be stored separately and
+securely. Release 0.9 portable backups include it only inside the
+passphrase-encrypted authenticated payload; target runtime configuration and
+the archive passphrase remain separate recovery material.
 
 ## Release 0.8 lifecycle and notification security
 
@@ -187,3 +190,29 @@ external key boundary, and write-only. Delivery payloads and logs omit the
 destination, credentials, raw node errors, query data, and certificate/key
 material. Retry is bounded and disabled channels are not claimed. Guided
 upgrades execute no remote command and failed checks keep the node isolated.
+
+## Release 0.9 administration, backup, and update security
+
+User Administration remains administrator-only on the server. Accounts are
+never hard-deleted; disabling immediately fails authentication and revokes all
+active sessions. Credential reset replaces the Argon2id hash and revokes every
+session for the target. The current operator cannot self-disable, and a locked
+transaction prevents disabling the final enabled administrator. Audits contain
+actor, target, role/status result, and session-revocation fact—never passwords,
+hashes, or tokens.
+
+Portable backups follow ADR-0031. `age` owns passphrase KDF and authenticated
+encryption. Outer metadata is non-secret and is checked against the encrypted
+manifest. Fixed entry names, regular-file-only extraction, size/entry bounds,
+checksums, restrictive temporary permissions, administrator/CSRF authorization,
+and empty-target offline restore prevent traversal, bombs, arbitrary overwrite,
+and ambiguous live replacement. Restore authority is operating-system access to
+the stopped controller, protected passphrase/database-URL files, new database,
+and key-output location; no browser restore mutation exists. `pg_restore` uses one transaction
+and removes the newly written key if database restore fails. Sessions are
+deliberately excluded.
+
+Controller release metadata is bounded, cached, stable-only, and accepts links
+only beneath the project GitHub Releases path. The update API returns guidance
+as data; it cannot execute a command, access a container socket, restart a
+service, choose an arbitrary URL, or install an artifact.

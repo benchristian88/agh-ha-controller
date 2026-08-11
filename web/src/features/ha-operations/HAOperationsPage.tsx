@@ -237,7 +237,8 @@ export function HAOperationsPage({ cluster }: { cluster: Cluster }) {
         <div className="section-heading">
           <h2>Guided upgrades</h2>
           <small>
-            Atlas coordinates validation; it never opens a remote shell.
+            AGH HA Controller coordinates validation; it never opens a remote
+            shell.
           </small>
         </div>
         {upgrades.length === 0 ? (

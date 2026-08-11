@@ -429,7 +429,7 @@ search/filter/pagination semantics and adds operational health only.**
 
 ### Outcomes
 
-- Operators can determine whether Atlas collectors, storage, jobs, and
+- Operators can determine whether AGH HA Controller collectors, storage, jobs, and
   integrations are healthy without querying PostgreSQL or reading logs first.
 
 ### Scope
@@ -445,12 +445,11 @@ search/filter/pagination semantics and adds operational health only.**
 
 ## Release 0.8 — HA Operations & Lifecycle
 
-**Current status (9 August 2026): Implemented; real-node, PostgreSQL migration,
-packaged browser, Docker, and native/systemd release gates remain pending.**
+**Current status (9 August 2026): Complete and validated by the operator.**
 
 ### Outcomes
 
-- Atlas coordinates and observes operation of the DNS service as a highly
+- AGH HA Controller coordinates and observes operation of the DNS service as a highly
   available platform without becoming its traffic path.
 
 ### Scope
@@ -463,9 +462,12 @@ packaged browser, Docker, and native/systemd release gates remain pending.**
 - Operational notifications and maintenance coordination.
 
 Keepalived, dnsdist, and other failover integrations remain optional pending
-product/architecture review. Atlas coordinates rather than carrying DNS.
+product/architecture review. AGH HA Controller coordinates rather than carrying DNS.
 
 ## Release 0.9 — Productisation, Backup & Upgrade Readiness / Feature Freeze
+
+**Current status (9 August 2026): Implemented; external backup/restore,
+upgrade, packaged browser, Docker, and native/systemd gates remain pending.**
 
 ### Outcomes
 
@@ -473,17 +475,17 @@ product/architecture review. Atlas coordinates rather than carrying DNS.
 
 ### Scope
 
-- Automated scheduled PostgreSQL/runtime-secret backup, restore verification,
-  disaster recovery, and supported Atlas upgrade/rollback tooling.
+- Manual portable PostgreSQL/runtime-secret backup, restore verification,
+  disaster recovery, and supported controller upgrade/rollback guidance.
 - Product backup/restore UI and CLI with downloadable checksummed archives,
   version/compatibility metadata, and post-restore verification. Required
   control-plane data is separated from optional Statistics/Query Log history.
-- Atlas Controller update awareness from a cached official release source,
+- AGH HA Controller update awareness from a cached official release source,
   release notes and exact guided host commands. Docker does not gain a mounted
   socket; one-click self-update remains deferred without safe rollback.
 - Reproducible release artifacts, checksums, SBOM/signing decisions, clean
   installation and migration validation, and Docker/native-systemd parity.
-- Final logo/compact mark, favicon, Apple/Android/PWA icons including maskable
+- Name-neutral application/compact mark, favicon, Apple/Android/PWA icons including maskable
   192/512 assets, web manifest, standalone metadata, and login/header branding.
 - State-backed in-product Setup Guide from install and first/redundant node
   through observe/adopt/publish/deploy and Statistics/Query Log/HA confirmation.
@@ -493,17 +495,20 @@ product/architecture review. Atlas coordinates rather than carrying DNS.
   repository/docs, compatibility, and independent AdGuard Home attribution.
 - Onboarding and Setup Guide, diagnostics/redaction, compatibility/support/
   deprecation policy, licensing decision, and API/schema stability review.
-- RBAC/session/authentication/security/audit review, accessibility and
+- User lifecycle/session/authentication/security/audit review, accessibility and
   responsive/browser polish, performance/load validation, and error quality.
 - Feature freeze: close acceptance gaps and defects without opening broad new
   control-plane feature areas.
 
 Avoid large new feature areas in 0.9.
 
-## Release 1.0 — Stable Supported Release
+## Release 1.0 — Rename, Stability & Supported Release
 
 ### Outcomes
 
+- Perform the deliberate whole-product AGH HA Controller → Atlas DNS Controller
+  rename with compatibility aliases/migrations where upgrade stability requires
+  retained technical identifiers.
 - Atlas DNS is a stable supported product, not primarily a feature release.
 
 ### Scope

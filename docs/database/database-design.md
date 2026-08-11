@@ -296,3 +296,11 @@ durable operational history. `upstream_release_cache` bounds external lookups.
 `notification_deliveries` stores bounded state/error codes. Node/history
 foreign keys are restrictive; internal deliveries cascade when their channel is
 removed or their one-year parent event expires.
+
+Release 0.9 migration `000013_release_0_9_productisation` adds two singleton
+tables. `controller_release_cache` contains bounded, non-authoritative stable
+release metadata and may be excluded from Standard Backup. `system_settings`
+contains the optimistic `update_checks_enabled` setting, record version, and
+safe updater attribution; it is required control-plane recovery state. Existing
+users remain the only authentication principals, and sessions remain transient
+and are excluded from both Standard and Full portable recovery.

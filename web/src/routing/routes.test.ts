@@ -34,13 +34,14 @@ describe("canonical route safety", () => {
       "/ha/revisions": "revisions",
       "/ha/deployments": "deployments",
       "/ha/drift": "drift",
-      "/setup-guide": "planned",
-      "/system/users": "planned",
+      "/setup-guide": "setup-guide",
+      "/system/users": "users",
       "/system/audit": "audit",
       "/system/operational-status": "operational-status",
-      "/system/settings": "planned",
-      "/system/backups": "planned",
-      "/system/about": "planned",
+      "/system/settings": "system-settings",
+      "/system/backups": "backups",
+      "/system/updates": "updates",
+      "/system/about": "about",
     } as const;
 
     expect(Object.keys(expectedKinds)).toEqual([...CANONICAL_PATHS]);

@@ -53,6 +53,7 @@ export const ADMINISTRATION_NAVIGATION: readonly NavigationLink[] = [
   { label: "Audit Log", href: "/system/audit" },
   { label: "System Settings", href: "/system/settings" },
   { label: "Backups", href: "/system/backups" },
+  { label: "Updates", href: "/system/updates" },
   { label: "About", href: "/system/about" },
 ];
 

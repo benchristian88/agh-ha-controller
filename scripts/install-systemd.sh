@@ -7,7 +7,7 @@ if [[ ${EUID} -ne 0 ]]; then
 fi
 
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-for command_name in go npm make install openssl runuser systemctl; do
+for command_name in go npm make install openssl runuser systemctl pg_dump pg_restore; do
   command -v "${command_name}" >/dev/null 2>&1 || {
     echo "Required command is missing: ${command_name}" >&2
     exit 1
@@ -17,6 +17,12 @@ command -v psql >/dev/null 2>&1 || {
   echo "PostgreSQL client/server tools are required (install postgresql)." >&2
   exit 1
 }
+pg_dump_version=$(pg_dump --version | awk '{print $NF}')
+pg_restore_version=$(pg_restore --version | awk '{print $NF}')
+if [[ ${pg_dump_version%%.*} != 17 || ${pg_restore_version%%.*} != 17 ]]; then
+  echo "PostgreSQL 17 pg_dump and pg_restore are required for portable backup compatibility." >&2
+  exit 1
+fi
 
 public_base_url=${PUBLIC_BASE_URL:-}
 if [[ -z ${public_base_url} ]]; then
@@ -41,12 +47,14 @@ if ! id "${service_user}" >/dev/null 2>&1; then
 fi
 
 make -C "${repo_dir}" bootstrap
-make -C "${repo_dir}" VERSION=0.8.0 build
+controller_version=${CONTROLLER_VERSION:-0.9.0-dev}
+make -C "${repo_dir}" VERSION="${controller_version}" build
 
 install -d -o root -g root -m 0755 "${environment_dir}" /usr/local/share/agh-ha-controller
 install -d -o "${service_user}" -g "${service_group}" -m 0750 "${state_dir}"
 install -d -o root -g root -m 0755 "${web_dir}"
 install -o root -g root -m 0755 "${repo_dir}/bin/agh-ha-controller" /usr/local/bin/agh-ha-controller
+install -o root -g root -m 0755 "${repo_dir}/bin/agh-ha-backup" /usr/local/bin/agh-ha-backup
 cp -a "${repo_dir}/web/dist/." "${web_dir}/"
 chown -R root:root "${web_dir}"
 
@@ -65,6 +73,7 @@ SQL
   umask 077
   {
     printf 'APP_ENV=production\n'
+    printf 'INSTALLATION_TYPE=native_systemd\n'
     printf 'HTTP_ADDR=:8080\n'
     printf 'DATABASE_URL=postgres://%s:%s@127.0.0.1:5432/%s?sslmode=disable\n' "${database_user}" "${database_password}" "${database_name}"
     printf 'PUBLIC_BASE_URL=%s\n' "${public_base_url}"

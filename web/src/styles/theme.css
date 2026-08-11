@@ -284,6 +284,11 @@ tr:last-child td { border-bottom: 0; }
 .settings-group__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--aghha-space-4); padding: var(--aghha-space-6); border-bottom: 1px solid var(--aghha-border); }
 .settings-group__header h2 { margin-bottom: var(--aghha-space-1); }
 .settings-group__body { padding-inline: var(--aghha-space-6); }
+.settings-group-content { padding-block: var(--aghha-space-5); }
+.settings-group-content:first-child { margin-top: 0; }
+.settings-group-content:last-child { margin-bottom: 0; }
+.settings-group-copy { color: var(--aghha-text-muted); font-size: .84rem; line-height: 1.5; }
+.settings-group-action { margin: 0; }
 .setting-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .7fr); gap: var(--aghha-space-6); padding-block: var(--aghha-space-5); border-bottom: 1px solid var(--aghha-border); }
 .setting-row:last-child { border-bottom: 0; }
 .setting-row__description { color: var(--aghha-text-muted); line-height: 1.45; }
@@ -595,4 +600,42 @@ th[data-align="right"], td[data-align="right"] { text-align: right; }
   .dialog__header, .dialog__body { padding: var(--aghha-space-4); }
   .dialog__actions { padding: var(--aghha-space-3) var(--aghha-space-4); }
   .independence-card { grid-template-columns: 1fr; gap: 8px; }
+}
+
+.user-list { display: grid; gap: var(--aghha-space-2); padding-block: var(--aghha-space-3); }
+.user-card { display: grid; gap: var(--aghha-space-3); padding: var(--aghha-space-4); border-radius: var(--aghha-radius-control); background: var(--aghha-page-subtle); }
+.user-card__summary, .user-card__details { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--aghha-space-4); }
+.user-card__summary h3, .user-card__summary p, .user-card__metadata, .user-card__help { margin: 0; }
+.user-card__summary p, .user-card__metadata { font-size: .78rem; }
+.user-card__metadata { color: var(--aghha-text-muted); line-height: 1.45; }
+.user-card__password { color: var(--aghha-text-muted); font-size: .8rem; }
+.user-card__password summary { width: fit-content; cursor: pointer; }
+.user-card__password form { max-width: 520px; margin-top: var(--aghha-space-3); }
+
+.backup-section { display: grid; gap: var(--aghha-space-5); }
+.backup-section__intro { margin: 0; color: var(--aghha-text-muted); font-size: .8rem; line-height: 1.5; }
+.backup-type-select { min-height: 48px; padding-block: 12px; }
+.backup-section > .banner { margin-top: 0; }
+.update-instructions { display: grid; gap: var(--aghha-space-3); }
+.update-instructions > * { margin: 0; }
+.update-instructions .button { justify-self: start; }
+.about-project > :last-child { margin-bottom: 0; }
+
+.setup-guide { display: grid; gap: var(--aghha-space-2); padding: 0; list-style: none; }
+.setup-guide li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: var(--aghha-space-3); align-items: center; padding: var(--aghha-space-3) var(--aghha-space-4); border: 1px solid var(--border); border-radius: var(--aghha-radius-card); background: var(--bg-card); }
+.setup-guide__mark { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--aghha-danger); border-radius: 50%; background: var(--aghha-danger-soft); color: var(--aghha-danger); font-weight: 700; }
+.setup-guide__complete .setup-guide__mark { border-color: var(--aghha-success); background: var(--aghha-success-soft); color: var(--aghha-success); }
+.setup-guide__detail { display: grid; gap: 2px; min-width: 0; }
+.setup-guide__status { color: var(--aghha-danger); font-size: .72rem; font-weight: 650; }
+.setup-guide__complete .setup-guide__status { color: var(--aghha-success); }
+.setup-guide__label { overflow-wrap: anywhere; font-size: .82rem; }
+.setup-guide__action { color: var(--aghha-info); font-size: .8rem; text-align: right; text-decoration: none; }
+.setup-guide__action:hover { text-decoration: underline; }
+.release-notes { max-height: 28rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+@media (max-width: 620px) {
+  .user-card__summary, .user-card__details { align-items: stretch; flex-direction: column; gap: var(--aghha-space-2); }
+  .user-card__details .button { align-self: flex-start; }
+  .setup-guide li { grid-template-columns: 28px minmax(0, 1fr); }
+  .setup-guide__action { grid-column: 2; text-align: left; }
 }

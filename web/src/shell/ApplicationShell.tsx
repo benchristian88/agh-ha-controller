@@ -110,7 +110,9 @@ export function ApplicationShell({
     <div className="app-shell">
       <header className="app-header">
         <a className="brand" href="/" aria-label="AGH HA Controller dashboard">
-          <span className="brand-mark">A</span>
+          <span className="brand-mark" aria-hidden="true">
+            ◆
+          </span>
           <span className="brand-name">
             <strong>AGH HA</strong>
             <small>Controller</small>

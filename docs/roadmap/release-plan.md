@@ -45,7 +45,7 @@ Recommended:
 | 0.7 | Operational hardening and observability |
 | 0.8 | HA operations and lifecycle |
 | 0.9 | Product and release hardening |
-| 1.0 | Stable supported release |
+| 1.0 | Rename, stability, and supported release |
 
 ## Current implementation status
 
@@ -60,6 +60,6 @@ Recommended:
 | 0.5 | Complete and validated | Exact-range polling/storage/aggregation, coverage-aware API/UI, and retention are confirmed working. Release 0.7 hardens but does not redesign them. |
 | 0.6 | Complete and validated | API-polled normalized ingestion, retention, search/filter/keyset API, coverage/gaps, Query Log UI, and draft handoffs are confirmed working. |
 | 0.7 | Complete and validated | The operator confirmed all functional, PostgreSQL, browser, Docker, and native/systemd gates on 9 August 2026; the historical validation report remains unchanged. |
-| 0.8 | Implemented; external gates pending | Active DNS/HA health, lifecycle coordination, certificate/version awareness, guided upgrades, notifications, API/UI, migration, and automated checks are implemented. Real-node, PostgreSQL migration, browser, Docker, and native/systemd gates remain. |
-| 0.9 | Planned feature freeze | Productisation, Backup & Upgrade Readiness: product backup/download/restore plus CLI and optional-history separation; cached Atlas update awareness and safe host-guided execution; branding/PWA assets; state-backed Setup Guide; rationalised System Settings; About/build/compatibility attribution; release artifacts/SBOM/signing; onboarding, compatibility/support policy, RBAC/session/security review, API/schema stability, accessibility/performance/browser hardening, diagnostics, and package parity. No broad new control-plane feature areas. |
+| 0.8 | Complete and validated | Active DNS/HA health, lifecycle coordination, certificate/version awareness, guided upgrades, notifications, API/UI, migration, real-node, PostgreSQL, browser, Docker, and native/systemd gates were operator-validated on 9 August 2026. |
+| 0.9 | Implemented; external gates pending | Productisation, Backup & Upgrade Readiness: secure Standard/Full backup/download/preflight plus offline CLI restore; cached AGH HA Controller update awareness and safe host-guided execution; User Administration; branding/PWA assets; state-backed Setup Guide; rationalised System Settings; About/build/compatibility attribution; compatibility/support policy, security review, accessibility/browser hardening, and package parity. Feature freeze follows external validation. |
 | 1.0 | Planned | Stable supported release after the frozen 0.9 surface passes every release gate. |

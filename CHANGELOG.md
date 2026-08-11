@@ -4,7 +4,39 @@ All notable changes to AGH HA Controller will be documented in this file.
 
 The project intends to follow Semantic Versioning once the first public release is made.
 
-## 0.8.0 - Unreleased
+## 0.9.0 - Unreleased
+
+### Added
+
+- Passphrase-encrypted version-1 Standard and Full controller backups using
+  authenticated `age` encryption, PostgreSQL custom dumps, bounded manifests,
+  SHA-256 integrity, browser download/preflight, and an offline empty-database
+  restore CLI.
+- First-class local User Administration with multiple administrators,
+  enable/disable, credential reset, immediate session revocation, audited
+  changes, and transactional final-administrator protection.
+- Cached stable controller release awareness, persisted check setting, guided
+  Docker/native update commands, and consistent app/build/schema metadata.
+- Completed Setup Guide, System Settings, Backup & Restore, Updates, Users, and
+  About pages; neutral application mark, favicon, Apple/PWA icons, and manifest.
+- Append-only migration `000013_release_0_9_productisation`, compatibility and
+  support policy drafts, backup-format ADR, and update-boundary ADR.
+
+### Security
+
+- Portable credential keys exist only inside the passphrase-encrypted payload;
+  database passwords are removed from child-process arguments, uploads and
+  extraction are bounded, paths are fixed, and live online restore is excluded.
+- Controller update metadata accepts only bounded stable release metadata and
+  repository-owned HTTPS release links. No host command or Docker socket API is
+  introduced.
+
+### Naming
+
+- Product text remains AGH HA Controller. The deliberate Atlas DNS Controller
+  rename remains Release 1.0 work.
+
+## 0.8.0 - 2026-08-09
 
 ### Added
 
@@ -23,6 +55,12 @@ The project intends to follow Semantic Versioning once the first public release 
 - Release 0.7 Operational Status remains the controller/integration-health
   source and now exposes DNS and redundancy as independent dimensions.
 - Default controller, image, installer, and web version is 0.8.0.
+
+### Validation
+
+- Operator validation completed for the real-node DNS/lifecycle workflows,
+  PostgreSQL migration, packaged browser experience, Docker Compose, and
+  native/systemd clean-install, upgrade, restart, and rollback gates.
 
 ## 0.6.0 - Unreleased
 
@@ -49,11 +87,11 @@ The project intends to follow Semantic Versioning once the first public release 
 
 ### Known limitations
 
-- AdGuard Home does not expose a stable query-event identifier. Atlas combines a
+- AdGuard Home does not expose a stable query-event identifier. AGH HA Controller combines a
   strong normalized fingerprint with the event's occurrence ordinal, preferring
   preservation of legitimate identical events over aggressive collapsing.
 - API polling cannot recover events already removed by node-local retention;
-  Atlas records and presents detected gaps. The later forwarder remains the
+  AGH HA Controller records and presents detected gaps. The later forwarder remains the
   higher-fidelity ingestion path.
 
 ## 0.5.0 - Unreleased

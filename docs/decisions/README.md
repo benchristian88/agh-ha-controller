@@ -34,3 +34,5 @@ Architecture Decision Records capture durable decisions and their rationale.
 | [ADR-0028](ADR-0028-aggregate-exact-node-statistics-in-the-controller.md) | Accepted | Aggregate exact node statistics in the controller |
 | [ADR-0029](ADR-0029-remain-agentless-by-default.md) | Accepted | Remain agentless by default and defer a local Query Log forwarder until evidence requires it |
 | [ADR-0030](ADR-0030-coordinate-ha-lifecycle-without-owning-node-upgrades.md) | Accepted | Coordinate HA lifecycle and guided upgrades without owning node package execution |
+| [ADR-0031](ADR-0031-use-passphrase-encrypted-portable-controller-backups-and-offline-restore.md) | Accepted | Use passphrase-encrypted portable controller backups and offline restore |
+| [ADR-0032](ADR-0032-use-cached-github-release-awareness-and-host-guided-controller-updates.md) | Accepted | Use cached GitHub release awareness and host-guided controller updates |

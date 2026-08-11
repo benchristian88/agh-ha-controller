@@ -1,6 +1,6 @@
 # HA Operations and Lifecycle
 
-Release 0.8 adds operational coordination without placing Atlas in the live DNS
+Release 0.8 adds operational coordination without placing AGH HA Controller in the live DNS
 path. The existing node health worker still measures authenticated AdGuard Home
 API reachability. A separate worker sends a real DNS query to each enabled,
 non-maintenance node every 30 seconds, using the node URL host and last observed
@@ -30,12 +30,12 @@ material and filesystem paths never enter this model.
 
 The upstream release checker reads the official AdGuard Home GitHub latest
 release endpoint at most every six hours and stores a safe cache. Failure keeps
-the previous version and marks it stale. Atlas compatibility remains derived
+the previous version and marks it stale. Controller compatibility remains derived
 from its explicit adapter profile rather than inferred from the upstream tag.
 
 Native/systemd and Docker nodes receive a durable guided upgrade workflow. The
 operator performs the platform-specific install or container replacement;
-Atlas accepts only a target inside its explicit tested adapter range, then
+AGH HA Controller accepts only a target inside its explicit tested adapter range, then
 validates the freshly reported target version and the complete
 return-to-service sequence. Other installation types are explicitly
 unsupported. Failed validation records safe evidence and leaves the node in

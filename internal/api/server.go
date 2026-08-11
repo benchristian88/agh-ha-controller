@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/benchristian88/agh-ha-controller/internal/auth"
+	"github.com/benchristian88/agh-ha-controller/internal/backup"
 	"github.com/benchristian88/agh-ha-controller/internal/controlplane"
 	"github.com/benchristian88/agh-ha-controller/internal/domain"
 	"github.com/benchristian88/agh-ha-controller/internal/haoperations"
@@ -21,7 +22,10 @@ import (
 	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
 	"github.com/benchristian88/agh-ha-controller/internal/operations"
 	"github.com/benchristian88/agh-ha-controller/internal/querylog"
+	"github.com/benchristian88/agh-ha-controller/internal/systemsettings"
 	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
+	"github.com/benchristian88/agh-ha-controller/internal/updates"
+	"github.com/benchristian88/agh-ha-controller/internal/useradmin"
 )
 
 const (
@@ -111,6 +115,26 @@ type NotificationSettingsService interface {
 	Delete(context.Context, domain.Actor, string, int) error
 }
 
+type UserAdministrationService interface {
+	List(context.Context) ([]domain.User, error)
+	Create(context.Context, domain.Actor, useradmin.CreateInput) (domain.User, error)
+	Update(context.Context, domain.Actor, string, useradmin.UpdateInput) (domain.User, error)
+	ResetPassword(context.Context, domain.Actor, string, string) error
+}
+
+type BackupService interface {
+	Create(context.Context, backup.Type, string, domain.Actor) (backup.Result, error)
+}
+
+type ControllerUpdateService interface {
+	Status(context.Context, bool) (updates.Status, error)
+}
+
+type SystemSettingsService interface {
+	Get(context.Context) (systemsettings.Settings, error)
+	Update(context.Context, domain.Actor, bool, int) (systemsettings.Settings, error)
+}
+
 type Server struct {
 	auth           *auth.Service
 	management     *domain.ManagementService
@@ -127,6 +151,10 @@ type Server struct {
 	operational    OperationalHealthService
 	haOperations   HAOperationsService
 	notifications  NotificationSettingsService
+	users          UserAdministrationService
+	backups        BackupService
+	updates        ControllerUpdateService
+	settings       SystemSettingsService
 	metrics        *operationalhealth.Tracker
 	metricsToken   string
 	controlplane   *controlplane.Service
@@ -148,6 +176,10 @@ func (s *Server) SetHAOperations(service HAOperationsService)           { s.haOp
 func (s *Server) SetNotificationSettings(service NotificationSettingsService) {
 	s.notifications = service
 }
+func (s *Server) SetUserAdministration(service UserAdministrationService) { s.users = service }
+func (s *Server) SetBackups(service BackupService)                        { s.backups = service }
+func (s *Server) SetControllerUpdates(service ControllerUpdateService)    { s.updates = service }
+func (s *Server) SetSystemSettings(service SystemSettingsService)         { s.settings = service }
 func (s *Server) SetMetrics(tracker *operationalhealth.Tracker, token string) {
 	s.metrics, s.metricsToken = tracker, token
 }
@@ -180,6 +212,16 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /api/v1/auth/login", s.handleLogin)
 	s.mux.Handle("POST /api/v1/auth/logout", s.authenticated(true, http.HandlerFunc(s.handleLogout)))
 	s.mux.Handle("GET /api/v1/auth/me", s.authenticated(false, http.HandlerFunc(s.handleMe)))
+	s.mux.Handle("GET /api/v1/users", s.administrator(false, http.HandlerFunc(s.handleListUsers)))
+	s.mux.Handle("POST /api/v1/users", s.administrator(true, http.HandlerFunc(s.handleCreateUser)))
+	s.mux.Handle("PATCH /api/v1/users/{userId}", s.administrator(true, http.HandlerFunc(s.handleUpdateUser)))
+	s.mux.Handle("POST /api/v1/users/{userId}/password-reset", s.administrator(true, http.HandlerFunc(s.handleResetUserPassword)))
+	s.mux.Handle("POST /api/v1/system/backups", s.administrator(true, http.HandlerFunc(s.handleCreateBackup)))
+	s.mux.Handle("POST /api/v1/system/restore-preflight", s.administrator(true, http.HandlerFunc(s.handleRestorePreflight)))
+	s.mux.Handle("GET /api/v1/system/update", s.administrator(false, http.HandlerFunc(s.handleControllerUpdate)))
+	s.mux.Handle("POST /api/v1/system/update/check", s.administrator(true, http.HandlerFunc(s.handleCheckControllerUpdate)))
+	s.mux.Handle("GET /api/v1/system/settings", s.administrator(false, http.HandlerFunc(s.handleSystemSettings)))
+	s.mux.Handle("PATCH /api/v1/system/settings", s.administrator(true, http.HandlerFunc(s.handleUpdateSystemSettings)))
 	s.mux.Handle("GET /api/v1/clusters", s.authenticated(false, http.HandlerFunc(s.handleListClusters)))
 	s.mux.Handle("POST /api/v1/clusters", s.authenticated(true, http.HandlerFunc(s.handleCreateCluster)))
 	s.mux.Handle("GET /api/v1/clusters/{clusterId}", s.authenticated(false, http.HandlerFunc(s.handleGetCluster)))
@@ -306,6 +348,16 @@ func (s *Server) authenticated(requireCSRF bool, next http.Handler) http.Handler
 	})
 }
 
+func (s *Server) administrator(requireCSRF bool, next http.Handler) http.Handler {
+	return s.authenticated(requireCSRF, http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if authenticatedUser(request.Context()).Role != domain.RoleAdministrator {
+			s.writeError(response, request, domain.NewError(domain.ErrorAuthorisation, "administrator access is required"))
+			return
+		}
+		next.ServeHTTP(response, request)
+	}))
+}
+
 func (s *Server) requestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		id := strings.TrimSpace(request.Header.Get(requestIDHeader))
@@ -340,6 +392,8 @@ type statusWriter struct {
 	http.ResponseWriter
 	status int
 }
+
+func (writer *statusWriter) Unwrap() http.ResponseWriter { return writer.ResponseWriter }
 
 func (writer *statusWriter) WriteHeader(status int) {
 	writer.status = status
