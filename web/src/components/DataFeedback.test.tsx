@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ConvergenceSummary,
   DataTable,
+  MetricCard,
   NodeBadge,
   Pagination,
   PartialSuccessPanel,
@@ -109,6 +110,21 @@ describe("data primitives", () => {
     expect(screen.getByText("Primary DNS")).not.toBeNull();
     expect(screen.getByText(/Revision #24/)).not.toBeNull();
     expect(screen.getByText("1 of 2 nodes converged")).not.toBeNull();
+  });
+
+  it("renders summary metrics with explicit label, value, and detail layout", () => {
+    const { container } = render(
+      <MetricCard
+        label="DNS serving"
+        value="2 / 2"
+        detail="All managed nodes"
+      />,
+    );
+    const card = container.querySelector(".metric-card");
+    expect(card?.tagName).toBe("ARTICLE");
+    expect(card?.querySelector("span")?.textContent).toBe("DNS serving");
+    expect(card?.querySelector("strong")?.textContent).toBe("2 / 2");
+    expect(card?.querySelector("small")?.textContent).toBe("All managed nodes");
   });
 
   it("renders structured differences, progress, and partial success", () => {

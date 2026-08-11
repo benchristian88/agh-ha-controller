@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { MetricCard } from "../../components/DataDisplay";
 import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
 import { StatusBadge } from "../../components/StatusBadge";
 import { api } from "../../lib/api";
@@ -71,13 +72,13 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
         </div>
       )}
       <section className="metrics" aria-label="Cluster health metrics">
-        <Metric label="Managed nodes" value={String(currentNodes.length)} />
-        <Metric
+        <MetricCard label="Managed nodes" value={String(currentNodes.length)} />
+        <MetricCard
           label="Healthy nodes"
           value={`${healthy} / ${currentNodes.length}`}
         />
-        <Metric label="Stale nodes" value={String(stale)} />
-        <Metric label="Controller role" value="Management only" />
+        <MetricCard label="Stale nodes" value={String(stale)} />
+        <MetricCard label="Controller role" value="Management only" />
       </section>
       {(operational !== undefined ||
         (statistics !== undefined && statistics.state !== "unavailable")) && (
@@ -225,15 +226,6 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
         </p>
       </section>
     </>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="metric-card">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
   );
 }
 

@@ -21,5 +21,5 @@
   document.documentElement.style.colorScheme = theme;
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", theme === "dark" ? "#20262e" : "#ffffff");
+    ?.setAttribute("content", theme === "dark" ? "#1b222a" : "#ffffff");
 })();

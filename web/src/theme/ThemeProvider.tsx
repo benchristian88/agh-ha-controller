@@ -12,6 +12,10 @@ export type ResolvedTheme = Exclude<ThemePreference, "system">;
 
 export const THEME_STORAGE_KEY = "agh-ha-controller.theme";
 export const THEME_MEDIA_QUERY = "(prefers-color-scheme: dark)";
+export const THEME_COLORS: Record<ResolvedTheme, string> = {
+  light: "#ffffff",
+  dark: "#1b222a",
+};
 
 interface ThemeContextValue {
   preference: ThemePreference;
@@ -46,7 +50,7 @@ function applyDocumentTheme(theme: ResolvedTheme, preference: ThemePreference) {
   const themeColor = document.querySelector<HTMLMetaElement>(
     'meta[name="theme-color"]',
   );
-  themeColor?.setAttribute("content", theme === "dark" ? "#20262e" : "#ffffff");
+  themeColor?.setAttribute("content", THEME_COLORS[theme]);
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

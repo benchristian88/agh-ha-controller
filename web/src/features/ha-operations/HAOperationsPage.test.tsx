@@ -118,6 +118,11 @@ describe("Release 0.8 HA operations", () => {
     expect(
       screen.getAllByText("1 / 1", { selector: "strong" }).length,
     ).toBeGreaterThan(0);
+    const summary = container.querySelector(
+      '[aria-label="HA redundancy summary"]',
+    );
+    expect(summary?.querySelectorAll(":scope > .metric-card")).toHaveLength(4);
+    expect(summary?.querySelector(".metric")).toBeNull();
     expect(screen.getByText("DNS certificate")).toBeTruthy();
     expect(screen.getByText("DNS failed")).toBeTruthy();
     const accessibility = await axe.run(container, {

@@ -122,6 +122,7 @@ disclosures. Theme and asset behavior is documented in
 
 ## HA display
 
+- `MetricCard`
 - `StatusBadge`
 - `NodeBadge`
 - `RevisionBadge`
@@ -129,6 +130,11 @@ disclosures. Theme and asset behavior is documented in
 - `StructuredDiff`
 - `ProgressTimeline`
 - `PartialSuccessPanel`
+
+`MetricCard` is the single summary/stat tile for Dashboard, Statistics,
+Operational Status, HA Operations, and Node Lifecycle. It owns the primary
+surface, label/value gap, optional supporting detail, and responsive wrapping;
+feature pages provide content only.
 
 `DataTable` optionally renders one expanded record as an adjacent table row.
 Feature code owns the record-specific disclosure button and operational detail;

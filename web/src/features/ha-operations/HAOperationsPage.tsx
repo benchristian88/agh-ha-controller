@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { MetricCard } from "../../components/DataDisplay";
 import {
   Banner,
   EmptyState,
@@ -103,19 +104,22 @@ export function HAOperationsPage({ cluster }: { cluster: Cluster }) {
       )}
 
       <section className="metrics" aria-label="HA redundancy summary">
-        <Metric
+        <MetricCard
           label="DNS serving"
           value={`${summary.servingDnsNodes} / ${summary.totalNodes}`}
         />
-        <Metric
+        <MetricCard
           label="API reachable"
           value={`${summary.apiReachableNodes} / ${summary.totalNodes}`}
         />
-        <Metric
+        <MetricCard
           label="Converged"
           value={`${summary.convergedNodes} / ${summary.totalNodes}`}
         />
-        <Metric label="Maintenance" value={String(summary.maintenanceNodes)} />
+        <MetricCard
+          label="Maintenance"
+          value={String(summary.maintenanceNodes)}
+        />
       </section>
 
       <section className="section-block">
@@ -404,14 +408,6 @@ export function HAOperationsPage({ cluster }: { cluster: Cluster }) {
   }
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <article className="metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </article>
-  );
-}
 function formatTime(value?: string) {
   return value ? new Date(value).toLocaleString() : "—";
 }

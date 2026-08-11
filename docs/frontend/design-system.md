@@ -158,6 +158,12 @@ Below the desktop breakpoint:
 
 Use semantic tokens rather than raw colours inside feature components.
 
+Atlas Blue is the interaction and selection colour. Green is reserved for
+health and success. Amber communicates warnings, red communicates danger or
+failure, and neutral colours provide structure and surface hierarchy. Brand
+Teal remains artwork-only unless a separately documented interaction role is
+approved. Feature pages must not redefine these roles.
+
 Required roles:
 
 ```css
@@ -183,15 +189,71 @@ Required roles:
 --warning-soft
 --danger
 --danger-soft
+--success-border
+--info-border
+--warning-border
+--danger-border
 --neutral-soft
 --link
 --overlay
 --focus
 ```
 
-### Original dark-theme reference palette
+### Surface hierarchy
 
-The original project palette remains a valid starting reference:
+All pages use the same four-level model:
+
+```text
+Page canvas     = --aghha-page
+Primary surface = --aghha-card
+Elevated popup  = --aghha-popup
+Subtle / inset  = --aghha-page-subtle
+Border          = --aghha-border
+Strong border   = --aghha-border-strong
+```
+
+`--aghha-header` is the shell surface and `--aghha-input` is the control
+surface. Both map into the hierarchy above; they do not create feature-local
+surface systems. Borders reinforce layer changes but must not be the only
+thing separating a card from the page. Heavy card shadows are not part of the
+system.
+
+The Release 0.9.1 refinement mappings are:
+
+| Role | Light | Dark |
+|---|---|---|
+| Page canvas | `#F3F5F7` | `#151A20` |
+| Primary surface/card | `#FFFFFF` | `#1D242D` |
+| Elevated popup | `#FFFFFF` | `#222A34` |
+| Subtle/inset surface | `#E9EEF3` | `#252E38` |
+| Border | `#D4DCE6` | `#34404D` |
+| Strong border | `#B8C4D1` | `#465463` |
+| Primary text | `#24303D` | `#E8EDF2` |
+| Secondary text | `#5E6C7D` | `#AAB5C1` |
+
+The page canvas is always darker than the primary surface. Inset cells are
+visibly distinct from their parent card in both themes. Neutral surfaces must
+not be tinted Atlas Blue.
+
+### Interaction and semantic mappings
+
+| Role | Light foreground / soft / border | Dark foreground / soft / border |
+|---|---|---|
+| Brand interaction | `#2563EB` / `#E9EFFF` | `#2563EB` / `#1B2D4D` |
+| Success / health | `#2F6B43` / `#EDF7F0` / `#B9D9C3` | `#7BC493` / `#1E3428` / `#2C513B` |
+| Information | `#2E6090` / `#EDF4FA` / `#BFD2E3` | `#8BBCE4` / `#203344` / `#31506A` |
+| Warning | `#7A4B0E` / `#FFF6E8` / `#E5CDA6` | `#E6B767` / `#3A3020` / `#5B492A` |
+| Danger / failure | `#923842` / `#FCEFF1` / `#E8BDC2` | `#E89A9F` / `#3D272B` / `#62383E` |
+
+Primary buttons, active navigation, links, focus rings, and selected controls
+use Atlas Blue. Semantic colours communicate state only. Normal healthy state
+uses compact dots and badges rather than large green-filled regions. Status
+components always retain a text label, and warnings/errors retain explanatory
+copy where action is required.
+
+### Historical dark-theme reference palette
+
+The original project palette is retained as historical context only:
 
 ```css
 --bg-app: #111827;

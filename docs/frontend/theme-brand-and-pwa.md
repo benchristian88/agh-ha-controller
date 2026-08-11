@@ -40,6 +40,13 @@ colour, while success, information, warning, and danger retain separate
 semantic colours. Atlas Teal is a brand colour and is not a replacement for
 success.
 
+The shared surface hierarchy is page canvas → primary card → subtle/inset
+surface, with popup as the elevated overlay surface. Light uses `#F3F5F7` →
+`#FFFFFF` → `#E9EEF3`; Dark uses `#151A20` → `#1D242D` → `#252E38`.
+Shared border and semantic foreground/soft/border mappings are documented in
+`design-system.md`. Pages and feature components must not introduce local
+theme colours.
+
 ## Theme control and artwork
 
 The labelled native theme select is immediately before the desktop

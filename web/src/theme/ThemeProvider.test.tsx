@@ -5,7 +5,12 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AtlasBrand } from "../components/Brand";
 import { ThemeControl } from "./ThemeControl";
-import { THEME_STORAGE_KEY, ThemeProvider, useTheme } from "./ThemeProvider";
+import {
+  THEME_COLORS,
+  THEME_STORAGE_KEY,
+  ThemeProvider,
+  useTheme,
+} from "./ThemeProvider";
 import { installMatchMedia } from "./testMatchMedia";
 
 afterEach(() => {
@@ -13,6 +18,7 @@ afterEach(() => {
   window.localStorage.clear();
   document.documentElement.removeAttribute("data-theme");
   document.documentElement.removeAttribute("data-theme-preference");
+  document.querySelector('meta[name="theme-color"]')?.remove();
   vi.unstubAllGlobals();
 });
 
@@ -57,6 +63,9 @@ describe("theme preference", () => {
   it("persists explicit selection and ignores later OS changes", async () => {
     const media = installMatchMedia(false);
     const user = userEvent.setup();
+    const themeColor = document.createElement("meta");
+    themeColor.name = "theme-color";
+    document.head.append(themeColor);
     renderTheme();
 
     await user.selectOptions(
@@ -66,6 +75,7 @@ describe("theme preference", () => {
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(document.documentElement.dataset.themePreference).toBe("dark");
+    expect(themeColor.content).toBe(THEME_COLORS.dark);
 
     media.setMatches(false);
     expect(screen.getByText("dark:dark")).toBeTruthy();

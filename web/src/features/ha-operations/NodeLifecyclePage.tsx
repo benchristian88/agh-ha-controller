@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { MetricCard } from "../../components/DataDisplay";
 import { Banner, ErrorState, Loading } from "../../components/Feedback";
 import { StatusBadge } from "../../components/StatusBadge";
 import { api } from "../../lib/api";
@@ -88,10 +89,25 @@ export function NodeLifecyclePage({
         </Banner>
       )}
       <section className="metrics" aria-label="Node lifecycle status">
-        <Metric label="API" value={node.healthStatus} />
-        <Metric label="DNS" value={lifecycle.dns?.status ?? "unknown"} />
-        <Metric label="Configuration" value={node.convergenceStatus} />
-        <Metric label="Version" value={node.version ?? "unknown"} />
+        <MetricCard
+          label="API"
+          value={node.healthStatus.replaceAll("_", " ")}
+          valueClassName="operational-value"
+        />
+        <MetricCard
+          label="DNS"
+          value={(lifecycle.dns?.status ?? "unknown").replaceAll("_", " ")}
+          valueClassName="operational-value"
+        />
+        <MetricCard
+          label="Configuration"
+          value={node.convergenceStatus.replaceAll("_", " ")}
+          valueClassName="operational-value"
+        />
+        <MetricCard
+          label="Version"
+          value={(node.version ?? "unknown").replaceAll("_", " ")}
+        />
       </section>
 
       <section className="section-block">
@@ -502,14 +518,6 @@ export function NodeLifecyclePage({
       setBusy("");
     }
   }
-}
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <article className="metric">
-      <span>{label}</span>
-      <strong>{value.replaceAll("_", " ")}</strong>
-    </article>
-  );
 }
 function formatTime(value?: string) {
   return value ? new Date(value).toLocaleString() : "—";
