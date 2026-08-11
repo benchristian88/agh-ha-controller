@@ -2,7 +2,7 @@
 
 > Historical pre-1.0 planning record. It is retained for traceability and does
 > not define current features or future commitments. See the root changelog and
-> the forward-looking [roadmap](roadmap.md).
+> the forward-looking [roadmap](../../../roadmap/roadmap.md).
 
 ## Versioning
 

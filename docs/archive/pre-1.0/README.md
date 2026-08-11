@@ -1,49 +1,37 @@
 # Pre-1.0 Documentation Archive
 
-These records explain how the current product was developed or validated. They
-are intentionally excluded from normal operator navigation and may describe old
-routes, screenshots, release states, or proposed behavior. Accepted ADRs are not
-archived; they remain durable decisions in `docs/decisions/`.
+This is the physical archive for implementation, validation, planning, product
+exploration, and visual evidence created before Release 1.0. These records may
+describe superseded routes, incomplete release states, old screenshots, or
+plans that were later changed.
 
-Files remain at their established paths to preserve historical links. This index
-is the logical archive boundary; current behavior must be documented elsewhere.
+Archived material is not current product, operator, API, schema, route, or
+support guidance. Start with the [current documentation](../../README.md).
+Accepted architecture decisions remain in [the ADR register](../../decisions/README.md)
+because ADRs are permanent decision history rather than build diary material.
 
-## Release validation evidence
+## Archive categories
 
-- [Release 0.4.1 regression report](../../development/release-0.4.1-phase-10-regression-report.md)
-- [Release 0.6 validation](../../development/release-0.6-validation.md)
-- [Release 0.7 validation](../../development/release-0.7-validation.md)
-- [Release 0.8 validation](../../development/release-0.8-validation.md)
-- [Release 0.9 validation](../../development/release-0.9-validation.md)
-- [Release 0.9.1 validation](../../development/release-0.9.1-validation.md)
-- [Release 0.9.2 validation](../../development/release-0.9.2-validation.md)
+- [Frontend implementation](frontend/implementation/) — Release 0.4/0.4.1
+  audits, phase records, migration specifications, and completed checklists.
+- [Release validation](validation/) — point-in-time regression and release gate
+  evidence for Releases 0.4.1 through 0.9.2.
+- [Planning](planning/) — superseded release plans, UI alignment roadmap, and
+  pre-1.0 backlog.
+- [Product exploration](product/) — the original frontend alignment brief and
+  historical product design document.
+- [Screenshots](screenshots/) — point-in-time visual evidence for Releases 0.4.1
+  and 0.9.1.
 
-## Frontend implementation history
+The obsolete feature-ledger redirect and duplicated ADR compendium were removed.
+Git history preserves them; the current authorities are the
+[feature catalogue](../../reference/features.md) and individual ADR files.
 
-- `docs/frontend/release-0.4*.md`
-- `docs/frontend/screen-migration-specifications.md`
-- `docs/frontend/implementation-checklist.md`
-- `docs/frontend/source-of-truth-order.md`
-- `docs/frontend/screenshots/release-0.4.1/`
+## Archive rules
 
-The current UI references are the design system, component catalogue,
-navigation/shell, feature-presentation, Query Log, and Operational Status docs.
-
-## Historical planning and product exploration
-
-- [Release plan](../../roadmap/release-plan.md)
-- [Release 0.4.1 UI roadmap](../../roadmap/release-0.4.1-ui-alignment-roadmap.md)
-- [Backlog](../../roadmap/backlog.md)
-- [Frontend alignment brief](../../product/frontend-alignment-brief.md)
-- [Product design document](../../product/product-design-document.md)
-- [ADR compendium](../../decisions/ADR-compendium.md) — duplicated snapshot;
-  individual ADR files are authoritative
-
-## Rules for historical material
-
-- Do not use it to determine current API, schema, route, install, or support
-  behavior.
-- Correct factual/security hazards with an explicit historical note; do not
-  rewrite evidence to match later outcomes.
-- Add current behavior to the product/user/admin/operations/reference docs and
+- Treat dates, release claims, screenshots, and names as historical evidence.
+- Use current documentation to determine present behavior.
+- Repair internal archive links when practical, but do not rewrite historical
+  outcomes to match later implementation.
+- Add current behavior to the appropriate active guide or reference and release
   chronology to the root changelog.

@@ -3,10 +3,10 @@
 > This document records the AdGuard Home upstream UI and API model.
 > It is not the authoritative implementation specification for AGH HA Controller.
 > For current controller design decisions, see:
-> - `navigation-and-shell.md`
-> - `feature-presentation-rules.md`
-> - `screen-migration-specifications.md`
-> - `release-0.4-ui-implementation-audit.md`
+> - [ADR-0026](../../decisions/ADR-0026-adopt-adguard-v2-inspired-ui-language.md)
+> - [navigation and shell](../navigation-and-shell.md)
+> - [feature presentation rules](../feature-presentation-rules.md)
+> - [design system](../design-system.md)
 
 
 # AdGuard Home v2 Menu and Route Audit

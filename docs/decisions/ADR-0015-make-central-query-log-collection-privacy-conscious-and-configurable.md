@@ -3,7 +3,7 @@
 **Status:** Accepted  
 **Date:** 26 July 2026  
 **Decision owners:** Project owner and maintainers  
-**Related PDD:** `docs/product/product-design-document.md`
+**Related PDD:** `docs/archive/pre-1.0/product/product-design-document.md`
 
 ## Context
 

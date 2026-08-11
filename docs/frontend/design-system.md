@@ -218,7 +218,7 @@ surface systems. Borders reinforce layer changes but must not be the only
 thing separating a card from the page. Heavy card shadows are not part of the
 system.
 
-The Release 0.9.1 refinement mappings are:
+The current theme mappings are:
 
 | Role | Light | Dark |
 |---|---|---|
@@ -951,4 +951,6 @@ Every shared component should include:
 - Accessibility review.
 - Storybook or equivalent showcase where available.
 
-Existing frontend presentation is not authoritative where it conflicts with the current frontend specification, ADR-0026, or the Release 0.4 implementation audit.
+Existing frontend presentation is not authoritative where it conflicts with
+this design system, [Frontend Design](frontend-design.md),
+[Feature Presentation Rules](feature-presentation-rules.md), or ADR-0026.

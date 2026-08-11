@@ -42,7 +42,7 @@ not part of the operator documentation set.
 
 - [Changelog](../CHANGELOG.md) — release chronology
 - [Roadmap](roadmap/roadmap.md) — future direction only
-- [Pre-1.0 archive index](archive/pre-1.0/README.md) — implementation audits,
+- [Physical pre-1.0 archive](archive/pre-1.0/README.md) — implementation audits,
   release validation, and superseded planning material
 
 Accepted ADRs remain in `docs/decisions/`; they are durable decision records,

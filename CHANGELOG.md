@@ -4,7 +4,7 @@ All notable changes to AGH HA Controller will be documented in this file.
 
 The project intends to follow Semantic Versioning once the first public release is made.
 
-## 0.9.2 - Unreleased
+## 0.9.2 - 2026-08-11
 
 ### Added
 
@@ -50,11 +50,11 @@ The project intends to follow Semantic Versioning once the first public release 
 ### Validation
 
 - Local automated and documentation validation is recorded in
-  `docs/development/release-0.9.2-validation.md`. Inherited external browser,
+  `docs/archive/pre-1.0/validation/release-0.9.2-validation.md`. Inherited external browser,
   iOS, packaged install, PostgreSQL, backup/restore, and real-node gates remain
   explicit rather than being inferred from local checks.
 
-## 0.9.1 - Unreleased
+## 0.9.1 - 2026-08-11
 
 ### Added
 
@@ -79,7 +79,7 @@ The project intends to follow Semantic Versioning once the first public release 
   service, image, environment, configuration, API, database, manifest, and
   release-artifact technical names remain AGH HA Controller until Release 1.0.
 
-## 0.9.0 - Unreleased
+## 0.9.0 - 2026-08-09
 
 ### Added
 
@@ -137,7 +137,7 @@ The project intends to follow Semantic Versioning once the first public release 
   PostgreSQL migration, packaged browser experience, Docker Compose, and
   native/systemd clean-install, upgrade, restart, and rollback gates.
 
-## 0.6.0 - Unreleased
+## 0.6.0 - 2026-08-0
 
 ### Added
 
@@ -169,7 +169,7 @@ The project intends to follow Semantic Versioning once the first public release 
   AGH HA Controller records and presents detected gaps. The later forwarder remains the
   higher-fidelity ingestion path.
 
-## 0.5.0 - Unreleased
+## 0.5.0 - 2026-08-09
 
 ### Added
 
@@ -199,7 +199,7 @@ The project intends to follow Semantic Versioning once the first public release 
 - Custom statistics ranges and combined query-log ingestion remain out of
   scope; query-log ingestion is Release 0.6.
 
-## 0.4.1 - Unreleased
+## 0.4.1 - 2026-08-02
 
 ### Added
 

@@ -189,7 +189,7 @@ ingestion remains Release 0.6 and Statistics ingestion remains Release 0.5.
 Implemented locally on 2 August 2026. The complete route/redirect table,
 deletion inventory, regression evidence, visual/accessibility results,
 packaging limits, rollback plan, and known issues are recorded in
-`docs/development/release-0.4.1-phase-10-regression-report.md`.
+`docs/archive/pre-1.0/validation/release-0.4.1-phase-10-regression-report.md`.
 
 ### Deliverables
 

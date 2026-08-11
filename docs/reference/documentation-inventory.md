@@ -1,54 +1,52 @@
 # Documentation Inventory
 
-This inventory classifies every significant documentation family. A glob entry
-classifies every file in that family unless an explicit row overrides it.
+This inventory records the physical location and authority of each significant
+documentation family. A family row classifies every file beneath that path
+unless a more specific row overrides it.
 
-| Path or family | Classification | Role |
-|---|---|---|
-| `README.md` | CURRENT PRODUCT DOCUMENTATION | Product front door and quick start. |
-| `SECURITY.md`, `CONTRIBUTING.md`, `AGENTS.md` | CURRENT PRODUCT DOCUMENTATION | Repository policy and contributor entry points. |
-| `CHANGELOG.md` | HISTORICAL / DEVELOPMENT | Single authoritative release chronology. |
-| `docs/README.md` | CURRENT PRODUCT DOCUMENTATION | Documentation navigation. |
-| `docs/getting-started/*` | CURRENT PRODUCT DOCUMENTATION | Authoritative Docker and native/systemd installation. |
-| `docs/user-guide/*` | CURRENT PRODUCT DOCUMENTATION | Visible operator workflows. |
-| `docs/administration/*` | CURRENT PRODUCT DOCUMENTATION | Users, webhooks, lifecycle, backup, updates, settings, audit. |
-| `docs/operations/runbook.md` | CURRENT PRODUCT DOCUMENTATION | Runtime diagnosis and recovery. |
-| `docs/operations/backup-and-restore.md` | CURRENT PRODUCT DOCUMENTATION | Portable backup and offline restore procedure. |
-| `docs/operations/backup-format.md` | REFERENCE / ARCHITECTURE | Portable archive contract. |
-| `docs/operations/compatibility-matrix.md` | CURRENT PRODUCT DOCUMENTATION | Tested/expected/unsupported boundaries. |
-| `docs/reference/features.md` | CURRENT PRODUCT DOCUMENTATION | Sole authoritative feature catalogue. |
-| `docs/reference/rename-inventory.md` | REFERENCE / ARCHITECTURE | Release 1.0 systematic rename scope. |
-| `docs/reference/documentation-inventory.md` | REFERENCE / ARCHITECTURE | Documentation governance. |
-| `docs/architecture/*` | REFERENCE / ARCHITECTURE | Current system, configuration, deployment, and reconciliation boundaries. |
-| `docs/api/*` | REFERENCE / ARCHITECTURE | Controller and node integration contracts. |
-| `docs/backend/*` | REFERENCE / ARCHITECTURE | Detailed service/worker behavior. |
-| `docs/database/*` | REFERENCE / ARCHITECTURE | Schema, data design, and retention. |
-| `docs/diagrams/*` | REFERENCE / ARCHITECTURE | System, database, and sequence diagrams. |
-| `docs/security/security.md` | CURRENT PRODUCT DOCUMENTATION | Current security controls and operating guidance. |
-| `docs/decisions/ADR-0001*`–`ADR-0032*` | REFERENCE / ARCHITECTURE | Canonical decision history; status is indexed in `decisions/README.md`. |
-| `docs/decisions/README.md` | REFERENCE / ARCHITECTURE | ADR status register. |
-| `docs/frontend/design-system.md` | REFERENCE / ARCHITECTURE | Current visual primitives. |
-| `docs/frontend/component-catalogue.md` | REFERENCE / ARCHITECTURE | Current shared components. |
-| `docs/frontend/navigation-and-shell.md`, `ui-navigation.md` | REFERENCE / ARCHITECTURE | Current route/navigation behavior; consolidate if either diverges. |
-| `docs/frontend/feature-presentation-rules.md`, `frontend-design.md`, `ha-controller-responsibility-separation.md`, `query-log.md`, `operational-status.md`, `theme-brand-and-pwa.md` | REFERENCE / ARCHITECTURE | Current frontend behavior and boundaries. |
-| `docs/development/coding-standards.md`, `local-development.md`, `regression-safety-rules.md`, `release-process.md`, `testing.md` | CURRENT PRODUCT DOCUMENTATION | Active contributor documentation. |
-| `docs/development/release-*.md` | HISTORICAL / DEVELOPMENT | Point-in-time validation evidence. |
-| `docs/frontend/release-*.md`, `screen-migration-specifications.md`, `implementation-checklist.md`, `source-of-truth-order.md` | HISTORICAL / DEVELOPMENT | Pre-1.0 UI implementation/audit material. |
-| `docs/frontend/screenshots/release-0.4.1/*` | HISTORICAL / DEVELOPMENT | Point-in-time visual evidence, not current product imagery. |
-| `docs/roadmap/roadmap.md` | CURRENT PRODUCT DOCUMENTATION | Forward-looking direction only. |
-| `docs/roadmap/release-plan.md`, `release-0.4.1-ui-alignment-roadmap.md`, `backlog.md` | HISTORICAL / DEVELOPMENT | Superseded chronology/planning inputs. |
-| `docs/product/support-and-deprecation-policy.md` | CURRENT PRODUCT DOCUMENTATION | Pre-1.0 support boundaries. |
-| `docs/product/feature-ledger.md` | OBSOLETE / DUPLICATED | Retired pointer; catalogue/changelog own its former roles. |
-| `docs/product/product-design-document.md`, `frontend-alignment-brief.md` | HISTORICAL / DEVELOPMENT | Original product and alignment exploration. |
-| `docs/decisions/ADR-compendium.md` | OBSOLETE / DUPLICATED | Snapshot duplicating canonical individual ADR files. |
-| `docs/archive/pre-1.0/README.md` | HISTORICAL / DEVELOPMENT | Navigation boundary for retained history. |
-| `scripts/README.md` | CURRENT PRODUCT DOCUMENTATION | Narrow script reference; install commands live in getting-started guides. |
+| Current path or family | Classification | Authority / status | Historical |
+|---|---|---|---|
+| `README.md` | CURRENT PRODUCT DOCUMENTATION | Product front door and quick start. | No |
+| `SECURITY.md` | CURRENT PRODUCT DOCUMENTATION | Vulnerability reporting policy. | No |
+| `CONTRIBUTING.md`, `AGENTS.md` | CURRENT DEVELOPMENT / CONTRIBUTOR DOCUMENTATION | Repository contribution and agent rules. | No |
+| `CHANGELOG.md` | HISTORICAL VALIDATION / RELEASE EVIDENCE | Authoritative release chronology. | Yes |
+| `docs/README.md` | CURRENT PRODUCT DOCUMENTATION | Canonical documentation entry point. | No |
+| `docs/getting-started/*` | CURRENT PRODUCT DOCUMENTATION | Installation guidance. | No |
+| `docs/user-guide/*` | CURRENT PRODUCT DOCUMENTATION | Operator workflows. | No |
+| `docs/administration/*` | CURRENT PRODUCT DOCUMENTATION | Controller administration. | No |
+| `docs/operations/runbook.md`, `backup-and-restore.md`, `compatibility-matrix.md` | CURRENT PRODUCT DOCUMENTATION | Runtime, recovery, and compatibility guidance. | No |
+| `docs/operations/backup-format.md` | CURRENT ARCHITECTURE / TECHNICAL REFERENCE | Portable archive contract. | No |
+| `docs/product/support-and-deprecation-policy.md` | CURRENT PRODUCT DOCUMENTATION | Current pre-1.0 support boundary. | No |
+| `docs/reference/features.md` | CURRENT PRODUCT DOCUMENTATION | Sole authoritative feature catalogue. | No |
+| `docs/reference/rename-inventory.md` | TEMPORARY RELEASE-1.0 PREPARATION | Active systematic rename scope; retain until the rename is complete. | No |
+| `docs/reference/documentation-inventory.md` | CURRENT DEVELOPMENT / CONTRIBUTOR DOCUMENTATION | Documentation governance and classification. | No |
+| `docs/architecture/*`, `docs/api/*`, `docs/backend/*`, `docs/database/*`, `docs/diagrams/*` | CURRENT ARCHITECTURE / TECHNICAL REFERENCE | Current system and contract references. | No |
+| `docs/security/security.md` | CURRENT PRODUCT DOCUMENTATION | Security controls and operator guidance. | No |
+| `docs/decisions/README.md`, `docs/decisions/ADR-*.md` | ADR / DECISION HISTORY | Canonical individual decisions and status register. | Yes |
+| `docs/frontend/design-system.md`, `component-catalogue.md` | CURRENT ARCHITECTURE / TECHNICAL REFERENCE | Current visual primitives and shared components. | No |
+| `docs/frontend/frontend-design.md`, `navigation-and-shell.md`, `ui-navigation.md` | CURRENT ARCHITECTURE / TECHNICAL REFERENCE | Current frontend architecture, shell, routes, and navigation. | No |
+| `docs/frontend/feature-presentation-rules.md`, `ha-controller-responsibility-separation.md`, `query-log.md`, `operational-status.md`, `theme-brand-and-pwa.md` | CURRENT ARCHITECTURE / TECHNICAL REFERENCE | Current frontend behavior and safety boundaries. | No |
+| `docs/frontend/reference/*` | CURRENT ARCHITECTURE / TECHNICAL REFERENCE | Upstream AdGuard Home comparison/reference material; not controller design authority. | No |
+| `docs/development/coding-standards.md`, `local-development.md`, `regression-safety-rules.md`, `release-process.md`, `testing.md` | CURRENT DEVELOPMENT / CONTRIBUTOR DOCUMENTATION | Active contributor workflow and quality gates. | No |
+| `docs/roadmap/roadmap.md` | CURRENT PRODUCT DOCUMENTATION | Sole forward-looking roadmap; not a release promise. | No |
+| `docs/archive/pre-1.0/README.md` | HISTORICAL PLANNING | Physical archive entry point and authority warning. | Yes |
+| `docs/archive/pre-1.0/frontend/implementation/*` | HISTORICAL IMPLEMENTATION | Release 0.4/0.4.1 implementation audits, specifications, and phase evidence. | Yes |
+| `docs/archive/pre-1.0/validation/*` | HISTORICAL VALIDATION / RELEASE EVIDENCE | Point-in-time regression and release validation reports. | Yes |
+| `docs/archive/pre-1.0/planning/*` | HISTORICAL PLANNING | Superseded release plan, UI roadmap, and backlog. | Yes |
+| `docs/archive/pre-1.0/product/frontend-alignment-brief.md` | HISTORICAL PLANNING | Original UI migration brief. | Yes |
+| `docs/archive/pre-1.0/product/product-design-document.md` | HISTORICAL IMPLEMENTATION | Historical Release 0.7 product design baseline. | Yes |
+| `docs/archive/pre-1.0/screenshots/*` | HISTORICAL VALIDATION / RELEASE EVIDENCE | Point-in-time visual regression evidence. | Yes |
+| Removed `docs/product/feature-ledger.md` | OBSOLETE / DUPLICATED | Deleted redirect; `docs/reference/features.md` is authoritative. | Yes |
+| Removed `docs/decisions/ADR-compendium.md` | OBSOLETE / DUPLICATED | Deleted duplicate; individual ADRs are authoritative. | Yes |
+| `scripts/README.md` | CURRENT DEVELOPMENT / CONTRIBUTOR DOCUMENTATION | Narrow script reference. | No |
 
 ## Governance
 
-- Current docs describe capabilities and operation by task, never by release.
-- The root changelog owns chronology; the roadmap owns only future direction.
-- Individual ADRs own decision history. Do not update the compendium.
-- Historical files stay link-stable and outside normal docs navigation.
+- Current docs describe capability and operation by task, not release chronology.
+- The root changelog owns release chronology; the roadmap owns future direction.
+- Individual ADRs own decision history.
+- Historical implementation, validation, planning, product exploration, and
+  screenshots live physically under `docs/archive/pre-1.0/`.
+- Archived material is evidence, not current authority.
 - A behavior change updates the relevant current guide, reference, API/schema
-  contract, and changelog entry in the same change.
+  contract, tests, and changelog entry in the same change.

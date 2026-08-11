@@ -132,22 +132,22 @@ API/convergence/maintenance counts, certificate/version warnings, upgrade
 history, notification configuration, and HA events. `/ha/nodes/{nodeId}` is the
 node lifecycle detail for probe settings, preflight, maintenance, return checks,
 certificate/version state, guided upgrades, and node-attributed history. The
-existing `/nodes` page remains infrastructure inventory and links to detail.
+existing `/ha/nodes` page remains infrastructure inventory and links to detail.
 - Audit Log
 - System Settings
 - Backups
 - About
 - Sign Out
 
-Release 0.9 completes Users, Audit Log, Operational Status, System Settings,
-Backup & Restore, Updates, and About. Setup Guide remains in primary navigation
+Users, Audit Log, Operational Status, System Settings, Backup & Restore,
+Updates, and About are current administration surfaces. Setup Guide remains in primary navigation
 and derives checks from enabled nodes, observations, draft, immutable revisions,
 successful deployment, Statistics, Query Log, and HA state. No completed check
 is based solely on visiting a route.
 
-Release 0.9.1 stages the approved Atlas V3 angled-gap mark and final light/dark
-Atlas DNS lockups in the login and shell while retaining AGH HA Controller
-technical naming. Browser favicon, Apple touch icon, approved 192/512 PWA
+The approved Atlas V3 angled-gap mark and light/dark Atlas DNS lockups appear in
+the login and shell while AGH HA Controller technical naming remains unchanged.
+Browser favicon, Apple touch icon, approved 192/512 PWA
 icons, and `manifest.webmanifest` use the reconciled Atlas asset family;
 manifest application naming remains AGH HA Controller. No service worker or
 offline data cache is introduced. See `theme-brand-and-pwa.md`.

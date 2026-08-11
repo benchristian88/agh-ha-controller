@@ -1,7 +1,7 @@
 # Operational Status UI
 
-Release 0.7 implements **Administration -> Operational Status** at
-`/system/operational-status`. Administration is the appropriate location
+**Administration -> Operational Status** is available at
+`/system/operational-status`. Administration owns this page
 because the page answers whether AGH HA Controller itself is operating correctly; it is
 not another DNS configuration or HA lifecycle task.
 
@@ -15,12 +15,12 @@ Dashboard contains only a compact controller/Statistics/Query Log summary and
 links to the page. Statistics and Query Log retain their established coverage
 presentations and semantics.
 
-Release 0.8 adds a compact HA summary and a distinct DNS Service table here so
+The page includes a compact HA summary and a distinct DNS Service table so
 management API reachability and actual DNS answers cannot be conflated. Detailed
 maintenance, certificate, version, notification, and upgrade actions live on HA
 Operations rather than expanding this diagnostic page.
 
-Release 0.9.2 aligns Core Services with the shared divided panel anatomy and
-semantic `SummaryTileGrid`. API state, PostgreSQL state/ping, schema version,
+Core Services uses the shared divided panel anatomy and semantic
+`SummaryTileGrid`. API state, PostgreSQL state/ping, schema version,
 and pool use remain the same information model, presented as four inset tiles
 with the standard compact status badges and responsive two-to-one column flow.

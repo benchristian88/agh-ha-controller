@@ -152,6 +152,6 @@ Rejected because the approved product direction is to match AdGuard Home's top-l
 
 Follow:
 
-- `docs/roadmap/release-0.4.1-ui-alignment-roadmap.md`;
+- `docs/archive/pre-1.0/planning/release-0.4.1-ui-alignment-roadmap.md`;
 - `docs/development/regression-safety-rules.md`;
 - `docs/frontend/feature-presentation-rules.md`.

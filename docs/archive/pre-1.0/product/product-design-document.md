@@ -21,7 +21,7 @@ It is intentionally broader than a conventional software specification. It combi
 
 This document is authoritative for product intent. More specialised documents under `docs/` remain authoritative for detailed implementation contracts when they are more specific. Architecture Decision Records under `docs/decisions/` explain why major choices were made.
 
-Release 0.1 implementation details and validation status are recorded in `docs/product/feature-ledger.md` and the Release 0.1 reconciliation section of `docs/roadmap/roadmap.md`. ADR-0021 resolves the runtime and security choices that were open in the original baseline.
+Release 0.1 implementation details and validation status were recorded in the now-removed feature ledger and the Release 0.1 reconciliation section of the historical roadmap. Current capability status is in `docs/reference/features.md`. ADR-0021 resolves the runtime and security choices that were open in the original baseline.
 
 **Release 0.7 roadmap amendment:** Releases 0.5 Statistics and 0.6 Query Log
 are complete and validated. ADR-0029 makes AGH HA Controller agentless by default and
@@ -1958,7 +1958,7 @@ Controller becomes source of truth and keeps nodes converged.
 
 ### Implemented boundary
 
-Schema v1 writes shared DNS resolver and filtering blocklist/rule fields through supported HTTP APIs. Bind hosts and DNS port remain explicit per-node desired overrides but a difference blocks deployment because no supported writer exists. Every target is revalidated before the first mutation, tasks execute sequentially, and the active revision changes only after complete read-back success. Partial success, safe-boundary cancellation, restart interruption, and drift lifecycle remain durable and auditable. See ADR-0024 and `docs/product/feature-ledger.md` for final names and validation status.
+Schema v1 writes shared DNS resolver and filtering blocklist/rule fields through supported HTTP APIs. Bind hosts and DNS port remain explicit per-node desired overrides but a difference blocks deployment because no supported writer exists. Every target is revalidated before the first mutation, tasks execute sequentially, and the active revision changes only after complete read-back success. Partial success, safe-boundary cancellation, restart interruption, and drift lifecycle remain durable and auditable. See ADR-0024 and `docs/reference/features.md` for current names and capability status.
 
 ## 90. Release 0.4 — Broader AdGuard Home coverage
 
@@ -4300,7 +4300,7 @@ Release 0.4 does not ingest statistics or query events into the controller. Thos
 
 ## Annex A.17 — Product Backlog
 
-_Source document: `docs/roadmap/backlog.md`_
+_Source document: `docs/archive/pre-1.0/planning/backlog.md`_
 
 ## Core control plane
 
