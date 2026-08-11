@@ -4,6 +4,31 @@ All notable changes to AGH HA Controller will be documented in this file.
 
 The project intends to follow Semantic Versioning once the first public release is made.
 
+## 0.9.1 - Unreleased
+
+### Added
+
+- Browser-local System, Light, and Dark preference with pre-paint resolution,
+  persistence, OS-change handling, synchronized browser theme colour, and an
+  accessible header selector.
+- Approved Atlas V3 angled-gap marks, supplied light/dark lockups, and one
+  reconciled favicon, Apple touch-icon, and Android/PWA asset family.
+- Automated brand/manifest asset validation covering canonical bytes, exact
+  dimensions, references, technical naming, and removal of legacy icon paths.
+
+### Fixed
+
+- Replace independent uncontrolled desktop menus with one coordinated hover,
+  click/touch, keyboard, outside-click, peer-switching, and delayed-leave model.
+- Make mobile navigation groups controlled peer disclosures and restore drawer
+  trigger focus after Escape or backdrop/close-button dismissal.
+
+### Naming
+
+- Atlas is staged as visual brand artwork only. Repository, module, binary,
+  service, image, environment, configuration, API, database, manifest, and
+  release-artifact technical names remain AGH HA Controller until Release 1.0.
+
 ## 0.9.0 - Unreleased
 
 ### Added

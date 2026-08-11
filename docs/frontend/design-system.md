@@ -118,6 +118,11 @@ Lower-frequency administration belongs in the user or system menu:
 - About
 - Sign Out
 
+The labelled System/Light/Dark control sits immediately before the desktop
+administration menu. Atlas theme-specific lockup assets provide the visual
+brand foundation; phone layouts use the approved symbol-only asset rather than
+compressing the lockup.
+
 ### Context row
 
 The context row appears below the main header.
@@ -361,6 +366,14 @@ Feature pages must not define arbitrary max-width values.
 - Menus must remain inside the viewport.
 - Desktop and mobile navigation use the same labels and hierarchy.
 - Navigation must be keyboard accessible.
+- Desktop dropdowns use one controlled open-menu state. Mouse hover opens a
+  menu, moving between trigger and popover retains it, and leaving both closes
+  it after a 180ms travel delay. Click/touch toggles the disclosure; Escape,
+  focus departure, outside pointer activation, or selecting a destination
+  closes it. Opening a peer closes the previous menu.
+- Arrow keys, Home, and End move among open menu items. Escape restores focus
+  to the disclosure trigger. Mobile groups are controlled peer disclosures and
+  never depend on hover.
 
 ---
 
@@ -754,9 +767,21 @@ The UI must:
 
 - Support light, dark, and system preference.
 - Use identical semantic token names in both themes.
-- Persist user preference.
+- Persist browser-local preference under one provider; do not turn it into a
+  global controller setting.
+- Default invalid, missing, or unavailable persistence to System.
+- Resolve System through `prefers-color-scheme` and react to OS changes only
+  while System is selected.
+- Apply the resolved theme before first paint where practical and keep browser
+  theme-colour metadata synchronized.
 - Review charts, tooltips, dialogs, code editors, badges, and tables separately in both themes.
 - Avoid neon effects or excessive contrast in dark mode.
+
+Approved brand colours are Atlas Blue `#2563EB`, Atlas Teal `#0EA5A3`, Atlas
+Charcoal `#111111`, and White `#FFFFFF`. Primary interaction may use Atlas Blue;
+semantic success, warning, error, and information roles remain independent.
+Theme-specific logos use supplied assets rather than CSS filters. Asset and
+persistence details are in `theme-brand-and-pwa.md`.
 
 ---
 

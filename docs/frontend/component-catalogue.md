@@ -70,6 +70,13 @@ without changing the corresponding desired policy.
 
 ## Shell
 
+Release 0.9.1 adds `ThemeProvider`, `ThemeControl`, and the shared `AtlasBrand`
+renderer. Desktop navigation dropdowns and Administration use one controlled
+open-menu state with centralized delayed leave, peer switching, outside click,
+keyboard focus movement, and Escape return. Mobile groups are controlled peer
+disclosures. Theme and asset behavior is documented in
+`theme-brand-and-pwa.md`.
+
 - `AppHeader`
 - `PrimaryNavigation`
 - `NavigationDropdown`

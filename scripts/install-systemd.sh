@@ -47,7 +47,7 @@ if ! id "${service_user}" >/dev/null 2>&1; then
 fi
 
 make -C "${repo_dir}" bootstrap
-controller_version=${CONTROLLER_VERSION:-0.9.0-dev}
+controller_version=${CONTROLLER_VERSION:-0.9.1-dev}
 make -C "${repo_dir}" VERSION="${controller_version}" build
 
 install -d -o root -g root -m 0755 "${environment_dir}" /usr/local/share/agh-ha-controller

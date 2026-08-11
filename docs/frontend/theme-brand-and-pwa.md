@@ -1,0 +1,115 @@
+# Theme, Brand, and Browser Install Metadata
+
+## Release 0.9.1 scope
+
+Release 0.9.1 establishes the Atlas visual foundation without renaming the
+technical product. Repository, module, binary, service, image, environment,
+API, database, config-path, manifest-name, and release-artifact identifiers
+remain **AGH HA Controller**. The deliberate complete textual and technical
+rename remains Release 1.0 work.
+
+This work is frontend-only. Theme preference is browser-local presentation
+state; it does not create a controller setting, database record, API contract,
+audit event, revision, or deployment.
+
+## Theme architecture
+
+`web/src/theme/ThemeProvider.tsx` is the runtime source of truth. It exposes:
+
+- `System`, the default, resolved through `prefers-color-scheme`;
+- explicit `Light` and `Dark` preferences;
+- the resolved light/dark theme used by theme-specific artwork; and
+- one setter used by the header control.
+
+The preference is stored under `agh-ha-controller.theme` in browser
+`localStorage`. Invalid, unavailable, or unwritable storage falls back to
+System without blocking the application. System registers a media-query
+change listener; explicit Light or Dark does not react to OS changes.
+
+The small blocking same-origin `web/public/theme-init.js` script, loaded from
+the document head, mirrors the provider's validated preference resolution
+before React and CSS load. It complies with the production `script-src 'self'`
+policy without enabling inline script. It sets `data-theme`,
+`data-theme-preference`, `color-scheme`, and browser `theme-color` early to
+avoid an avoidable wrong-theme flash. React then owns subsequent changes.
+Components must not read or write the theme storage key themselves.
+
+Theme values remain semantic CSS custom properties in
+`web/src/styles/design-tokens.css`. Atlas Blue is the primary interaction
+colour, while success, information, warning, and danger retain separate
+semantic colours. Atlas Teal is a brand colour and is not a replacement for
+success.
+
+## Theme control and artwork
+
+The labelled native theme select is immediately before the desktop
+administration menu and remains available beside the mobile drawer button.
+The current preference is its visible value, and normal select keyboard and
+touch behaviour applies.
+
+The header and authentication layout use the supplied light/dark Atlas DNS
+lockup SVGs. The header uses the approved symbol-only fallback at phone widths.
+The link's accessible name remains `AGH HA Controller dashboard`; decorative
+artwork is hidden from the accessibility tree so the staged visual name does
+not change the technical application contract.
+
+## Approved assets
+
+Canonical design/source files stay outside the browser public root:
+
+```text
+assets/branding/source/Atlas_Brand_Assets_v3/
+assets/branding/source/final-lockups/
+```
+
+Runtime SVGs are intentionally limited to:
+
+```text
+web/public/branding/atlas-mark-white.svg
+web/public/branding/atlas-mark-black.svg
+web/public/branding/atlas-mark-color-light.svg
+web/public/branding/atlas-mark-color-dark.svg
+web/public/branding/atlas-dns-lockup-light.svg
+web/public/branding/atlas-dns-lockup-dark.svg
+```
+
+The four mark files are byte-identical to the V3 `PRIMARY_ANGLED_GAP` source.
+The final supplied PNG lockups are source masters, not public runtime files.
+CSS filters or inversion are not used to create theme variants.
+
+## Favicon, Apple, and PWA behavior
+
+The sole runtime icon system is:
+
+```text
+web/public/favicon.ico
+web/public/favicon.svg
+web/public/favicon-16x16.png
+web/public/favicon-32x32.png
+web/public/apple-touch-icon.png
+web/public/android-chrome-192x192.png
+web/public/android-chrome-512x512.png
+web/public/manifest.webmanifest
+```
+
+`index.html` advertises ICO, SVG, 32px, 16px, and Apple variants. The manifest
+retains the AGH HA Controller name, root identity/scope, standalone display,
+and only the approved opaque 192px and 512px icons. It does not claim maskable
+safe-area behavior that the source manifest does not specify. No service
+worker, offline cache, or background update mechanism is introduced.
+
+Run `npm run test:assets` in `web/` to validate manifest JSON and naming,
+runtime/source equality, exact PNG dimensions, HTML references, the approved
+runtime branding set, and removal of the legacy neutral icon references.
+
+## Accessibility and browser validation
+
+- Theme selection uses a labelled native control and visible focus styling.
+- Menus remain available through click/touch and keyboard without hover.
+- Theme-specific SVGs are selected as assets rather than transformed.
+- Status meaning remains text-backed and independent from brand colour.
+- Header and login layouts retain max-width constraints and symbol fallback.
+
+Automated DOM, Axe, asset, type, lint, and production-build checks do not prove
+real-browser contrast, iOS saved-app masking, standalone launch, or browser
+chrome behavior. Those checks remain explicit external release evidence.

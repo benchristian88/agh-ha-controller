@@ -335,3 +335,19 @@ published SHA-256 checksum, check out/install the exact release, and rerun the
 installer. After restart, verify `/ready`, About build/schema metadata, login,
 nodes, convergence, collectors, and HA state. The controller never executes an
 update or accesses a Docker socket.
+
+## Browser theme and install assets
+
+Theme selection is per browser under the header Theme control. System follows
+the current OS/browser preference; explicit Light or Dark remains selected
+across reloads. If browser storage is blocked or contains an invalid value, the
+safe behavior is System. Clear only the `agh-ha-controller.theme` local-storage
+entry to reset it; no controller setting or database record is involved.
+
+After changing packaged web assets, run `npm run test:assets` and the production
+frontend build before installation. If a favicon or saved-app icon appears old,
+first confirm the deployed `favicon.*`, Apple icon, Android icons, index links,
+and manifest response, then clear the browser/site icon cache or reinstall the
+saved app. Do not add a service worker as a cache workaround. Browser chrome,
+iOS saved-app, Android installation, and standalone launch evidence belongs in
+`development/release-0.9.1-validation.md`.

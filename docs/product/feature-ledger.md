@@ -187,6 +187,22 @@ is complete and validated.
 Release 0.9 remains implemented with external gates pending. Feature freeze is
 recorded only after `development/release-0.9-validation.md` is completed.
 
+## Release 0.9.1 theme, brand foundation, and header UX
+
+| Feature | Status | Implementation and evidence | Remaining release validation |
+|---|---|---|---|
+| Theme model | Implemented; automated checks pass | One provider owns System/Light/Dark preference, safe browser persistence, resolved theme, OS-change handling, pre-paint initialization, and theme-colour metadata | Current Chromium/Firefox/Safari first-paint and OS-change matrix |
+| Header control | Implemented; automated checks pass | Labelled native select immediately before desktop administration; retained in compact mobile header; visible state and keyboard/touch semantics | Packaged desktop/tablet/phone visual and assistive-technology exercise |
+| Menu interaction | Implemented; automated checks pass | Controlled peer state; hover open; delayed leave; gap traversal; click/touch; outside pointer; focus departure; arrows/Home/End; Escape focus return; controlled mobile peer disclosures | Real mouse, touch, Safari/iOS, and Firefox exercise |
+| Atlas visual foundation | Implemented; asset checks pass | Canonical V3 `PRIMARY_ANGLED_GAP` SVG marks; final light/dark lockups in header/login; phone symbol fallback; source masters outside public root | Final browser rasterization and approved visual sign-off |
+| Favicon/Apple/PWA | Implemented; asset checks pass | One approved icon family; valid AGH HA-named standalone manifest; ICO/SVG/16/32/180/192/512 references and dimensions; no service worker | Favicon cache refresh, iOS saved-app, Android install, standalone launch |
+| Naming boundary | Preserved | Atlas is visual artwork only; no repository/module/binary/service/image/env/config/API/database technical rename | Full deliberate rename remains Release 1.0 |
+
+Release 0.9.1 changes presentation and browser-local state only. Release 0.9
+remains implemented with external gates pending; 0.9.1 does not override or
+close those inherited gates. Release 0.9.2 Product Polish & Documentation
+Consolidation and Release 1.0 Atlas DNS Rename remain planned in that order.
+
 ## Deliberately deferred
 
 - Field-level drift ignore rules, selectable partial-deployment recovery, parallel/rolling strategies, scheduled maintenance windows, and intra-mutation automatic retries: later operational work.

@@ -48,6 +48,13 @@ still tracked in the [Release 0.9 validation
 record](docs/development/release-0.9-validation.md); 0.9 is not marked complete
 until those gates are evidenced.
 
+Release 0.9.1 adds browser-local System/Light/Dark theming, the approved Atlas
+visual asset foundation, coordinated accessible header/menu behavior, and one
+reconciled favicon/Apple/PWA asset system. It does not perform the technical
+Atlas DNS rename; the repository and runtime remain AGH HA Controller until
+Release 1.0. Local evidence and remaining browser/iOS gates are tracked in the
+[Release 0.9.1 validation record](docs/development/release-0.9.1-validation.md).
+
 The first meaningful product milestone is the configuration-control MVP:
 
 1. Register two or more AdGuard Home nodes.

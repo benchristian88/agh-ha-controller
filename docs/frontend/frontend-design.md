@@ -79,6 +79,11 @@ Do not copy source code, trademarks beyond nominative product references, or pro
 
 ### Theme characteristics
 
+- System, Light, and Dark are browser-local preferences; System is the default
+  and follows OS changes.
+- Atlas Blue is the primary interaction colour and approved theme-specific
+  Atlas artwork is used without CSS inversion. Semantic health, warning, and
+  failure colours remain independent.
 - Dark blue-grey application background.
 - Slightly lighter sidebar and cards.
 - Green primary action and healthy-state accent.
