@@ -147,6 +147,7 @@ export function NodeLifecyclePage({
       <SettingsGroup
         title="Overview"
         description="Identity, controller reachability, and desired-state position."
+        bodySpacing="padded"
       >
         <dl className="detail-list">
           <div>
@@ -200,6 +201,7 @@ export function NodeLifecyclePage({
       <SettingsGroup
         title="DNS Service"
         description="Active DNS is measured independently from the authenticated AdGuard Home API."
+        bodySpacing="padded"
         actions={
           <button
             className="button button--secondary"
@@ -241,7 +243,7 @@ export function NodeLifecyclePage({
           <p>No durable DNS measurement yet.</p>
         )}
         <form
-          className="card form-stack"
+          className="card form-stack panel-form"
           onSubmit={(event) => void saveSettings(event)}
         >
           <h3>Probe and installation settings</h3>
@@ -335,6 +337,7 @@ export function NodeLifecyclePage({
       <SettingsGroup
         title="Maintenance and DHCP"
         description="Preflight protects DNS redundancy, deployment activity, drift visibility, and active DHCP ownership."
+        bodySpacing="padded"
       >
         <dl className="detail-list">
           <div>
@@ -395,6 +398,7 @@ export function NodeLifecyclePage({
       <SettingsGroup
         title="TLS / Certificates"
         description="Public certificate health only; private material stays outside controller state."
+        bodySpacing="padded"
       >
         <dl className="detail-list">
           <div>
@@ -426,6 +430,7 @@ export function NodeLifecyclePage({
       <SettingsGroup
         title="Software Version"
         description="Compatibility and guided lifecycle coordination without remote command execution."
+        bodySpacing="padded"
       >
         <dl className="detail-list">
           <div>
@@ -448,7 +453,7 @@ export function NodeLifecyclePage({
         {lifecycle.version.upgradeSupport === "guided" &&
           node.maintenanceMode && (
             <form
-              className="card"
+              className="card form-stack panel-form"
               onSubmit={(event) => void startUpgrade(event)}
             >
               <label>
@@ -496,6 +501,7 @@ export function NodeLifecyclePage({
       <SettingsGroup
         title="Collectors and visibility"
         description="Canonical pages retain node attribution and detailed freshness evidence."
+        bodySpacing="padded"
       >
         <div className="row-actions row-actions--start">
           <a className="button button--secondary" href="/statistics">
@@ -516,6 +522,7 @@ export function NodeLifecyclePage({
       <SettingsGroup
         title="Operational History"
         description="Node lifecycle transitions; full configuration and security history remain on their canonical pages."
+        bodySpacing="padded"
         actions={
           <a className="button button--secondary" href="/system/audit">
             Audit log

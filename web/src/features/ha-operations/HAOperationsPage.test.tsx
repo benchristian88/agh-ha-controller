@@ -183,11 +183,18 @@ describe("HA operations", () => {
       .mockResolvedValue(undefined);
     vi.spyOn(window, "prompt").mockReturnValue(channel.name);
 
-    render(<HAOperationsPage cluster={cluster} />);
+    const { container } = render(<HAOperationsPage cluster={cluster} />);
     expect(await screen.findByText("https://hooks.example.test")).toBeTruthy();
     expect(screen.queryByText(/token=/)).toBeNull();
+    const notifications = screen
+      .getByRole("heading", { name: "Notifications" })
+      .closest(".settings-group");
+    expect(
+      notifications?.querySelector(".settings-group__body--padded"),
+    ).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(container.querySelector("form.panel-form")).toBeTruthy();
     const name = screen.getByLabelText(/Channel name/);
     await user.clear(name);
     await user.type(name, "Operations renamed");
@@ -346,6 +353,10 @@ describe("HA operations", () => {
     expect(
       container.querySelectorAll(".settings-group").length,
     ).toBeGreaterThanOrEqual(7);
+    expect(
+      container.querySelectorAll(".settings-group__body--padded").length,
+    ).toBeGreaterThanOrEqual(7);
+    expect(container.querySelector("form.panel-form")).toBeTruthy();
     expect(
       screen
         .getByRole("link", { name: "Configuration Control" })

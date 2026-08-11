@@ -398,6 +398,13 @@ describe("DNS allowlists page", () => {
     const { container } = render(<AllowlistsPage cluster={cluster} />);
     await screen.findByRole("table");
     expect(container.querySelector(".allowlists-page")).not.toBeNull();
+    const subscriptions = screen
+      .getByRole("heading", { name: "Allowlist subscriptions" })
+      .closest(".settings-group");
+    expect(
+      subscriptions?.querySelector(".settings-group__body--padded"),
+    ).not.toBeNull();
+    expect(subscriptions?.querySelector(".data-table")).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Add allowlist" }));
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();

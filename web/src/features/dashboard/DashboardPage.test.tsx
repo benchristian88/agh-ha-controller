@@ -134,6 +134,16 @@ describe("DashboardPage", () => {
     expect(within(dnsPanel).getByText("Average processing")).toBeTruthy();
     expect(within(dnsPanel).getByText("16.25 ms")).toBeTruthy();
     expect(within(dnsPanel).queryByText("Coverage")).toBeNull();
+    expect(
+      container
+        .querySelector(".node-card__top > .status")
+        ?.getAttribute("data-size"),
+    ).toBe("compact");
+    expect(
+      Array.from(container.querySelectorAll(".status")).every(
+        (badge) => badge.getAttribute("data-size") === "compact",
+      ),
+    ).toBe(true);
 
     const accessibility = await axe.run(container, {
       runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa"] },

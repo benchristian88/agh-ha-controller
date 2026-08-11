@@ -123,6 +123,7 @@ disclosures. Theme and asset behavior is documented in
 ## HA display
 
 - `MetricCard`
+- `SummaryTileGrid`
 - `StatusBadge`
 - `NodeBadge`
 - `RevisionBadge`
@@ -135,6 +136,16 @@ disclosures. Theme and asset behavior is documented in
 Operational Status, HA Operations, and Node Lifecycle. It owns the primary
 surface, label/value gap, optional supporting detail, and responsive wrapping;
 feature pages provide content only.
+
+`SummaryTileGrid` is the shared definition-list treatment for two-by-two inset
+status/value summaries. Dashboard controller/DNS summaries and Operational
+Status Core Services provide semantic values and supporting metadata while the
+component owns tile hierarchy and spacing.
+
+`SettingsGroup` has explicit `rows` and `padded` body modes. Divided settings
+rows retain their own vertical rhythm; ordinary panel content, tables, nested
+forms, and action groups use the padded mode. `panel-form` bounds nested forms,
+and the shared `row-actions` treatment wraps actions with token spacing.
 
 Dashboard's two larger summary panels remain feature compositions because they
 combine headings, aggregate status, descriptive failure/partial-state copy,

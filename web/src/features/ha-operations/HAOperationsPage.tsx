@@ -303,6 +303,7 @@ export function HAOperationsPage({ cluster }: { cluster: Cluster }) {
       <SettingsGroup
         title="Notifications"
         description="Meaningful HA transitions and recoveries. Expected DNS failures during maintenance are suppressed."
+        bodySpacing="padded"
         actions={
           <button
             type="button"
@@ -325,7 +326,7 @@ export function HAOperationsPage({ cluster }: { cluster: Cluster }) {
         )}
         {showWebhook && (
           <form
-            className="card form-stack"
+            className="card form-stack panel-form"
             aria-label={editingChannel ? "Edit webhook" : "Add webhook"}
             onSubmit={(event) => void saveWebhook(event)}
           >

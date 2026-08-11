@@ -13,6 +13,42 @@ documentation. Release status remains constrained by the inherited external
 - Product documentation consolidation and Release 1.0 rename inventory.
 - Regression of the existing control plane, productization, theme, menu, backup,
   user administration, and HA operations behavior.
+- Final shared panel/card spacing, Dashboard health-badge consistency, filter
+  subscription containment, webhook layout, and Operational Status Core
+  Services presentation hotfix.
+
+## Final UI consistency and spacing hotfix
+
+The 11 August 2026 hotfix is presentation-only. `SettingsGroup` now exposes
+intentional row and padded-body modes; Node Detail, filter
+subscriptions, notifications, and Core Services use the padded mode. Shared
+cards use the documented 24px desktop/16px phone inset, action rows wrap with
+token spacing, and nested operational forms use one bounded form treatment.
+
+Dashboard node health continues to use the same compact `StatusBadge` as page
+and summary health. Its apparent oversized variant was flex cross-axis
+stretching in the node-card header; aligning that header to its start restores
+the shared pill dimensions. Core Services now uses the standard panel
+header/description/divider plus the shared semantic `SummaryTileGrid` already
+used by Dashboard summaries.
+
+No API, database, health calculation, probe/maintenance/deployment/filter,
+webhook, authorization, audit, theme token, or technical product-name behavior
+changed.
+
+Final hotfix evidence was recorded on 12 August 2026 (Pacific/Auckland):
+
+| Hotfix gate | Result |
+|---|---|
+| Frontend DOM and accessibility | All 44 Vitest files / 238 tests passed, including the shared panel modes, compact Dashboard badges, filter table containment, notification forms, Node Detail groups, and Core Services summary tiles. |
+| Frontend static/build | TypeScript, Biome, asset/manifest validation, and the production Vite build passed; the existing >500 kB chunk advisory remains non-blocking. |
+| Browser matrix | 30 headless-Chromium cases passed with explicit light/dark themes and zero application-layout, runtime, or console failures across the affected pages and the Statistics, Query Log, System Settings, Users, Backup, Deployments, and Drift regression sample. |
+| Responsive containment | Desktop, 768px tablet, 500px phone, and 844x500 landscape cases passed. Application-shell/content overflow was absent; wide context rows and data tables remained contained local scrollers. The host Chromium build exposes a 500px minimum usable layout viewport, so a true 390px run remains an external-device gate. |
+| Measured spacing | Padded panel bodies retained 20px top/bottom clearance with 24px desktop/tablet and 16px phone side insets. Contained tables retained a 20px bottom inset, action buttons stayed within their owning panels, and Dashboard node-health badges matched the shared compact badge height. |
+| Documentation | `make docs-check` passed all 123 Markdown files after the spacing and component guidance updates. |
+
+Firefox, Safari, iOS WebKit, packaged-browser, and real-device 390px checks remain
+external release gates; they were not available on this development host.
 
 ## Local automated evidence
 

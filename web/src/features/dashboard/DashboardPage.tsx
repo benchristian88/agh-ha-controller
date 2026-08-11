@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { MetricCard } from "../../components/DataDisplay";
+import { MetricCard, SummaryTileGrid } from "../../components/DataDisplay";
 import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
 import { PageHeader } from "../../components/Page";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -116,37 +116,44 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
               operationalError,
             )}
           </p>
-          <dl className="dashboard-summary-card__metrics">
-            <SummaryMetric
-              label="API"
-              value={operationalValue(operational?.api, operationalLoading)}
-              operational
-            />
-            <SummaryMetric
-              label="HA redundancy"
-              value={operationalValue(
-                operational?.ha.state,
-                operationalLoading,
-              )}
-              operational
-            />
-            <SummaryMetric
-              label="Statistics"
-              value={operationalValue(
-                operational?.statistics.state,
-                operationalLoading,
-              )}
-              operational
-            />
-            <SummaryMetric
-              label="Query Log"
-              value={operationalValue(
-                operational?.queryLog.state,
-                operationalLoading,
-              )}
-              operational
-            />
-          </dl>
+          <SummaryTileGrid
+            className="dashboard-summary-card__metrics"
+            items={[
+              {
+                id: "api",
+                label: "API",
+                value: operationalValue(operational?.api, operationalLoading),
+                valueClassName: "operational-value",
+              },
+              {
+                id: "ha-redundancy",
+                label: "HA redundancy",
+                value: operationalValue(
+                  operational?.ha.state,
+                  operationalLoading,
+                ),
+                valueClassName: "operational-value",
+              },
+              {
+                id: "statistics",
+                label: "Statistics",
+                value: operationalValue(
+                  operational?.statistics.state,
+                  operationalLoading,
+                ),
+                valueClassName: "operational-value",
+              },
+              {
+                id: "query-log",
+                label: "Query Log",
+                value: operationalValue(
+                  operational?.queryLog.state,
+                  operationalLoading,
+                ),
+                valueClassName: "operational-value",
+              },
+            ]}
+          />
           <footer className="dashboard-summary-card__footer">
             <a
               className="button button--secondary"
@@ -177,37 +184,49 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
               statisticsError,
             )}
           </p>
-          <dl className="dashboard-summary-card__metrics">
-            <SummaryMetric
-              label="Queries"
-              value={statisticsValue(statistics, statisticsLoading, (report) =>
-                formatCount(report.totals.dnsQueries),
-              )}
-            />
-            <SummaryMetric
-              label="Blocked"
-              value={statisticsValue(
-                statistics,
-                statisticsLoading,
-                (report) => `${formatNumber(report.totals.blockedPercentage)}%`,
-              )}
-            />
-            <SummaryMetric
-              label="Safety interventions"
-              value={statisticsValue(statistics, statisticsLoading, (report) =>
-                formatCount(report.totals.safetyInterventions),
-              )}
-            />
-            <SummaryMetric
-              label="Average processing"
-              value={statisticsValue(
-                statistics,
-                statisticsLoading,
-                (report) =>
-                  `${formatNumber(report.totals.averageProcessingMs)} ms`,
-              )}
-            />
-          </dl>
+          <SummaryTileGrid
+            className="dashboard-summary-card__metrics"
+            items={[
+              {
+                id: "queries",
+                label: "Queries",
+                value: statisticsValue(
+                  statistics,
+                  statisticsLoading,
+                  (report) => formatCount(report.totals.dnsQueries),
+                ),
+              },
+              {
+                id: "blocked",
+                label: "Blocked",
+                value: statisticsValue(
+                  statistics,
+                  statisticsLoading,
+                  (report) =>
+                    `${formatNumber(report.totals.blockedPercentage)}%`,
+                ),
+              },
+              {
+                id: "safety-interventions",
+                label: "Safety interventions",
+                value: statisticsValue(
+                  statistics,
+                  statisticsLoading,
+                  (report) => formatCount(report.totals.safetyInterventions),
+                ),
+              },
+              {
+                id: "average-processing",
+                label: "Average processing",
+                value: statisticsValue(
+                  statistics,
+                  statisticsLoading,
+                  (report) =>
+                    `${formatNumber(report.totals.averageProcessingMs)} ms`,
+                ),
+              },
+            ]}
+          />
           <footer className="dashboard-summary-card__footer">
             <a className="button button--secondary" href="/statistics">
               View statistics
@@ -251,23 +270,6 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
         </p>
       </section>
     </>
-  );
-}
-
-function SummaryMetric({
-  label,
-  value,
-  operational = false,
-}: {
-  label: string;
-  value: string;
-  operational?: boolean;
-}) {
-  return (
-    <div>
-      <dt>{label}</dt>
-      <dd className={operational ? "operational-value" : undefined}>{value}</dd>
-    </div>
   );
 }
 

@@ -30,6 +30,16 @@ The project intends to follow Semantic Versioning once the first public release 
 - Default development version is `0.9.2-dev`. The technical product name remains
   AGH HA Controller; the Release 1.0 rename inventory does not execute the rename.
 
+### Fixed
+
+- Standardize shared card and divided-panel spacing with token-based padded
+  bodies, wrapping action rows, contained tables, and bounded nested forms on
+  Node Detail, DNS Blocklists/Allowlists, and HA notification administration.
+- Prevent Dashboard node-card health badges from stretching beyond the shared
+  compact status-pill dimensions.
+- Align Operational Status Core Services with the shared panel header and
+  semantic summary-tile hierarchy used by the established Dashboard language.
+
 ### Security
 
 - Lifecycle mutations are administrator-only, CSRF-protected, strongly

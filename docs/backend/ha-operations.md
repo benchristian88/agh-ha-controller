@@ -82,6 +82,10 @@ page/header/group/field/status/action primitives and groups overview, DNS,
 maintenance/DHCP, TLS, software, collectors, and history. It links to the
 canonical Configuration Control, Drift, Deployments, DHCP, Statistics, Query
 Log, Operational Status, and Audit views instead of duplicating those datasets.
+Every group uses the shared padded panel-body mode because its content is not a
+self-padding settings-row list. Nested probe and guided-upgrade forms use the
+bounded shared panel form; tables and wrapping action rows retain side and
+bottom inset at desktop and mobile widths.
 
 ## Retention and evidence
 
