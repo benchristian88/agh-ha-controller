@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { MetricCard } from "../../components/DataDisplay";
 import { Banner, ErrorState, Loading } from "../../components/Feedback";
+import { PageContainer, PageHeader } from "../../components/Page";
+import { Field, SettingsGroup } from "../../components/Settings";
 import { StatusBadge } from "../../components/StatusBadge";
 import { api } from "../../lib/api";
 import type {
@@ -35,7 +37,13 @@ export function NodeLifecyclePage({
         api.maintenancePreflight(nodeId),
         api.upgrades(cluster.id),
       ]);
-      setNode(nodes.items.find((item) => item.id === nodeId));
+      const selectedNode = nodes.items.find((item) => item.id === nodeId);
+      if (selectedNode === undefined) {
+        throw new Error(
+          "This managed node no longer exists in the selected cluster.",
+        );
+      }
+      setNode(selectedNode);
       setLifecycle(value);
       setSettings(value.settings);
       setPreflight(check);
@@ -55,32 +63,58 @@ export function NodeLifecyclePage({
       preflight === undefined) &&
     error === undefined
   )
-    return <Loading label="Loading node lifecycle…" />;
+    return (
+      <PageContainer size="wide">
+        <Loading label="Loading node detail…" />
+      </PageContainer>
+    );
   if (
     node === undefined ||
     lifecycle === undefined ||
     settings === undefined ||
     preflight === undefined
   )
-    return <ErrorState error={error} retry={() => void load()} />;
+    return (
+      <PageContainer size="wide">
+        <ErrorState error={error} retry={() => void load()} />
+      </PageContainer>
+    );
   return (
-    <>
-      <nav aria-label="Breadcrumb">
-        <a href="/ha/nodes">Nodes</a> / {node.name}
+    <PageContainer size="wide" className="node-detail-page">
+      <nav className="breadcrumb" aria-label="Breadcrumb">
+        <a href="/ha/nodes">Nodes</a> <span aria-hidden="true">/</span>{" "}
+        <span aria-current="page">{node.name}</span>
       </nav>
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Node lifecycle</p>
-          <h1>{node.name}</h1>
-          <p>
-            Health, DNS service, certificates, maintenance, software, and
-            history.
-          </p>
-        </div>
-        <StatusBadge
-          status={node.maintenanceMode ? "maintenance" : node.healthStatus}
-        />
-      </header>
+      <PageHeader
+        eyebrow="Managed node"
+        title={node.name}
+        description="Current operational state, lifecycle safeguards, and the next safe actions for this node."
+        statusNotice={
+          <StatusBadge
+            status={node.maintenanceMode ? "maintenance" : node.healthStatus}
+          />
+        }
+        primaryAction={
+          <button
+            className="button"
+            type="button"
+            disabled={busy !== ""}
+            onClick={() => void testConnection()}
+          >
+            {busy === "test" ? "Testing…" : "Test connection"}
+          </button>
+        }
+        secondaryActions={
+          <button
+            className="button button--secondary"
+            type="button"
+            disabled={busy !== ""}
+            onClick={() => void refresh()}
+          >
+            {busy === "refresh" ? "Refreshing…" : "Refresh"}
+          </button>
+        }
+      />
       {error !== undefined && (
         <Banner tone="warning" title="Operation failed">
           {error instanceof Error
@@ -110,21 +144,75 @@ export function NodeLifecyclePage({
         />
       </section>
 
-      <section className="section-block">
-        <div className="section-heading">
-          <h2>DNS Service</h2>
+      <SettingsGroup
+        title="Overview"
+        description="Identity, controller reachability, and desired-state position."
+        bodySpacing="padded"
+      >
+        <dl className="detail-list">
+          <div>
+            <dt>Administration endpoint</dt>
+            <dd className="break-anywhere">{node.baseUrl}</dd>
+          </div>
+          <div>
+            <dt>Controller state</dt>
+            <dd>{node.enabled ? "Managed" : "Disabled"}</dd>
+          </div>
+          <div>
+            <dt>Compatibility</dt>
+            <dd>{node.compatibilityStatus}</dd>
+          </div>
+          <div>
+            <dt>Last API poll</dt>
+            <dd>{formatTime(node.lastPolledAt)}</dd>
+          </div>
+          <div>
+            <dt>Applied revision</dt>
+            <dd>
+              {node.appliedRevisionId ? (
+                <a
+                  href={`/ha/revisions?revisionId=${encodeURIComponent(node.appliedRevisionId)}`}
+                >
+                  View applied revision
+                </a>
+              ) : (
+                "Not applied"
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt>Convergence</dt>
+            <dd>{node.convergenceStatus.replaceAll("_", " ")}</dd>
+          </div>
+        </dl>
+        <div className="row-actions row-actions--start">
+          <a className="button button--secondary" href="/ha/configuration">
+            Configuration Control
+          </a>
+          <a className="button button--secondary" href="/ha/drift">
+            View drift
+          </a>
+          <a className="button button--secondary" href="/ha/deployments">
+            View deployments
+          </a>
+        </div>
+      </SettingsGroup>
+
+      <SettingsGroup
+        title="DNS Service"
+        description="Active DNS is measured independently from the authenticated AdGuard Home API."
+        bodySpacing="padded"
+        actions={
           <button
             className="button button--secondary"
             type="button"
             disabled={busy !== ""}
             onClick={() => void probe()}
           >
-            Probe now
+            {busy === "probe" ? "Probing…" : "Probe now"}
           </button>
-        </div>
-        <p>
-          Active DNS is independent from the authenticated AdGuard API check.
-        </p>
+        }
+      >
         {lifecycle.dns ? (
           <dl className="detail-list">
             <div>
@@ -154,21 +242,28 @@ export function NodeLifecyclePage({
         ) : (
           <p>No durable DNS measurement yet.</p>
         )}
-        <form className="card" onSubmit={(event) => void saveSettings(event)}>
+        <form
+          className="card form-stack panel-form"
+          onSubmit={(event) => void saveSettings(event)}
+        >
           <h3>Probe and installation settings</h3>
-          <label>
-            Probe host
+          <Field
+            label="Probe host"
+            htmlFor="node-probe-host"
+            help="Leave blank to use the node URL host."
+          >
             <input
+              id="node-probe-host"
               value={settings.dnsProbeHost}
               placeholder="Defaults to node URL host"
               onChange={(event) =>
                 setSettings({ ...settings, dnsProbeHost: event.target.value })
               }
             />
-          </label>
-          <label>
-            Port
+          </Field>
+          <Field label="Port" htmlFor="node-probe-port" required>
             <input
+              id="node-probe-port"
               type="number"
               value={settings.dnsProbePort}
               onChange={(event) =>
@@ -178,19 +273,23 @@ export function NodeLifecyclePage({
                 })
               }
             />
-          </label>
-          <label>
-            Test name
+          </Field>
+          <Field label="Test name" htmlFor="node-probe-name" required>
             <input
+              id="node-probe-name"
               value={settings.dnsProbeName}
               onChange={(event) =>
                 setSettings({ ...settings, dnsProbeName: event.target.value })
               }
             />
-          </label>
-          <label>
-            Installation type
+          </Field>
+          <Field
+            label="Installation type"
+            htmlFor="node-installation-type"
+            required
+          >
             <select
+              id="node-installation-type"
               value={settings.installationType}
               onChange={(event) =>
                 setSettings({
@@ -208,7 +307,7 @@ export function NodeLifecyclePage({
               </option>
               <option value="custom">Custom</option>
             </select>
-          </label>
+          </Field>
           <label>
             <input
               type="checkbox"
@@ -230,15 +329,16 @@ export function NodeLifecyclePage({
             Verify TCP
           </label>
           <button className="button" type="submit" disabled={busy !== ""}>
-            Save lifecycle settings
+            {busy === "settings" ? "Saving…" : "Save lifecycle settings"}
           </button>
         </form>
-      </section>
+      </SettingsGroup>
 
-      <section className="section-block">
-        <div className="section-heading">
-          <h2>Planned Maintenance</h2>
-        </div>
+      <SettingsGroup
+        title="Maintenance and DHCP"
+        description="Preflight protects DNS redundancy, deployment activity, drift visibility, and active DHCP ownership."
+        bodySpacing="padded"
+      >
         <dl className="detail-list">
           <div>
             <dt>Healthy DNS nodes remaining</dt>
@@ -288,12 +388,18 @@ export function NodeLifecyclePage({
             Enter maintenance
           </button>
         )}
-      </section>
-
-      <section className="section-block">
-        <div className="section-heading">
-          <h2>TLS / Certificates</h2>
+        <div className="row-actions row-actions--start">
+          <a className="button button--secondary" href="/settings/dhcp">
+            Open DHCP settings
+          </a>
         </div>
+      </SettingsGroup>
+
+      <SettingsGroup
+        title="TLS / Certificates"
+        description="Public certificate health only; private material stays outside controller state."
+        bodySpacing="padded"
+      >
         <dl className="detail-list">
           <div>
             <dt>Subject</dt>
@@ -319,12 +425,13 @@ export function NodeLifecyclePage({
         <p className="muted">
           Certificate chain, keys, and filesystem paths are never returned.
         </p>
-      </section>
+      </SettingsGroup>
 
-      <section className="section-block">
-        <div className="section-heading">
-          <h2>Software Version</h2>
-        </div>
+      <SettingsGroup
+        title="Software Version"
+        description="Compatibility and guided lifecycle coordination without remote command execution."
+        bodySpacing="padded"
+      >
         <dl className="detail-list">
           <div>
             <dt>Installed</dt>
@@ -346,7 +453,7 @@ export function NodeLifecyclePage({
         {lifecycle.version.upgradeSupport === "guided" &&
           node.maintenanceMode && (
             <form
-              className="card"
+              className="card form-stack panel-form"
               onSubmit={(event) => void startUpgrade(event)}
             >
               <label>
@@ -389,12 +496,39 @@ export function NodeLifecyclePage({
               </button>
             </article>
           ))}
-      </section>
+      </SettingsGroup>
 
-      <section className="section-block">
-        <div className="section-heading">
-          <h2>Operational History</h2>
+      <SettingsGroup
+        title="Collectors and visibility"
+        description="Canonical pages retain node attribution and detailed freshness evidence."
+        bodySpacing="padded"
+      >
+        <div className="row-actions row-actions--start">
+          <a className="button button--secondary" href="/statistics">
+            Statistics
+          </a>
+          <a className="button button--secondary" href="/query-log">
+            Query Log
+          </a>
+          <a
+            className="button button--secondary"
+            href="/system/operational-status"
+          >
+            Collector status
+          </a>
         </div>
+      </SettingsGroup>
+
+      <SettingsGroup
+        title="Operational History"
+        description="Node lifecycle transitions; full configuration and security history remain on their canonical pages."
+        bodySpacing="padded"
+        actions={
+          <a className="button button--secondary" href="/system/audit">
+            Audit log
+          </a>
+        }
+      >
         <div className="table-wrap">
           <table>
             <thead>
@@ -417,14 +551,33 @@ export function NodeLifecyclePage({
             </tbody>
           </table>
         </div>
-      </section>
-    </>
+      </SettingsGroup>
+    </PageContainer>
   );
 
   async function probe() {
     setBusy("probe");
     try {
       await api.probeDNS(nodeId);
+      await load();
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusy("");
+    }
+  }
+  async function refresh() {
+    setBusy("refresh");
+    try {
+      await load();
+    } finally {
+      setBusy("");
+    }
+  }
+  async function testConnection() {
+    setBusy("test");
+    try {
+      await api.testNode(nodeId);
       await load();
     } catch (caught) {
       setError(caught);

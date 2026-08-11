@@ -436,6 +436,7 @@ export function FilterListsPage({
           <SettingsGroup
             title={`${titleCase(config.noun)} subscriptions`}
             description="Search the desired URLs and node-reported list metadata. Save Draft, Publish, and Deploy remain separate actions."
+            bodySpacing="padded"
             actions={
               <button
                 type="button"

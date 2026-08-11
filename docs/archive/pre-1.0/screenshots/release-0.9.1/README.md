@@ -19,5 +19,4 @@ This local Chrome build applies a 500px minimum layout viewport in headless
 mode even when a smaller screenshot width is requested. A real 390px browser,
 phone portrait/landscape, touch interaction, iOS saved-app, Android install,
 and Firefox/Safari rendering remain external gates in
-`docs/development/release-0.9.1-validation.md`.
-
+`docs/archive/pre-1.0/validation/release-0.9.1-validation.md`.

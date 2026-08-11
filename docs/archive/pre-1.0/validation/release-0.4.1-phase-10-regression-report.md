@@ -129,7 +129,7 @@ controller fixtures. Exact CSS viewport emulation was used at 320px.
   remain part of the Release 0.4.1 set.
 
 The captures are indexed in
-`docs/frontend/screenshots/release-0.4.1/README.md`.
+`docs/archive/pre-1.0/screenshots/release-0.4.1/README.md`.
 
 ## Accessibility results
 
@@ -182,17 +182,17 @@ unchanged.
 
 - `README.md` and `web/README.md`: current status, navigation, lifecycle,
   screenshots, version, and explicit Statistics/Query Log boundaries.
-- `docs/product/feature-ledger.md`, `CHANGELOG.md`,
-  `docs/roadmap/release-0.4.1-ui-alignment-roadmap.md`,
-  `docs/roadmap/roadmap.md`, and `docs/roadmap/release-plan.md`: Phase 10
+- the then-current feature ledger, `CHANGELOG.md`,
+  `docs/archive/pre-1.0/planning/release-0.4.1-ui-alignment-roadmap.md`,
+  `docs/roadmap/roadmap.md`, and `docs/archive/pre-1.0/planning/release-plan.md`: Phase 10
   classification, evidence, and remaining external gates.
 - `docs/development/testing.md`, `docs/development/release-process.md`,
   `tests/README.md`, and this report: exact test, packaging, migration, and
   upgrade status.
-- `docs/frontend/ui-navigation.md`, `navigation-and-shell.md`,
+- `docs/frontend/ui-navigation.md`, `navigation-and-shell.md`, the archived
   `source-of-truth-order.md`, `implementation-checklist.md`, screenshot index,
   and screen-migration specification: current navigation and quality status.
-- `docs/frontend/release-0.4-ui-implementation-audit.md` and
+- `docs/archive/pre-1.0/frontend/implementation/release-0.4-ui-implementation-audit.md` and
   `frontend-design.md`: clearly marked historical where their sidebar-era
   presentation conflicts with the implemented authority.
 - `scripts/README.md`: Release 0.4.1 systemd installer version.

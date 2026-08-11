@@ -105,6 +105,7 @@ describe("HA Controller page responsibilities", () => {
           createdBy: "user",
           createdAt: "2026-08-03T00:00:00Z",
           active: true,
+          lifecycle: { canArchive: false, canRestore: false, canDelete: false },
         },
       ],
     });

@@ -17,6 +17,15 @@ type Revision struct {
 	CreatedBy      string                        `json:"createdBy"`
 	CreatedAt      time.Time                     `json:"createdAt"`
 	Active         bool                          `json:"active"`
+	ArchivedAt     *time.Time                    `json:"archivedAt,omitempty"`
+	ArchivedBy     *string                       `json:"archivedBy,omitempty"`
+	Lifecycle      Lifecycle                     `json:"lifecycle"`
+}
+
+type Lifecycle struct {
+	CanArchive bool `json:"canArchive"`
+	CanRestore bool `json:"canRestore"`
+	CanDelete  bool `json:"canDelete"`
 }
 
 type Deployment struct {
@@ -35,6 +44,9 @@ type Deployment struct {
 	RequestedAt          time.Time        `json:"requestedAt"`
 	StartedAt            *time.Time       `json:"startedAt,omitempty"`
 	CompletedAt          *time.Time       `json:"completedAt,omitempty"`
+	ArchivedAt           *time.Time       `json:"archivedAt,omitempty"`
+	ArchivedBy           *string          `json:"archivedBy,omitempty"`
+	Lifecycle            Lifecycle        `json:"lifecycle"`
 	Nodes                []DeploymentNode `json:"nodes"`
 }
 

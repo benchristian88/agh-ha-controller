@@ -218,7 +218,7 @@ surface systems. Borders reinforce layer changes but must not be the only
 thing separating a card from the page. Heavy card shadows are not part of the
 system.
 
-The Release 0.9.1 refinement mappings are:
+The current theme mappings are:
 
 | Role | Light | Dark |
 |---|---|---|
@@ -311,6 +311,12 @@ Status roles:
 
 Colour must never be the only indicator. Use text and iconography as well.
 
+`StatusBadge` has one compact size: 0.72rem type, 3px vertical and 8px
+horizontal padding, full-pill radius, 1.4 line height, and a 6px semantic dot.
+Dashboard page, controller, DNS, and node health all use this same variant. A
+larger badge must be introduced only as a documented shared variant; flex/grid
+parents must not stretch the compact pill.
+
 ---
 
 ## Typography
@@ -392,6 +398,35 @@ Common values:
 - Badge radius: full pill.
 
 Prefer dividers over excessive nested cards.
+
+### Panel and card anatomy
+
+Bordered panels use one predictable hierarchy:
+
+```text
+panel border
+  header: title, description, optional actions
+  divider
+  body: content, nested surfaces, table or form
+  optional wrapping action row
+```
+
+The shared `SettingsGroup` supports two intentional body-spacing modes:
+
+- `rows` for self-padding `SettingRow` or equivalent divided-row content;
+- `padded` for ordinary content, nested forms, action groups, summary tiles,
+  empty states, and bordered tables.
+
+Padded bodies use 20px block inset inside the panel's 24px desktop or 16px
+mobile inline inset. Ordinary cards use 24px padding on desktop and 16px on
+phones. Nested operational forms use the shared bounded `panel-form` treatment
+so fields remain readable on wide screens while retaining the full available
+width on small screens.
+
+Do not place direct content into the row mode unless that content owns its
+block spacing. A divider must always be followed by either body padding or the
+first self-padding row. Buttons must not rely on the outer border as their
+visual inset.
 
 ---
 
@@ -606,6 +641,14 @@ Table rules:
   stays behind an independently operable collapsed disclosure inside the
   inline detail.
 
+Tables inside bordered panels use the padded-table pattern by default: the
+shared horizontal scroller remains a bordered nested surface inside a padded
+panel body. Its hover background and horizontal overflow are clipped by that
+surface, while the panel body supplies bottom and side inset. Loading and empty
+states occupy the same padded body. A full-bleed table is allowed only as an
+explicit documented variant with deliberate outer-border and footer handling;
+it must not result from omitting body padding.
+
 ---
 
 ## Cards
@@ -621,6 +664,11 @@ Use cards only for coherent groups:
 
 Do not put every individual field into its own card.
 
+Panel action groups use the shared wrapping row with an 8px token gap and
+aligned controls. Header actions remain in the panel header; body actions stay
+inside the padded body or a deliberately separated footer. Primary, secondary,
+and destructive hierarchy is preserved when the row wraps.
+
 ### Dashboard information hierarchy
 
 The Dashboard answers, in order: what the operator manages, whether controller
@@ -635,8 +683,10 @@ subsystems are operating, what DNS is doing, and the state of each node.
   Blocked percentage, Safety Interventions, and Average Processing. Coverage
   diagnostics remain on Statistics and Operational Status.
 - The controller and DNS panels use the same header, description, 2-by-2
-  summary-tile grid, and wrapping action footer. Grid layout, not a fixed card
-  height, aligns their action areas.
+  shared `SummaryTileGrid`, and wrapping action footer. Grid layout, not a
+  fixed card height, aligns their action areas. Operational Status Core
+  Services reuses the same semantic tile primitive inside the standard divided
+  panel anatomy.
 - Unknown data is not rendered as zero. Loading, unavailable, refresh-error,
   and partial-report copy remains explicit while the panels stay discoverable.
 
@@ -700,6 +750,7 @@ subsystems are operating, what DNS is doing, and the state of each node.
 - RevisionBadge
 - DriftBadge
 - MetricCard
+- SummaryTileGrid
 - ConvergenceSummary
 - StructuredDiff
 - DeploymentProgress
@@ -900,4 +951,6 @@ Every shared component should include:
 - Accessibility review.
 - Storybook or equivalent showcase where available.
 
-Existing frontend presentation is not authoritative where it conflicts with the current frontend specification, ADR-0026, or the Release 0.4 implementation audit.
+Existing frontend presentation is not authoritative where it conflicts with
+this design system, [Frontend Design](frontend-design.md),
+[Feature Presentation Rules](feature-presentation-rules.md), or ADR-0026.

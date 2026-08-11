@@ -3,8 +3,10 @@ import {
   DataTable,
   type DataTableColumn,
   MetricCard,
+  SummaryTileGrid,
 } from "../../components/DataDisplay";
 import { Banner, ErrorState, Loading } from "../../components/Feedback";
+import { SettingsGroup } from "../../components/Settings";
 import { StatusBadge, type StatusKind } from "../../components/StatusBadge";
 import { api } from "../../lib/api";
 import type {
@@ -94,30 +96,38 @@ export function OperationalStatusPage({ cluster }: { cluster: Cluster }) {
         />
       </section>
 
-      <section className="card operational-core">
-        <div className="section-heading">
-          <h2>Core services</h2>
-        </div>
-        <dl className="detail-list">
-          <HealthDetail label="API" state={status.api} />
-          <HealthDetail
-            label="PostgreSQL"
-            state={status.database.state}
-            detail={`${status.database.pingLatencyMs} ms ping`}
-          />
-          <div>
-            <dt>Schema migration</dt>
-            <dd>Version {status.database.schemaVersion}</dd>
-          </div>
-          <div>
-            <dt>Connection pool</dt>
-            <dd>
-              {status.database.poolAcquired} acquired /{" "}
-              {status.database.poolMax} maximum
-            </dd>
-          </div>
-        </dl>
-      </section>
+      <SettingsGroup
+        title="Core Services"
+        description="Controller API and PostgreSQL readiness at the latest operational snapshot."
+        bodySpacing="padded"
+      >
+        <SummaryTileGrid
+          label="Core service status"
+          items={[
+            {
+              id: "api",
+              label: "API",
+              value: <StatusBadge status={badge(status.api)} />,
+            },
+            {
+              id: "postgresql",
+              label: "PostgreSQL",
+              value: <StatusBadge status={badge(status.database.state)} />,
+              detail: `${status.database.pingLatencyMs} ms ping`,
+            },
+            {
+              id: "schema-migration",
+              label: "Schema migration",
+              value: `Version ${status.database.schemaVersion}`,
+            },
+            {
+              id: "connection-pool",
+              label: "Connection pool",
+              value: `${status.database.poolAcquired} acquired / ${status.database.poolMax} maximum`,
+            },
+          ]}
+        />
+      </SettingsGroup>
 
       <CollectionSection
         title="DNS service health"
@@ -312,24 +322,6 @@ const workerColumns: readonly DataTableColumn<
   },
 ];
 
-function HealthDetail({
-  label,
-  state,
-  detail,
-}: {
-  label: string;
-  state: OperationalStatus["api"];
-  detail?: string;
-}) {
-  return (
-    <div>
-      <dt>{label}</dt>
-      <dd>
-        <StatusBadge status={badge(state)} /> {detail}
-      </dd>
-    </div>
-  );
-}
 function badge(state: OperationalStatus["api"]): StatusKind {
   return state;
 }

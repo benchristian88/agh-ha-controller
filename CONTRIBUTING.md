@@ -1,6 +1,8 @@
 # Contributing
 
-AGH HA Controller is at an early architecture stage. Contributions should preserve the product's core operating model rather than optimising prematurely for scale or adding unrelated functionality.
+AGH HA Controller is a pre-1.0 management-plane product. Contributions should
+preserve its operating and security boundaries rather than adding unrelated
+capability or widening support claims without evidence.
 
 ## Before contributing
 
@@ -8,7 +10,8 @@ Read:
 
 - `AGENTS.md`
 - `docs/architecture/architecture.md`
-- `docs/roadmap/roadmap.md`
+- `docs/reference/features.md`
+- `docs/security/security.md`
 - `docs/development/coding-standards.md`
 - `docs/development/testing.md`
 
@@ -34,6 +37,9 @@ A pull request should include:
 - Test evidence.
 - Documentation changes.
 - Screenshots for UI changes.
+
+Do not submit external contributions until the licence and contribution terms
+described in ADR-0020 are resolved.
 
 ## Commit guidance
 

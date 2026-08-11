@@ -45,7 +45,7 @@ describe("page primitives", () => {
 
 describe("settings primitives", () => {
   it("composes a group, setting row, field, scope, and status", () => {
-    render(
+    const { container } = render(
       <SettingsGroup title="DNS" description="Resolver policy">
         <SettingRow
           title="Protection"
@@ -70,6 +70,20 @@ describe("settings primitives", () => {
     expect(screen.getByText("Entire Cluster")).not.toBeNull();
     expect(screen.getByText("Node specific")).not.toBeNull();
     expect(screen.getByRole("alert").textContent).toContain("Required");
+    expect(
+      container.querySelector(".settings-group__body--rows"),
+    ).not.toBeNull();
+  });
+
+  it("provides an explicit padded panel-body variant", () => {
+    const { container } = render(
+      <SettingsGroup title="Operational panel" bodySpacing="padded">
+        <p>Inset content</p>
+      </SettingsGroup>,
+    );
+    expect(
+      container.querySelector(".settings-group__body--padded"),
+    ).not.toBeNull();
   });
 
   it("renders unsupported and unsaved states without saving implicitly", () => {

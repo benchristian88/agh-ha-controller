@@ -235,16 +235,22 @@ AdGuard Home's filter-refresh contract selects only blocklists versus allowlists
 ## Revision, deployment, and drift routes
 
 ```text
-GET  /api/v1/clusters/{clusterId}/configuration-revisions
+GET  /api/v1/clusters/{clusterId}/configuration-revisions?includeArchived=false
 POST /api/v1/clusters/{clusterId}/configuration-revisions
 GET  /api/v1/configuration-revisions/{revisionId}
+POST /api/v1/configuration-revisions/{revisionId}/archive
+POST /api/v1/configuration-revisions/{revisionId}/restore
+DELETE /api/v1/configuration-revisions/{revisionId}
 GET  /api/v1/configuration-revision-comparisons?leftRevisionId={uuid}&rightRevisionId={uuid}
 POST /api/v1/clusters/{clusterId}/configuration-revisions/{revisionId}/deployment-preview
 POST /api/v1/clusters/{clusterId}/configuration-revisions/{revisionId}/deployments
 POST /api/v1/clusters/{clusterId}/configuration-revisions/{revisionId}/rollback
-GET  /api/v1/clusters/{clusterId}/deployments
+GET  /api/v1/clusters/{clusterId}/deployments?includeArchived=false
 GET  /api/v1/deployments/{deploymentId}
 POST /api/v1/deployments/{deploymentId}/cancel
+POST /api/v1/deployments/{deploymentId}/archive
+POST /api/v1/deployments/{deploymentId}/restore
+DELETE /api/v1/deployments/{deploymentId}
 GET  /api/v1/clusters/{clusterId}/drift-events
 POST /api/v1/drift-events/{driftId}/restore
 POST /api/v1/drift-events/{driftId}/adopt
@@ -252,6 +258,21 @@ POST /api/v1/nodes/{nodeId}/maintenance
 ```
 
 Publication requires a non-empty summary and the current draft version. Preview returns structured semantic changes from the active revision, ordered affected nodes/effective hashes, capability or listener issues, strategy/failure policy, and whether a restart is required (false for schema v1). Deployment creation returns HTTP 202 and a durable queued resource; per-node task details expose only safe errors and verification snapshot identifiers. Cancellation is a request honored at a safe node boundary. Rollback requires explicit confirmation and creates a deployment of a historical immutable revision. Drift restore creates a targeted deployment; adoption writes the observed shared state and node override into the optimistic draft but still requires publication and normal deployment.
+
+Lists hide archived records unless `includeArchived=true`. Revision/deployment
+responses include immutable archive metadata and server-derived lifecycle
+eligibility. Archive/restore accepts `{ "confirmed": true }` and requires an
+administrator plus CSRF. A revision can be archived only when it is not active;
+a deployment can be archived only in a terminal state.
+
+Hard deletion is deliberately narrower. Revision DELETE accepts
+`{ "confirmation": "DELETE REVISION #<number>" }` and succeeds only when the
+locked revision is inactive, never deployed, and unreferenced. Deployment DELETE
+accepts `{ "confirmation": "DELETE DEPLOYMENT <full-uuid>" }` and succeeds only
+when the locked deployment is queued, never started, all node tasks are untouched,
+and no drift record references it. Conflicts use stable safe errors. Every
+archive, restore, and delete attempt that reaches the service authorization
+boundary is audited; the UI is never authoritative about eligibility.
 
 ## Audit and version routes
 
@@ -391,9 +412,10 @@ requires that bearer token when enabled. Metrics use bounded worker labels.
 
 ## HA Operations and Lifecycle
 
-All routes below require an authenticated administrator. Mutations also require
-same-origin CSRF protection and carry the normal request ID. Responses expose
-stable codes and never return node credentials or webhook destinations.
+All routes below require authentication. Mutations require same-origin CSRF and
+carry the normal request ID; notification-channel mutations additionally use the
+administrator authorization guard. Responses expose stable codes and never
+return node credentials or webhook destinations.
 
 ```text
 GET  /api/v1/clusters/{clusterId}/ha-status
@@ -403,6 +425,8 @@ GET  /api/v1/clusters/{clusterId}/versions
 GET  /api/v1/clusters/{clusterId}/upgrades
 GET  /api/v1/clusters/{clusterId}/notification-channels
 POST /api/v1/clusters/{clusterId}/notification-channels
+PATCH /api/v1/notification-channels/{channelId}
+POST /api/v1/notification-channels/{channelId}/test
 DELETE /api/v1/notification-channels/{channelId}
 
 GET  /api/v1/nodes/{nodeId}/lifecycle
@@ -414,6 +438,21 @@ POST /api/v1/nodes/{nodeId}/return-to-service
 POST /api/v1/nodes/{nodeId}/upgrades
 POST /api/v1/upgrades/{upgradeId}/validate
 ```
+
+Notification create accepts `name`, `enabled`, and an HTTPS `destination`.
+Lists return `destinationSummary` (scheme and host only), `subscribedEvents`,
+state, and created/updated timestamps; they never return the encrypted or clear
+destination. PATCH updates supported metadata and preserves the stored
+destination by default. Destination replacement requires both
+`replaceDestination: true` and a new `destination`; blank/implicit replacement
+is rejected.
+
+Test performs one bounded synthetic delivery with redirects disabled and returns
+only safe success/status/error data. Delete requires
+`{ "confirmation": "<exact channel name>" }`. Delete clears the delivery's
+channel foreign key rather than cascading history; `channelName` remains as the
+safe historical snapshot. Create, update, enable/disable, test, and delete are
+administrator-only, CSRF-protected, and audited.
 
 Lifecycle settings use optimistic `recordVersion` and configure DNS host/port,
 query name/type, expected RCODE, UDP/TCP, and installation type. An empty host
@@ -427,8 +466,3 @@ operation. The operator performs the native/systemd or Docker upgrade, then
 validates with the current node record version. AGH HA Controller freshly reads the
 installed version before return checks. Unsupported installation types return
 a capability error and failed validation leaves maintenance enabled.
-
-Notification channel creation accepts a name, HTTPS webhook destination, and
-enabled flag. The destination is write-only; list responses report only
-`destinationSet`. Delete accepts `{ "recordVersion": 1 }`. Delivery history is
-internal durable state in Release 0.8.

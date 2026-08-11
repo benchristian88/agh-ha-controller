@@ -1,5 +1,9 @@
 # Release Plan
 
+> Historical pre-1.0 planning record. It is retained for traceability and does
+> not define current features or future commitments. See the root changelog and
+> the forward-looking [roadmap](../../../roadmap/roadmap.md).
+
 ## Versioning
 
 Pre-1.0 releases may introduce breaking changes but should still include migrations and upgrade notes.
@@ -63,5 +67,5 @@ Recommended:
 | 0.8 | Complete and validated | Active DNS/HA health, lifecycle coordination, certificate/version awareness, guided upgrades, notifications, API/UI, migration, real-node, PostgreSQL, browser, Docker, and native/systemd gates were operator-validated on 9 August 2026. |
 | 0.9 | Implemented; external gates pending | Productisation, Backup & Upgrade Readiness: secure Standard/Full backup/download/preflight plus offline CLI restore; cached AGH HA Controller update awareness and safe host-guided execution; User Administration; branding/PWA assets; state-backed Setup Guide; rationalised System Settings; About/build/compatibility attribution; compatibility/support policy, security review, accessibility/browser hardening, and package parity. Feature freeze follows external validation. |
 | 0.9.1 | Implemented; external gates pending | System/Light/Dark browser preference, Atlas visual asset foundation, accessible coordinated header/menu UX, and reconciled favicon/Apple/PWA metadata. Local automated gates pass; real-browser/iOS evidence and inherited 0.9 external gates remain open. |
-| 0.9.2 | Planned | Product Polish & Documentation Consolidation after 0.9/0.9.1 validation. |
+| 0.9.2 | Implemented; external gates pending | Product polish, documentation consolidation, Node Detail, complete webhook administration, lifecycle archive/delete safety, and final shared UI spacing consistency are implemented. Local automated gates pass; inherited packaged-browser, platform, PostgreSQL, backup/restore, and real-node gates remain open. |
 | 1.0 | Planned | Stable supported release after the frozen 0.9 surface passes every release gate. |

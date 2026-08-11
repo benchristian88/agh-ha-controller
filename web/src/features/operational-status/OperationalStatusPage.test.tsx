@@ -126,7 +126,7 @@ const status: OperationalStatus = {
 describe("OperationalStatusPage", () => {
   it("renders degraded collectors, safe gaps, workers, and storage", async () => {
     vi.spyOn(api, "operationalStatus").mockResolvedValue(status);
-    render(<OperationalStatusPage cluster={cluster} />);
+    const { container } = render(<OperationalStatusPage cluster={cluster} />);
     expect(
       await screen.findByRole("heading", { name: "Operational Status" }),
     ).not.toBeNull();
@@ -134,6 +134,19 @@ describe("OperationalStatusPage", () => {
     expect(screen.getByText("QUERY_LOG_NODE_RETENTION_GAP")).not.toBeNull();
     expect(screen.getByText("query log collection")).not.toBeNull();
     expect(screen.getByText("1 KiB")).not.toBeNull();
+    const coreServices = screen
+      .getByRole("heading", { name: "Core Services" })
+      .closest(".settings-group");
+    expect(coreServices).not.toBeNull();
+    expect(
+      coreServices?.querySelector(".settings-group__body--padded"),
+    ).not.toBeNull();
+    expect(
+      coreServices?.querySelectorAll(".summary-tile-grid > div"),
+    ).toHaveLength(4);
+    expect(
+      container.querySelector('[aria-label="Core service status"]'),
+    ).not.toBeNull();
   });
 
   it("has no automated structural WCAG A/AA violations", async () => {

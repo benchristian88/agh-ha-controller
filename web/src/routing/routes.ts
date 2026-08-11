@@ -34,7 +34,6 @@ export type RouteResolution =
   | { kind: "setup-guide" }
   | { kind: "system-settings" }
   | { kind: "about" }
-  | { kind: "planned"; title: string; release?: string }
   | { kind: "redirect"; to: string }
   | { kind: "not-found" };
 
@@ -131,10 +130,6 @@ const settingsRoutes: Readonly<
   },
 };
 
-const plannedRoutes: Readonly<
-  Record<string, { title: string; release?: string }>
-> = {};
-
 export function resolveRoute(pathname: string): RouteResolution {
   if (pathname.length > 1 && pathname.endsWith("/")) {
     return { kind: "redirect", to: pathname.replace(/\/+$/, "") };
@@ -145,9 +140,6 @@ export function resolveRoute(pathname: string): RouteResolution {
 
   const settings = settingsRoutes[pathname];
   if (settings !== undefined) return { kind: "settings", ...settings };
-
-  const planned = plannedRoutes[pathname];
-  if (planned !== undefined) return { kind: "planned", ...planned };
 
   const nodeLifecycle = pathname.match(/^\/ha\/nodes\/([0-9a-f-]{36})$/i);
   if (nodeLifecycle?.[1] !== undefined)

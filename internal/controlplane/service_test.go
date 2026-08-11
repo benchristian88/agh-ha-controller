@@ -141,6 +141,85 @@ type blockedServiceValidatorFake struct {
 	ids    []string
 }
 
+type lifecycleRepositoryFake struct {
+	Repository
+	revision           Revision
+	deployment         Deployment
+	revisionArchived   *bool
+	deploymentArchived *bool
+	revisionDeleted    bool
+	deploymentDeleted  bool
+	event              domain.AuditEvent
+}
+
+func (f *lifecycleRepositoryFake) RevisionByID(context.Context, string) (Revision, error) {
+	return f.revision, nil
+}
+
+func (f *lifecycleRepositoryFake) DeploymentByID(context.Context, string) (Deployment, error) {
+	return f.deployment, nil
+}
+
+func (f *lifecycleRepositoryFake) SetRevisionArchived(_ context.Context, _ string, _ string, archived bool, _ time.Time, event domain.AuditEvent) error {
+	f.revisionArchived = &archived
+	f.event = event
+	return nil
+}
+
+func (f *lifecycleRepositoryFake) DeleteUnusedRevision(_ context.Context, _ string, event domain.AuditEvent) error {
+	f.revisionDeleted = true
+	f.event = event
+	return nil
+}
+
+func (f *lifecycleRepositoryFake) SetDeploymentArchived(_ context.Context, _ string, _ string, archived bool, _ time.Time, event domain.AuditEvent) error {
+	f.deploymentArchived = &archived
+	f.event = event
+	return nil
+}
+
+func (f *lifecycleRepositoryFake) DeleteUnstartedDeployment(_ context.Context, _ string, event domain.AuditEvent) error {
+	f.deploymentDeleted = true
+	f.event = event
+	return nil
+}
+
+func TestLifecycleMutationsRequireExplicitConfirmationAndAudit(t *testing.T) {
+	const (
+		revisionID   = "11111111-1111-4111-8111-111111111111"
+		deploymentID = "22222222-2222-4222-8222-222222222222"
+		clusterID    = "33333333-3333-4333-8333-333333333333"
+		userID       = "44444444-4444-4444-8444-444444444444"
+	)
+	repository := &lifecycleRepositoryFake{
+		revision:   Revision{ID: revisionID, ClusterID: clusterID, RevisionNumber: 7},
+		deployment: Deployment{ID: deploymentID, ClusterID: clusterID, RevisionID: revisionID},
+	}
+	service := NewService(repository)
+	actor := domain.Actor{UserID: userID, RequestID: "55555555-5555-4555-8555-555555555555"}
+	if err := service.SetRevisionArchived(context.Background(), actor, revisionID, true, false); err == nil || repository.revisionArchived != nil {
+		t.Fatal("revision archive did not require confirmation")
+	}
+	if err := service.SetRevisionArchived(context.Background(), actor, revisionID, true, true); err != nil || repository.revisionArchived == nil || !*repository.revisionArchived || repository.event.Action != "configuration.revision_archived" {
+		t.Fatalf("revision archive state=%v event=%#v err=%v", repository.revisionArchived, repository.event, err)
+	}
+	if err := service.DeleteUnusedRevision(context.Background(), actor, revisionID, "DELETE REVISION #6"); err == nil || repository.revisionDeleted {
+		t.Fatal("revision deletion accepted the wrong phrase")
+	}
+	if err := service.DeleteUnusedRevision(context.Background(), actor, revisionID, "DELETE REVISION #7"); err != nil || !repository.revisionDeleted || repository.event.Action != "configuration.revision_deleted_unused" {
+		t.Fatalf("revision delete event=%#v err=%v", repository.event, err)
+	}
+	if err := service.SetDeploymentArchived(context.Background(), actor, deploymentID, true, true); err != nil || repository.deploymentArchived == nil || !*repository.deploymentArchived || repository.event.Action != "deployment.archived" {
+		t.Fatalf("deployment archive state=%v event=%#v err=%v", repository.deploymentArchived, repository.event, err)
+	}
+	if err := service.DeleteUnstartedDeployment(context.Background(), actor, deploymentID, "DELETE DEPLOYMENT wrong"); err == nil || repository.deploymentDeleted {
+		t.Fatal("deployment deletion accepted the wrong phrase")
+	}
+	if err := service.DeleteUnstartedDeployment(context.Background(), actor, deploymentID, "DELETE DEPLOYMENT "+deploymentID); err != nil || !repository.deploymentDeleted || repository.event.Action != "deployment.deleted_unstarted" {
+		t.Fatalf("deployment delete event=%#v err=%v", repository.event, err)
+	}
+}
+
 func (f *blockedServiceValidatorFake) ValidateBlockedServiceIDs(_ context.Context, _ string, ids []string) ([]configuration.ValidationIssue, error) {
 	f.ids = append([]string(nil), ids...)
 	return f.issues, nil

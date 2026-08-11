@@ -69,8 +69,9 @@ No signing infrastructure is claimed until a protected release-key lifecycle
 is approved. Publish checksums over HTTPS with the release and require native
 operators to verify them before replacing binaries.
 
-Release 0.9 reaches feature freeze only after
-`development/release-0.9-validation.md` records every automated and external
+Release 0.9 reached feature freeze only after the
+[archived Release 0.9 validation report](../archive/pre-1.0/validation/release-0.9-validation.md)
+recorded every automated and external
 gate. Afterward, 1.0 accepts defects, security/migration/upgrade/usability and
 compatibility blockers, documentation/release-engineering work, and the
 deliberate rename—not new major capability areas.

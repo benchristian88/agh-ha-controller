@@ -22,6 +22,38 @@ export function MetricCard({
   );
 }
 
+export interface SummaryTile {
+  id: string;
+  label: ReactNode;
+  value: ReactNode;
+  detail?: ReactNode;
+  valueClassName?: string;
+}
+
+export function SummaryTileGrid({
+  items,
+  className = "",
+  label,
+}: {
+  items: readonly SummaryTile[];
+  className?: string;
+  label?: string;
+}) {
+  return (
+    <dl className={`summary-tile-grid ${className}`.trim()} aria-label={label}>
+      {items.map((item) => (
+        <div key={item.id}>
+          <dt>{item.label}</dt>
+          <dd className={item.valueClassName}>
+            <span className="summary-tile-grid__value">{item.value}</span>
+            {item.detail !== undefined && <small>{item.detail}</small>}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export interface DataTableColumn<Row> {
   id: string;
   header: ReactNode;

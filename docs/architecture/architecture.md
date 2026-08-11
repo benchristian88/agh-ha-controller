@@ -1,339 +1,158 @@
-# Application Architecture
+# Architecture Overview
 
-## 1. Purpose
+AGH HA Controller is a management plane around independently operating AdGuard
+Home nodes. It coordinates desired configuration, deployment, drift, visibility,
+and safe lifecycle work without joining the live DNS request path.
 
-AGH HA Controller coordinates multiple AdGuard Home instances as a single operational cluster.
+## System context
 
-It does not replace AdGuard Home and it does not serve DNS. It provides the management and observability layer that AdGuard Home does not natively provide across nodes.
-
-## 2. System context
-
-```mermaid
-flowchart LR
-    U[Administrator browser] --> C[AGH HA Controller]
-    C --> DB[(PostgreSQL)]
-    C --> A[AdGuard Home Node A]
-    C --> B[AdGuard Home Node B]
-    DNS1[DNS clients] --> A
-    DNS2[DNS clients] --> B
+```text
+Administrator browser
+  │ same-origin HTTPS, authenticated /api/v1
+  ▼
+AGH HA Controller
+  ├─ API and frontend
+  ├─ deployment/reconciliation workers
+  ├─ health/statistics/query-log workers
+  ├─ HA lifecycle/notification workers
+  └─ backup/update-awareness services
+       │                         │
+       │ SQL                     │ bounded HTTP(S) administration APIs
+       ▼                         ▼
+  PostgreSQL 17             AdGuard Home nodes
+                                  ▲
+DNS clients ──────────────────────┘ UDP/TCP/encrypted DNS directly
 ```
 
-DNS clients communicate directly with AdGuard Home nodes. The controller is never required to answer a DNS request.
+The browser never receives node credentials or calls nodes directly. The
+controller does not bind a DNS port, proxy queries, or become a resolver. If the
+controller or PostgreSQL stops, every AdGuard Home node continues serving its
+last applied configuration.
 
-## 3. Core components
+## Components
 
-### Implemented release architecture
+### Controller process
 
-The implemented foundation is one Go process containing the API, static frontend server, immediate/interval health poller, and expired-session cleanup. It uses PostgreSQL for users, sessions, clusters, nodes, health results, and audit events. The React build is installed as a directory and served by the Go process on the API origin.
+One Go process serves the React application and versioned `/api/v1` API and runs
+bounded background jobs. Request-scoped work propagates context and request IDs;
+durable deployment and command jobs resume or reach explicit interrupted/failed
+states after process failure. Public `/health` is liveness, `/ready` includes
+PostgreSQL, and `/metrics` exists only when a sufficiently strong bearer token is
+configured.
 
-In 0.1 the process only called AdGuard Home's read-only `/control/status` endpoint. It has never contained a DNS listener or proxy. Configuration, reconciliation, Statistics, and Query Log API ingestion arrived in later releases; ADR-0029 keeps node-local agents out of the standard architecture.
+### PostgreSQL
 
-Release 0.1.1 packages this same process through two git-based paths: the reference Debian/systemd installer and a production Docker Compose stack with PostgreSQL. Packaging does not change the process, database, same-origin frontend, or DNS-independence boundaries.
+PostgreSQL is the system of record for administrators/sessions, clusters/nodes,
+encrypted credentials, desired drafts, immutable observations/revisions,
+deployments and per-node results, drift, HA events, webhook deliveries, audit,
+Statistics, Query Log, backup/update metadata, and lifecycle archive state.
 
-Release 0.2 adds a read-only configuration-inventory service inside the same process. It reads supported AdGuard Home administration endpoints, translates raw payloads into canonical schema v1, stores immutable observation attempts and current capability profiles, and provides semantic comparison and an explicitly confirmed non-authoritative draft import. It does not add a node writer, deployment engine, active revision, drift enforcement, or DNS path.
+Desired configuration, observed configuration, applied revision, deployment
+results, and audit history remain distinct records. Migrations are append-only
+after release and timestamps are UTC.
 
-Release 0.3 keeps the same combined process and adds `internal/controlplane`, durable PostgreSQL revisions/deployments/per-node tasks/drift events, a sequential deployment executor, and a periodic drift evaluator. Desired documents are distinct from observed documents. All targets are capability/listener validated and freshly observed before the first supported HTTP API write; each node is read back before the next begins. Complete success selects the active revision. Manual, Alert, and Enforce reconciliation and maintenance state do not change the DNS-independence boundary. ADR-0024 defines failure, cancellation, restart, rollback, and unsupported-listener behavior.
+### AdGuard Home adapter
 
-Release 0.4 adds schema-v2 fields through the existing configuration, inventory, control-plane, and adapter boundaries rather than a parallel settings store. Shared desired state now covers broader DNS, filter/allowlist, client, rewrite, service/safety, query-log, and statistics policy. DHCP configuration/static leases remain node overrides; dynamic leases and redacted TLS status remain observations. Schema v1 is immutable and is projected from current observations for historical rollback and reconciliation. v0.107.52 remains on schema v1; schema v2 supports the explicitly version-gated v0.107.53–v0.107.78 contract. Audited filter refresh is an explicit operation outside revision deployment. ADR-0025 defines compatibility, TLS redaction, managed-field comparison, and DHCP handoff behavior.
+The adapter makes bounded, version-aware calls to native AdGuard Home
+administration APIs. It maps supported versions to explicit capabilities,
+normalizes managed configuration, and discards credentials, TLS private
+material, node response bodies, and unsafe URL detail before domain persistence
+or logging. Unknown contracts remain observable but are blocked from managed
+write operations.
 
-Release 0.5 adds `internal/telemetry` and a bounded statistics worker to the
-same controller process. The adapter reads exact recent windows directly from
-explicitly supported nodes; PostgreSQL stores normalized immutable snapshots,
-small poll evidence, and overlap-safe node buckets. Aggregation happens in the
-service/API layer with explicit coverage and weighted metrics. The worker has
-no DNS listener, no node mutation, and no query-log dependency. Controller
-downtime pauses collection while every node continues serving DNS. ADR-0028
-defines its compatibility, mathematics, retention, and failure boundaries.
+The standard topology is agentless. Statistics and Query Log use native APIs.
+A local Query Log forwarder is not part of the current runtime and would require
+measured evidence and a new decision.
 
-Release 0.6 adds `internal/querylog` plus a bounded independent polling worker.
-The version-aware adapter follows each node's `oldest`/`older_than` source
-cursor, PostgreSQL stores normalized node/cluster-attributed events separately
-from desired/observed configuration, and the API performs parameterized search
-and keyset pagination over retained data. Durable per-node checkpoints and
-attempts drive honest freshness/gap coverage after restart or failure. The
-browser never calls a node, and contextual rule/rewrite actions enter existing
-mutable draft workflows without publication or deployment. ADR-0015 and
-`docs/backend/query-ingestion.md` define identity, privacy, retention, and
-source-fidelity limitations.
+### Frontend
 
-### 3.1 Controller API
+The React/TypeScript frontend is a same-origin API client. It presents loading,
+empty, partial, stale, error, and success states and preserves node attribution
+through telemetry views. The server, not the UI, remains authoritative for
+authorization, CSRF, capability, concurrency, and lifecycle deletion checks.
 
-Responsibilities:
+## Source-of-truth model
 
-- Authentication and session management.
-- Node onboarding.
-- Desired configuration management.
-- Revision creation and comparison.
-- Deployment orchestration.
-- Drift and reconciliation state.
-- Statistics and query-log APIs.
-- Audit logging.
-- UI backend.
+- **Draft:** mutable desired configuration with optimistic concurrency.
+- **Revision:** immutable published desired state.
+- **Observation:** immutable normalized state read from one node.
+- **Applied revision:** last revision semantically verified on a node.
+- **Active revision:** revision verified across the complete deployment target.
+- **Drift:** durable difference between active desired and fresh observed state.
 
-### 3.2 Reconciliation engine
+Shared values and node-specific values are modeled separately. Listener
+addresses/port are verification-only. DHCP configuration/leases are node-specific
+and deployment ordering disables former owners before enabling the desired owner.
 
-Responsibilities:
+## Configuration lifecycle
 
-- Poll observed node configuration.
-- Normalise configuration into a canonical model.
-- Compare desired and observed states.
-- Record drift.
-- Apply policy:
-  - Enforce.
-  - Alert only.
-  - Manual adoption.
-- Verify convergence after deployment.
-- Retry transient failures safely.
-
-### 3.3 AdGuard Home adapter
-
-A version-aware client for the official AdGuard Home REST API.
-
-Responsibilities:
-
-- Authentication.
-- Capability discovery.
-- Reading configuration.
-- Applying supported settings.
-- Reading health and version.
-- Reading statistics.
-- Reading query-log records.
-- Translating API payloads into controller domain types.
-- Mapping errors into stable controller error categories.
-
-The rest of the application must not depend directly on raw AdGuard Home API payloads.
-
-### 3.4 PostgreSQL
-
-PostgreSQL stores:
-
-- Users and sessions.
-- Clusters and nodes.
-- Encrypted node credentials.
-- Draft configurations.
-- Immutable revisions.
-- Deployment and per-node deployment results.
-- Observed snapshots.
-- Drift events.
-- Statistics snapshots.
-- Query events during the polling phase.
-- Query-ingestion checkpoints and attempts.
-- Audit records.
-
-### 3.5 Frontend
-
-The frontend provides an AdGuard Home-inspired dark interface with added HA concepts.
-
-Primary navigation follows ADR-0026. HA Controller has five distinct task
-surfaces: Nodes for infrastructure, Configuration Control for forward-looking
-draft approval/publication, Deployments for execution events, Drift for current
-convergence, and Change History for immutable revisions/comparison/rollback.
-Routine authoring remains under the grouped Settings and Filters routes.
-
-### 3.6 Agentless integration boundary
-
-Release 0.7 adopts ADR-0029: native platform APIs are the standard Statistics
-and Query Log integration. A local forwarder is conditional, unassigned work
-that requires measured evidence that API polling cannot meet reliability,
-latency, scale, load, or compatibility needs.
-
-## 4. Source-of-truth model
-
-The controller stores four separate forms of state.
-
-### Desired state
-
-The configuration operators intend the cluster to run.
-
-### Effective state
-
-The result of merging shared configuration with node-specific overrides.
-
-### Observed state
-
-The normalised configuration read from a node.
-
-### Applied state
-
-The exact revision and effective configuration last successfully deployed to a node.
-
-These concepts must remain distinct.
-
-## 5. Configuration deployment flow
-
-```mermaid
-sequenceDiagram
-    participant Admin
-    participant Controller
-    participant DB
-    participant NodeA
-    participant NodeB
-
-    Admin->>Controller: Save configuration
-    Controller->>Controller: Validate and normalise
-    Controller->>DB: Create immutable revision
-    Admin->>Controller: Deploy revision
-    Controller->>NodeA: Apply effective config
-    NodeA-->>Controller: Success
-    Controller->>NodeA: Read back and verify
-    Controller->>NodeB: Apply effective config
-    NodeB-->>Controller: Success
-    Controller->>NodeB: Read back and verify
-    Controller->>DB: Mark deployment converged
+```text
+edit/import draft
+  → validate draft and every target capability
+  → publish immutable revision
+  → preview and explicitly create deployment
+  → lock/revalidate all targets
+  → apply one node at a time
+  → read back into a new immutable observation
+  → semantic verification
+  → activate revision after total success
+  → continuously evaluate drift
 ```
 
-The initial strategy is sequential deployment to reduce blast radius. Parallel deployment may be added later as an explicit option.
+The initial strategy is sequential and stop-on-failure. Cancellation occurs only
+between nodes. A failed or interrupted deployment never silently activates its
+revision. Rollback creates a deployment of an existing immutable revision.
 
-## 6. Drift detection flow
+Reconciliation policy is Manual, Alert, or Enforce. Enforce uses the same
+verified deployment path and excludes maintenance nodes.
 
-1. Poll node state.
-2. Convert raw API output into the canonical model.
-3. Remove non-semantic or volatile fields.
-4. Apply stable ordering.
-5. Calculate canonical hash.
-6. Compare with the effective desired state.
-7. Record drift if different.
-8. Apply cluster policy.
-9. Re-read and verify after correction.
+## Operational data flows
 
-## 7. Availability model
+Health, Statistics, and Query Log collectors read supported node APIs on bounded
+intervals. Stored rows retain cluster and node identity. Coverage metadata makes
+maintenance, unsupported nodes, stale data, failures, and known ingestion gaps
+explicit. Retention cleanup is bounded and separate from configuration history.
 
-### Controller unavailable
+Active DNS probes query each node over UDP/TCP independently from the management
+API. HA event transitions, maintenance, certificate/version warnings, and guided
+upgrade records coordinate operator work but do not run remote upgrade commands.
 
-- DNS remains operational.
-- Existing AdGuard Home configuration remains active.
-- Configuration changes cannot be deployed.
-- Statistics ingestion pauses.
-- API collectors resume from durable PostgreSQL evidence when the controller returns.
+Webhook deliveries originate from durable HA events. Destinations are encrypted
+write-only configuration. Delivery evidence retains a safe channel-name snapshot
+if the channel is later deleted.
 
-### One AdGuard Home node unavailable
+## Historical lifecycle and recovery
 
-- Other nodes continue serving DNS if clients or the network use both resolvers.
-- Controller reports degraded cluster health.
-- Deployments may pause or continue based on policy.
-- The unavailable node reconciles when it returns.
+Revisions and deployments are history. Terminal records may be archived, which
+hides them from default lists but preserves immutable content and relationships.
+The active revision cannot be archived. Hard deletion is restricted to a
+transactionally proven unused revision or a queued deployment with no started or
+effectful node task and no reference.
 
-### Database unavailable
+Archive status is control-plane data in portable backups. Restore is offline to
+a new empty database. Standard backup excludes high-volume operational table
+data; Full includes it. Sessions and release caches are never restored.
 
-- Controller becomes read-limited or unavailable.
-- No configuration deployment is attempted.
-- DNS remains operational.
+## Availability and trust boundaries
 
-## 8. Node capabilities
+- **Controller unavailable:** DNS continues; management, collection, and
+  reconciliation pause.
+- **PostgreSQL unavailable:** readiness fails and state-changing work stops; DNS
+  continues on nodes.
+- **One node unavailable:** other nodes may continue; the controller reports
+  reduced capacity and blocks unsafe lifecycle actions.
+- **Network partition:** results remain explicit per node; no success is inferred.
+- **Unknown node capability:** observation may continue; affected writes stop.
 
-AdGuard Home versions may expose different APIs and settings.
+Controller HA itself is not implemented. The reference deployment is one
+controller and PostgreSQL instance around multiple independently serving DNS
+nodes.
 
-Each node record should maintain:
+## Related references
 
-- Product version.
-- API compatibility result.
-- Capability flags.
-- Last successful capability discovery time.
-- Unsupported managed fields.
-- Upgrade recommendation.
-
-A deployment must fail validation before mutation when a target node cannot support the requested effective configuration.
-
-Release 0.1 stores a status-contract compatibility value (`supported`, `unsupported`, or `unknown`) and the observed product version. Detailed capability documents and unsupported managed fields start in Release 0.2.
-
-## 9. Background jobs
-
-Initial jobs:
-
-- Node health polling.
-- Capability refresh.
-- Configuration observation.
-- Drift reconciliation.
-- Statistics collection.
-- Query-log polling.
-- Retention and aggregation.
-- Deployment execution.
-- Session cleanup.
-
-Jobs should use persisted state where loss of progress matters.
-
-Implemented in Release 0.1:
-
-- Health polling runs immediately at startup and on a configured interval, with at most four simultaneous node probes.
-- Each probe has an explicit timeout and durably updates the node's latest safe status fields.
-- Expired and long-revoked sessions are cleaned hourly.
-
-These tasks are idempotent and do not need a durable job queue. Deployment and reconciliation jobs will require persisted progress in later releases.
-
-## 10. Observability
-
-The controller should expose:
-
-- Structured logs.
-- Request IDs.
-- Deployment IDs.
-- Job execution metrics.
-- Node polling latency.
-- Reconciliation success and failure counts.
-- Query ingestion lag.
-- Database health.
-- HTTP health and readiness endpoints.
-
-Release 0.7 implements a coherent operational-health service in the combined
-process. It derives per-node connectivity, observation, Statistics, and Query
-Log state from existing durable records; tracks bounded process-worker state;
-and reads PostgreSQL relation metadata for storage estimates. Overall health
-fails for PostgreSQL loss, degrades for stale/failed integrations, and does not
-turn an optional collector issue into process liveness failure. Detailed status
-is authenticated. `/health`, `/ready`, and bearer-protected opt-in `/metrics`
-retain separate security and availability semantics.
-
-## 11. Scaling approach
-
-The first target is a homelab cluster with two to five nodes.
-
-Use PostgreSQL for all data initially. Introduce partitioning and rollups before considering another database.
-
-ClickHouse is a future option only if real query-event volume makes PostgreSQL operationally unsuitable.
-
-## 12. Architectural boundaries
-
-The following are explicitly out of scope for the initial releases:
-
-- Acting as a DNS proxy.
-- Implementing a new DNS server.
-- Active-active DHCP.
-- Automatic network load balancing.
-- Controller high availability.
-- Multi-tenant MSP administration.
-- Kubernetes-first deployment.
-
-## Release 0.8 HA operations boundary
-
-The combined controller process gains an `haoperations` service, DNS probe,
-upstream release, notification delivery, and transition workers. They call node
-DNS listeners and HTTPS APIs from the management plane and persist evidence in
-PostgreSQL. No request from a DNS client enters AGH HA Controller, no DNS listener is
-published by the controller, and nodes continue serving if every controller worker is
-stopped. ADR-0030 defines maintenance, return-to-service, and guided-upgrade
-failure behavior. Optional failover products such as Keepalived or dnsdist are
-neither required nor managed in Release 0.8.
-
-## Release 0.9 productisation boundary
-
-Portable backup is a shared domain/service implementation used by browser and
-CLI entry points. PostgreSQL `pg_dump` provides a concurrent consistent snapshot;
-the credential key joins it only inside a passphrase-encrypted envelope. Browser
-restore stops at authenticated preflight. Mutation is an offline CLI operation
-against a new empty database so the old installation remains a rollback source.
-
-Local authorization still has one `administrator` role rather than an invented
-pre-1.0 RBAC model. Multiple identities, disabled state, password lifecycle,
-session revocation, audit attribution, and final-admin safety are first-class.
-Controller update awareness is cached information and host guidance, never a
-host execution boundary. Product text remains AGH HA Controller through 0.9.
-
-## Release 0.9.1 frontend presentation boundary
-
-Theme preference and resolved light/dark state are browser-local presentation
-state owned by one React provider and an early first-paint bootstrap. They do
-not enter PostgreSQL, controller settings, sessions, audits, desired state,
-revisions, deployments, or API payloads. Atlas assets are visual staging only;
-technical AGH HA Controller identifiers remain unchanged. Header/menu changes
-are client-side interaction changes and do not alter routing contracts or the
-controller's DNS-independent availability model.
+- [Configuration model](configuration-model.md)
+- [Reconciliation engine](reconciliation-engine.md)
+- [Deployment topology](deployment.md)
+- [Security guide](../security/security.md)
+- [Database schema](../database/schema.md)
+- [Architecture decisions](../decisions/README.md)

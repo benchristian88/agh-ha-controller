@@ -13,11 +13,12 @@ matrix evidence, and **unsupported** means the controller must not claim it.
 | PostgreSQL | Other majors | Unsupported for 0.9 | No compatibility claim without migration/backup evidence. |
 | Native | Debian 13 with systemd | Tested/reference | Source-build installer. |
 | Docker | Docker Engine with Compose v2 | Tested/reference | No Docker socket or privileged controller access. |
-| Browser | Current Chromium desktop/mobile | Tested | Automated DOM/accessibility plus packaged browser validation. |
-| Browser | Current Firefox and Safari/iOS | Expected | Standards-based UI; complete manual matrix remains a 0.9 release gate. |
-| Upgrade | 0.8 → 0.9 | Supported after release validation | Append-only migration 000013; backup required. |
-| Upgrade | Earlier than 0.8 → 0.9 | Expected through append-only migrations | Must be explicitly tested before advertised as supported. |
-| Backup restore | 0.9 format v1 to compatible 0.9+ schema | Supported design | Future app/schema backups are rejected. |
+| Browser | Current Chromium desktop/mobile | Tested baseline | Automated DOM/accessibility and recorded packaged evidence; recheck for each release. |
+| Browser | Current Firefox and Safari/iOS | Expected | Standards-based UI; inherited manual matrix remains open. |
+| Upgrade | 0.9.1 → 0.9.2 | Expected pending packaged gate | Append-only migration 000014; preflighted backup required. |
+| Upgrade | Earlier pre-1.0 versions → 0.9.2 | Expected through append-only migrations | Must be explicitly tested before advertised as supported. |
+| Backup restore | Format v1 to a compatible current schema | Supported design; external matrix pending | Future application/schema backups are rejected. |
 
-The stable 1.0 support statement must be based on completed evidence rather
-than widening these ranges by assumption.
+The matrix records contract scope, not official AdGuard endorsement. The stable
+1.0 support statement must be based on completed evidence rather than widening
+these ranges by assumption.

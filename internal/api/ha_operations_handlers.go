@@ -193,23 +193,56 @@ func (s *Server) handleNotificationChannels(response http.ResponseWriter, reques
 	}
 	writeJSON(response, http.StatusOK, map[string]any{"items": value})
 }
-func (s *Server) handleSaveNotificationChannel(response http.ResponseWriter, request *http.Request) {
+func (s *Server) handleCreateNotificationChannel(response http.ResponseWriter, request *http.Request) {
 	if s.notifications == nil {
 		s.writeError(response, request, domain.NewError(domain.ErrorNotFound, "notification settings are unavailable"))
 		return
 	}
 	var input struct {
-		ID            string `json:"id"`
-		Name          string `json:"name"`
-		Destination   string `json:"destination"`
-		Enabled       bool   `json:"enabled"`
-		RecordVersion int    `json:"recordVersion"`
+		Name        string `json:"name"`
+		Destination string `json:"destination"`
+		Enabled     bool   `json:"enabled"`
 	}
 	if err := decodeJSON(response, request, &input); err != nil {
 		s.writeError(response, request, err)
 		return
 	}
-	value, err := s.notifications.Save(request.Context(), actor(request.Context()), request.PathValue("clusterId"), input.ID, input.Name, input.Destination, input.Enabled, input.RecordVersion)
+	value, err := s.notifications.Create(request.Context(), actor(request.Context()), request.PathValue("clusterId"), input.Name, input.Destination, input.Enabled)
+	if err != nil {
+		s.writeError(response, request, err)
+		return
+	}
+	writeJSON(response, http.StatusCreated, value)
+}
+func (s *Server) handleUpdateNotificationChannel(response http.ResponseWriter, request *http.Request) {
+	if s.notifications == nil {
+		s.writeError(response, request, domain.NewError(domain.ErrorNotFound, "notification settings are unavailable"))
+		return
+	}
+	var input struct {
+		Name               string  `json:"name"`
+		Destination        *string `json:"destination"`
+		ReplaceDestination bool    `json:"replaceDestination"`
+		Enabled            bool    `json:"enabled"`
+		RecordVersion      int     `json:"recordVersion"`
+	}
+	if err := decodeJSON(response, request, &input); err != nil {
+		s.writeError(response, request, err)
+		return
+	}
+	if input.Destination != nil && !input.ReplaceDestination {
+		s.writeError(response, request, domain.Validation("replaceDestination", "must be true to replace the hidden destination"))
+		return
+	}
+	if input.ReplaceDestination && input.Destination == nil {
+		s.writeError(response, request, domain.Validation("destination", "is required when replacing the hidden destination"))
+		return
+	}
+	destination := input.Destination
+	if !input.ReplaceDestination {
+		destination = nil
+	}
+	value, err := s.notifications.Update(request.Context(), actor(request.Context()), request.PathValue("channelId"), input.Name, destination, input.Enabled, input.RecordVersion)
 	if err != nil {
 		s.writeError(response, request, err)
 		return
@@ -222,15 +255,28 @@ func (s *Server) handleDeleteNotificationChannel(response http.ResponseWriter, r
 		return
 	}
 	var input struct {
-		RecordVersion int `json:"recordVersion"`
+		RecordVersion int    `json:"recordVersion"`
+		Confirmation  string `json:"confirmation"`
 	}
 	if err := decodeJSON(response, request, &input); err != nil {
 		s.writeError(response, request, err)
 		return
 	}
-	if err := s.notifications.Delete(request.Context(), actor(request.Context()), request.PathValue("channelId"), input.RecordVersion); err != nil {
+	if err := s.notifications.Delete(request.Context(), actor(request.Context()), request.PathValue("channelId"), input.Confirmation, input.RecordVersion); err != nil {
 		s.writeError(response, request, err)
 		return
 	}
 	response.WriteHeader(http.StatusNoContent)
+}
+func (s *Server) handleTestNotificationChannel(response http.ResponseWriter, request *http.Request) {
+	if s.notifications == nil {
+		s.writeError(response, request, domain.NewError(domain.ErrorNotFound, "notification settings are unavailable"))
+		return
+	}
+	value, err := s.notifications.Test(request.Context(), actor(request.Context()), request.PathValue("channelId"))
+	if err != nil {
+		s.writeError(response, request, err)
+		return
+	}
+	writeJSON(response, http.StatusOK, value)
 }

@@ -1142,8 +1142,8 @@ function UpstreamSyntaxHelp() {
       AdGuard domain selectors such as{" "}
       <code>[/internal.example/]192.0.2.53</code>
       are retained exactly. A selector ending in <code>#</code> excludes
-      matching names. Diagnostics are conservative; node-side upstream testing
-      belongs to Phase 9C.
+      matching names. Diagnostics are conservative; upstream behavior is
+      verified by each AdGuard Home node when configuration is deployed.
     </span>
   );
 }

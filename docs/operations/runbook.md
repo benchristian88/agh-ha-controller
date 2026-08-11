@@ -350,4 +350,4 @@ first confirm the deployed `favicon.*`, Apple icon, Android icons, index links,
 and manifest response, then clear the browser/site icon cache or reinstall the
 saved app. Do not add a service worker as a cache workaround. Browser chrome,
 iOS saved-app, Android installation, and standalone launch evidence belongs in
-`development/release-0.9.1-validation.md`.
+the [archived Release 0.9.1 validation report](../archive/pre-1.0/validation/release-0.9.1-validation.md).

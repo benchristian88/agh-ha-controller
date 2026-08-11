@@ -1,67 +1,59 @@
 # UI Navigation
 
-## Primary route map
+This is the canonical route and route-ownership reference. Visual shell and
+menu interaction details are defined in
+[Navigation and Application Shell](navigation-and-shell.md).
 
-```text
-/
-/statistics
+## Current route map
 
-/settings/general
-/settings/dns
-/settings/encryption
-/settings/clients
-/settings/dhcp
+| Route | Owner |
+|---|---|
+| `/` | Dashboard |
+| `/statistics` | Statistics |
+| `/settings/general` | General settings |
+| `/settings/dns` | DNS settings |
+| `/settings/encryption` | Encryption status and node-local guidance |
+| `/settings/clients` | Persistent clients |
+| `/settings/dhcp` | DHCP configuration and static leases |
+| `/filters/blocklists` | DNS blocklists |
+| `/filters/allowlists` | DNS allowlists |
+| `/filters/rewrites` | DNS rewrites |
+| `/filters/blocked-services` | Blocked services |
+| `/filters/custom-rules` | Custom filter rules |
+| `/query-log` | Combined node-attributed Query Log |
+| `/ha/nodes` | Managed node inventory |
+| `/ha/nodes/{nodeId}` | Node lifecycle detail |
+| `/ha/operations` | Fleet HA operations |
+| `/ha/configuration` | Configuration Control |
+| `/ha/revisions` | Immutable configuration revisions |
+| `/ha/deployments` | Deployment execution and per-node results |
+| `/ha/drift` | Current convergence and drift resolution |
+| `/setup-guide` | State-derived setup guidance |
+| `/system/users` | Administrator accounts |
+| `/system/audit` | Audit log |
+| `/system/operational-status` | Controller operational status |
+| `/system/settings` | System settings and update awareness |
+| `/system/backups` | Backup and restore |
+| `/system/updates` | Controller update awareness and host guidance |
+| `/system/about` | Build and product information |
 
-/filters/blocklists
-/filters/allowlists
-/filters/rewrites
-/filters/blocked-services
-/filters/custom-rules
+## Menu ownership
 
-/query-log
+- Dashboard, Statistics, Query Log, and Setup Guide are primary destinations.
+- Settings owns General, DNS, Encryption, Clients, and DHCP.
+- Filters owns Blocklists, Allowlists, Rewrites, Blocked Services, and Custom
+  Filter Rules.
+- HA Controller owns Nodes, Configuration Control, Revisions, Deployments, and
+  Drift.
+- The administration menu owns Users, Operational Status, HA Operations, Audit
+  Log, System Settings, Backups, About, and Sign Out.
 
-/ha/nodes
-/ha/configuration
-/ha/revisions
-/ha/deployments
-/ha/drift
+Desktop and mobile use the same labels, ordering, and parent/child relationships.
+An active child highlights its owning menu.
 
-/setup-guide
+## Compatibility redirects
 
-/system/users
-/system/audit
-/system/settings
-/system/backups
-/system/about
-```
-
-## Release 0.4.1 Phases 0–2 implementation
-
-Every path above resolves explicitly. Statistics and Query Log identify their
-owning future release, and Setup Guide plus unimplemented administration pages
-show an explicit planned state. Unknown paths render Not Found and never render
-Dashboard.
-
-The horizontal desktop header and mobile drawer share the Settings, Filters,
-and HA Controller hierarchy from `navigation-and-shell.md`. The context row
-uses existing controller reads for cluster, selected-node scope, active
-revision, node health, and active deployment. A context-read failure is shown
-as unavailable and does not block the feature page.
-
-Phase 10 confirmed every selected feature route used its migrated
-operator-facing presentation. The 3 August 2026 responsibility pass then
-removed its two remaining combined-page compromises: Deployments and Drift now
-render distinct execution and convergence pages, and Revisions no longer
-renders Configuration Control. They continue to share typed controller APIs
-and semantic presentation primitives. Release 0.5 subsequently replaces the
-Statistics planned state with the complete fixed-range, global-scope
-experience. Release 0.6 replaces the Query Log planned state with a combined,
-node-attributed, global-scope experience whose contextual actions hand off to
-existing Filters and Settings draft workflows.
-
-## Route migrations
-
-The browser retains the query string and fragment during these redirects.
+The browser retains query strings and fragments while redirecting.
 
 | Previous route | Canonical route |
 |---|---|
@@ -76,27 +68,23 @@ The browser retains the query string and fragment during these redirects.
 ## Configuration Control
 
 `/ha/configuration` is lifecycle control, not a duplicate settings editor. It
-contains the complete read-only schema-v2 draft/change summary, validation,
-advanced observation and import/adoption, and immutable publication. Revision
-history/comparison/rollback belong to `/ha/revisions`; execution progress belongs
-to `/ha/deployments`; continuing divergence belongs to `/ha/drift`.
+contains the complete read-only draft/change summary, validation, advanced
+observation and import/adoption, and immutable publication. Revision comparison
+and rollback belong to `/ha/revisions`; execution belongs to `/ha/deployments`;
+continuing divergence belongs to `/ha/drift`.
 
-## Route principles
+## Navigation behavior
 
-- URLs are stable and bookmarkable.
+- Routes are stable and bookmarkable.
 - Cluster and selected-node scope remain application context; secrets never
   appear in URLs.
-- Active submenu children highlight their parent.
 - Revision, deployment, and drift selection use `revisionId`, `deploymentId`,
   and `driftId` query parameters and preserve unrelated query state.
-- Unknown routes fail visibly.
+- Unknown routes render an explicit Not Found page and never Dashboard.
+- Desktop menus support pointer and keyboard operation; mobile disclosures do
+  not depend on hover.
+- Escape closes an open menu or drawer and restores focus to its trigger.
+- Breadcrumbs are reserved for detail views rather than top-level pages.
 
-## Breadcrumbs
-
-Use breadcrumbs on future detail pages, not top-level pages.
-
-```text
-Nodes / AGH Node A
-Revisions / Revision 42
-Deployments / Deployment 8f...
-```
+Historical route migration and phase evidence is retained in the
+[pre-1.0 frontend implementation archive](../archive/pre-1.0/frontend/implementation/).

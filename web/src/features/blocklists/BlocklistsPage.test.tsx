@@ -381,6 +381,13 @@ describe("DNS blocklists page", () => {
     const { container } = render(<BlocklistsPage cluster={cluster} />);
     expect(await screen.findByRole("table")).not.toBeNull();
     expect(container.querySelector(".blocklists-page")).not.toBeNull();
+    const subscriptions = screen
+      .getByRole("heading", { name: "Blocklist subscriptions" })
+      .closest(".settings-group");
+    expect(
+      subscriptions?.querySelector(".settings-group__body--padded"),
+    ).not.toBeNull();
+    expect(subscriptions?.querySelector(".data-table")).not.toBeNull();
     expect(document.documentElement.dataset.theme).toBe(theme);
   });
 });

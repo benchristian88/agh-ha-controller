@@ -39,12 +39,14 @@ export function SettingsGroup({
   actions,
   children,
   disabled = false,
+  bodySpacing = "rows",
 }: {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   disabled?: boolean;
+  bodySpacing?: "rows" | "padded";
 }) {
   return (
     <section className="settings-group" aria-disabled={disabled || undefined}>
@@ -57,7 +59,11 @@ export function SettingsGroup({
         </div>
         {actions}
       </header>
-      <div className="settings-group__body">{children}</div>
+      <div
+        className={`settings-group__body settings-group__body--${bodySpacing}`}
+      >
+        {children}
+      </div>
     </section>
   );
 }

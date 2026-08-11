@@ -1,9 +1,9 @@
 # Theme, Brand, and Browser Install Metadata
 
-## Release 0.9.1 scope
+## Current scope
 
-Release 0.9.1 establishes the Atlas visual foundation without renaming the
-technical product. Repository, module, binary, service, image, environment,
+The current Atlas visual foundation does not rename the technical product.
+Repository, module, binary, service, image, environment,
 API, database, config-path, manifest-name, and release-artifact identifiers
 remain **AGH HA Controller**. The deliberate complete textual and technical
 rename remains Release 1.0 work.

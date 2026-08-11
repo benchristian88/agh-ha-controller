@@ -51,4 +51,4 @@ No API contract or backend implementation changed. The global context reads:
   change markers.
 - Existing configuration compatibility and validation-guidance tests remain.
 - Desktop and mobile production-build captures are stored under
-  `docs/frontend/screenshots/release-0.4.1/`.
+  `docs/archive/pre-1.0/screenshots/release-0.4.1/`.

@@ -54,7 +54,7 @@ export function StatusBadge({
   icon?: ReactNode;
 }) {
   return (
-    <span className={`status status--${status}`}>
+    <span className={`status status--${status}`} data-size="compact">
       {icon !== undefined && <span aria-hidden="true">{icon}</span>}
       {label ?? labels[status]}
     </span>

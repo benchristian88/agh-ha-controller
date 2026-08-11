@@ -1,268 +1,138 @@
 # Frontend Design
 
-> **Historical foundation.** Release 0.1–0.4 implementation descriptions below
-> are retained as design history. Where sidebar, route, or current component
-> language conflicts, ADR-0026, `ui-navigation.md`,
-> `navigation-and-shell.md`, and the Release 0.4.1 Phase 10 regression report
-> are authoritative.
-
 ## Design goal
 
-The frontend should feel immediately familiar to an AdGuard Home user while clearly exposing HA concepts that do not exist in a single-node product.
+The frontend is an operational management surface for multiple AdGuard Home
+nodes. It should feel familiar to an AdGuard Home operator while making cluster
+scope, node attribution, desired state, deployment progress, drift, and partial
+observability explicit.
 
-It should be calm, operational, information-dense, and suitable for daily use.
+The controller remains outside the DNS request path. Frontend language and
+workflows must not imply that the controller resolves, proxies, balances, or
+fails over normal DNS traffic.
 
-## Release 0.1 implementation
+## Frontend architecture
 
-The first implemented surface includes one-time setup, login, cluster creation and selection, a health dashboard, node list/onboarding/edit/test/removal, and an audit table. It uses the project-owned dark tokens, native forms, visible focus, textual status badges, responsive layouts, typed API access, and explicit loading, empty, stale, cached-with-refresh-error, and failure states.
+The React and TypeScript application is served by the controller and uses the
+typed `/api/v1` client layer. Feature code owns page composition and transient
+interaction state; shared components own stable visual and accessibility
+patterns. Server state remains distinct from form state.
 
-The dashboard does not render zero-value traffic charts before telemetry exists. Release 0.3 exposes configuration plus deployment/drift navigation; statistics and query-log navigation remain absent until those execution paths are implemented.
+Pages must model initial loading, empty, error, stale, unavailable, unsupported,
+maintenance, and partial-success states where those states are meaningful.
+Controller APIs remain the authority for validation, capability checks,
+optimistic concurrency, destructive-operation eligibility, and secret
+redaction.
 
-Release 0.3 implements the configuration authoring form, immutable revision history/actions, reconciliation-policy selector, deployment timeline with per-node outcomes and safe cancellation, and structured drift restore/adopt/maintenance actions. The screens poll durable deployment state every three seconds and preserve explicit loading, empty, error, partial-success, and maintenance states.
+Current detailed references are:
 
-## Release 0.4 implementation
+- [design system](design-system.md);
+- [component catalogue](component-catalogue.md);
+- [navigation and application shell](navigation-and-shell.md);
+- [route reference](ui-navigation.md);
+- [feature presentation rules](feature-presentation-rules.md).
 
-Routine AdGuard settings use nested, bookmarkable `/settings/*` pages instead of overloading the HA Configuration page. The application sidebar is their single navigation surface; individual settings pages do not repeat that menu. Every page loads and saves the same typed schema-v2 draft and directs publication/deployment back to Configuration. Forms cover DNS, filter/allowlist authoring and partial-result refresh, persistent clients, rewrites, blocked-service schedules, safety/Safe Search, human-readable retention days, redacted TLS cards, and per-node DHCP/static leases. DHCP node names, client identifiers, and blocked-services schedule labels are headings inside their corresponding cards while hidden fieldset legends preserve form grouping for assistive technology. Patch-level capability notices explain when cache/timeout/filter/rewrite/ignore controls must retain an older node's imported defaults. Selecting an active DHCP node disables other draft overrides in the browser; server validation remains authoritative. Schema-v1 drafts show upgrade/import guidance rather than editable v2 controls.
+## Application shell
 
-Release 0.4.1 makes the horizontal header and matching mobile drawer the sole
-primary navigation. Phase 9A makes `/settings/general` the canonical presentation for
-protection, filtering, safety, Safe Search, and node-local Query Log and
-Statistics policy. It uses preset/custom lossless durations, validated domain
-rows, explicit patch-capability warnings, and draft/revision/affected-node
-context. Saving remains draft-only; central Statistics and Query Log data
-surfaces remain assigned to Releases 0.5 and 0.6 respectively.
+Desktop uses a horizontal header. Mobile uses a drawer with the same labels,
+grouping, and route ownership. A persistent context row shows the selected
+cluster, cluster or node scope, active revision, health, and active deployment
+when present.
 
-## Release 0.5 statistics
+The shell owns navigation, theme selection, user actions, and shared context.
+Feature pages do not reproduce primary navigation or maintain a competing scope
+model. Unknown routes render Not Found and never fall through to Dashboard.
 
-`/statistics` reuses the shell's persistent cluster/node scope and presents
-controller-collected 24-hour, 7-day, and 30-day data. Four summary cards,
-accessible SVG activity lines, ranked domain/client/upstream panels, and a
-node-attributed coverage table share the existing responsive card/table/status
-language. Loading, unavailable, partial, stale, unsupported, maintenance, and
-refresh-error states are textual. The dashboard adds only a compact 24-hour
-summary and remains primarily a health surface. Its final Release 0.9.1
-hierarchy keeps node health in the top summary, presents API/HA
-Redundancy/Statistics/Query Log as controller subsystems, and uses Queries,
-Blocked percentage, Safety Interventions, and query-weighted Average Processing
-for DNS activity. Statistics coverage stays on the full Statistics and
-collector-health surfaces.
+## Navigation model
 
-## Release 0.6 Query Log
+The primary product areas are:
 
-`/query-log` reuses persistent cluster/node scope for a dense node-attributed
-table, debounced server search, observed status/type filters, exact client
-filter, keyset pagination, conservative refresh, and structured inline detail.
-Coverage makes stale, unsupported, disabled, failed, and known-gap nodes
-explicit. Context actions enter the existing Custom Rules, Rewrites, Clients,
-Nodes, and Configuration Control routes and never bypass draft/revision/deploy
-separation. Full behavior and responsive states are in `query-log.md`.
+- Dashboard, Statistics, and Query Log;
+- Settings for General, DNS, Encryption, Clients, and DHCP;
+- Filters for blocklists, allowlists, rewrites, blocked services, and custom
+  rules;
+- HA Controller for Nodes, Configuration Control, Revisions, Deployments, and
+  Drift;
+- Setup Guide and lower-frequency administration surfaces.
 
-The 3 August 2026 HA responsibility pass retains the same navigation but gives
-each HA route one task: Nodes for infrastructure, Configuration Control for
-forward-looking draft approval/publication and advanced adoption, Deployments
-for execution, Drift for current convergence, and Revisions for immutable
-revision comparison and rollback. Shared controller APIs and semantic diff
-primitives remain implementation reuse, not a reason to render duplicate pages.
+The canonical route table, compatibility redirects, route ownership, and menu
+behavior are defined in [UI Navigation](ui-navigation.md) and
+[Navigation and Application Shell](navigation-and-shell.md).
 
-The 9 August 2026 revision-lifecycle pass makes `/ha/revisions` canonical and
-retains `/ha/history` as a compatibility redirect. Publishing remains on
-Configuration Control with a persistent exact-revision handoff. Revisions,
-Deployments, and Drift use query-backed adjacent table details; deployment
-requires preview and confirmation, and the resulting durable deployment opens
-by exact ID. ADR-0027 supersedes ADR-0026 only for this route terminology and
-interaction presentation.
+## Page patterns
 
-## Release 0.2 implementation
+Top-level pages use a title, concise purpose, relevant context or freshness
+state, and one clear primary task. Repeated resource collections use searchable
+tables or responsive cards; selection opens query-backed inline detail when a
+durable record must remain linkable.
 
-`/ha/configuration` provides a read-only inventory for the selected cluster. It models initial loading, empty clusters, collection failures, compatibility warnings, successful semantic equality, detailed section/scope differences, and optimistic import conflicts. Import confirmation explicitly states that no node is changed and that the resulting draft is neither published nor deployable.
+Settings pages edit the shared draft. They expose lifecycle context and link to
+Configuration Control for validation and publication. Saving a settings page
+does not publish or deploy.
 
-## Visual direction
+HA pages have separate responsibilities:
 
-Use an original implementation inspired by AdGuard Home dark mode.
+- Nodes owns managed node identity, observation, compatibility, and health.
+- Configuration Control owns draft review, validation, observation/import or
+  adoption, and publication.
+- Revisions owns immutable history, semantic comparison, deployment preview,
+  and rollback by deploying a historical revision.
+- Deployments owns durable execution progress and per-node results.
+- Drift owns current desired-versus-observed divergence and resolution.
 
-Do not copy source code, trademarks beyond nominative product references, or proprietary assets.
+Operational commands use explicit scope, confirmation where destructive,
+durable per-node results, and audit evidence. Secret values never enter route
+state, visible frontend state, diagnostics, or exports.
 
-### Theme characteristics
+## Dashboard model
 
-- System, Light, and Dark are browser-local preferences; System is the default
-  and follows OS changes.
-- Atlas Blue is the primary interaction colour and approved theme-specific
-  Atlas artwork is used without CSS inversion. Semantic health, warning, and
-  failure colours remain independent.
-- Dark blue-grey application background.
-- Slightly lighter sidebar and cards.
-- Green primary action and healthy-state accent.
-- Blue for informational state.
-- Amber for warning or pending state.
-- Red for failure or blocked state.
-- Low-contrast borders.
-- Moderate corner radius.
-- Minimal shadow.
-- Clear typography.
-- Compact but accessible controls.
+Dashboard is a concise cluster-health overview, not a replacement for detailed
+feature pages. It presents:
 
-## Navigation
+- node health and HA redundancy;
+- controller subsystem state for API, Statistics, and Query Log;
+- DNS activity summaries for queries, blocked percentage, safety interventions,
+  and query-weighted average processing time;
+- active revision, drift, deployments, and recent operational activity.
 
-### AdGuard Home functions
+Statistics and Query Log summaries preserve freshness, coverage, partial-input
+state, and source-node attribution. Detailed coverage and investigation remain
+on their owning pages.
 
-- Dashboard
-- Query log
-- Statistics
-- DNS settings
-- Filters
-- Clients
-- DNS rewrites
+## Component and design principles
 
-### HA management
+- Use project-owned visual assets and an original AdGuard-inspired interface.
+- Preserve the desired draft → immutable revision → verified deployment
+  lifecycle in labels and actions.
+- Present domain controls, not raw transport payloads.
+- Keep node-specific values distinct from shared desired configuration.
+- Show capability differences and unavailable operations explicitly.
+- Use text with semantic color; color alone never communicates status.
+- Prefer accessible native controls and predictable keyboard interaction.
+- Keep destructive actions narrow, server-validated, and strongly confirmed.
 
-- Nodes
-- Configuration
-- Change history
-- Deployments
-- Drift
-- Operational Status
+## Responsive behavior
 
-### System
+Desktop is the primary administration surface, but every operator workflow must
+remain usable at narrow widths. Cards wrap, secondary table columns collapse or
+move into detail, and dialogs or complex comparisons may become focused
+full-screen views. The context needed to understand scope, health, freshness,
+and node attribution must remain visible.
 
-- Users
-- Audit log
-- Settings
-- About
-
-## Global controls
-
-The header should contain:
-
-- Current cluster.
-- Current scope:
-  - Entire cluster.
-  - A specific node.
-- Cluster health.
-- Logged-in user.
-- Optional active deployment indicator.
-
-## Dashboard
-
-### Metric cards
-
-- DNS queries.
-- Blocked queries.
-- Average processing time.
-- Active revision.
-- Healthy nodes.
-- Drifted nodes.
-- Ingestion lag.
-
-### Cluster traffic
-
-Show combined trend with optional per-node series.
-
-### Node status
-
-For each node:
-
-- Name.
-- Address.
-- Version.
-- Health.
-- Traffic share.
-- Latency.
-- Applied revision.
-- Drift status.
-- Last seen.
-
-### Recent activity
-
-- Revision created.
-- Deployment started.
-- Deployment succeeded or failed.
-- Drift detected.
-- Drift corrected.
-- Node became unreachable.
-- Collector lag increased or a known ingestion gap was detected.
-
-### Query log preview
-
-Include a node column.
-
-## Configuration experience
-
-Configuration pages should separate:
-
-- Shared cluster settings.
-- Node overrides.
-- Unsupported settings.
-- Observed-only settings.
-
-Every save creates a draft update. Publishing creates a revision.
-
-Before deployment, show:
-
-- Summary of changes.
-- Affected nodes.
-- Compatibility warnings.
-- Restart requirements.
-- Node-specific effective values.
-
-## Change history
-
-Revision list:
-
-- Revision number.
-- Created time.
-- Author.
-- Summary.
-- Deployment status.
-- Active or historical state.
-
-Comparison view:
-
-- Previous value.
-- New value.
-- Scope.
-- Affected nodes.
-- Secret values redacted.
-- Semantic explanation where possible.
-
-## Drift page
-
-Each drift record should show:
-
-- Node.
-- Detection time.
-- Changed section.
-- Desired value.
-- Observed value.
-- Policy.
-- Resolution.
-- Related audit event.
-
-Actions:
-
-- Restore desired state.
-- Adopt change into draft.
-- Ignore field.
-- Put node into maintenance.
-
-## Responsive behaviour
-
-Desktop is the primary administration surface.
-
-At narrow widths:
-
-- Sidebar becomes a drawer.
-- Metric cards wrap.
-- Tables reduce secondary columns.
-- Detail panels stack.
-- Critical node health remains visible.
-- Complex configuration diffs may use a focused full-screen view.
+The mobile drawer is an alternate presentation of the same hierarchy, not a
+different information architecture. Controls must not rely on hover, and
+closing a drawer or dialog restores focus to its trigger.
 
 ## Accessibility
 
-- WCAG AA contrast target.
-- Keyboard navigation.
-- Visible focus states.
-- Native controls where possible.
-- Text labels in addition to colour.
-- Status announcements for deployment progress.
-- No critical information conveyed by charts alone.
+Target WCAG AA contrast, visible focus, keyboard navigation, semantic headings,
+native form controls, labelled status, and live announcements for meaningful
+asynchronous progress. Charts supplement textual values and never carry the
+only copy of critical information.
+
+## Historical design record
+
+Release-by-release frontend implementation notes, migration specifications,
+regression evidence, and screenshots are retained in the
+[pre-1.0 physical archive](../archive/pre-1.0/README.md). They are evidence of
+how the interface evolved, not current design authority.

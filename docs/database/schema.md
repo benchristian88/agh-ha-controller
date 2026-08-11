@@ -1,128 +1,122 @@
-# Schema Notes
+# Database Schema Reference
 
-Migration `000011_release_0_7_operational_health` adds only retained-time
-indexes for `statistics_snapshots.collected_at` and
-`query_events(source_timestamp,id)`. Operational health remains derived from
-the released node/observation/Statistics/Query Log/control-plane records and
-PostgreSQL metadata; no parallel health table is introduced. Statistics
-retention deletes are bounded in repository queries.
+PostgreSQL 17 is the initial system of record. Identifiers exposed outside the
+database are UUIDs, timestamps use `timestamptz`/UTC, and migrations are embedded
+and applied under a PostgreSQL advisory lock. Applied migration checksums are
+immutable.
 
-Migration `000012_release_0_8_ha_operations` adds per-node lifecycle/probe
-settings, immutable DNS probe results, HA transition events, guided upgrade
-operations, an upstream release cache, encrypted notification channels, and
-bounded delivery attempts. Desired configuration, observed configuration,
-deployment results, and lifecycle evidence remain separate. One partial unique
-index prevents concurrent active upgrades for a node; channel/event uniqueness
-prevents duplicate notification delivery.
+## Record families
 
-## Release 0.6 combined Query Log
+### Identity and audit
 
-Migration `000010_release_0_6_query_log` installs the trusted `pg_trgm`
-extension and adds three record families separate from desired state:
+- `users` — local administrator identity, password hash, enabled state, version.
+- `sessions` — server-side browser sessions; excluded from portable restore.
+- `audit_events` — append-only actor/action/safe metadata/request evidence.
 
-- `query_events`: normalized immutable, cluster/node-attributed source events;
-- `query_ingestion_checkpoints`: one restart-safe cursor/coverage record per
-  node; and
-- `query_ingestion_attempts`: bounded collection evidence and safe failures.
+User records are retained for audit attribution. Passwords and raw sessions are
+never audit metadata.
 
-`query_events` uses UUID identity, UTC `timestamptz`, bounded scalar fields, and
-bounded JSONB arrays only for rules and answers. Node-scoped uniqueness combines
-the SHA-256 source fingerprint and source occurrence. Composite descending
-cluster/time and cluster/node/time indexes support keyset pagination; status and
-type indexes support filters; lower-case trigram GIN indexes support parameterized
-domain/client substring search. Administrative credentials, node URLs, raw
-payloads, and unrelated configuration are not stored.
+### Cluster, node, and capability
 
-## Release 0.5 statistics
+- `clusters` — desired-state/reconciliation scope and active revision pointer.
+- `nodes` — node identity, encrypted credentials, maintenance, observation,
+  applied revision, and convergence state.
+- `node_capability_profiles` — version/schema-aware supported feature evidence.
+- `observed_snapshots` — immutable normalized node configuration observations.
 
-Migration `000009_release_0_5_statistics` keeps telemetry concerns separate:
+Encrypted credential envelopes and public endpoint identity remain distinct from
+canonical configuration documents.
 
-- `statistics_poll_attempts` records bounded per-node collection evidence,
-  the count of ranges eligible under the node's retention, and stable safe
-  per-range errors for failures or configured retention exclusions;
-- `statistics_snapshots` stores immutable normalized exact-range node results;
-  and
-- `statistics_buckets` stores overlap-safe hourly/daily additive counters with
-  node attribution.
+### Configuration and deployment
 
-Foreign keys preserve cluster/node history. Snapshot rankings and series are
-bounded JSON arrays rather than unreviewed raw payloads. Bucket identity is
-`(node_id, resolution, bucket_start)`, allowing newer overlapping reads to
-replace the same source bucket without adding it twice. Desired configuration,
-observed configuration, deployments, statistics, and query events remain
-distinct record families.
+- `configuration_drafts` — one mutable optimistic desired-state document per
+  cluster with optional base revision.
+- `configuration_revisions` — immutable published desired state, origin/summary,
+  archive time/actor, and monotonically increasing cluster revision number.
+- `deployments` — durable requested strategy/status/revision/rollback and archive
+  metadata.
+- `deployment_nodes` — ordered per-node execution, safe error, observation, and
+  verification evidence.
+- `drift_events` — desired-versus-observed differences and optional related
+  deployment.
+- `operational_commands` and `operational_command_node_results` — non-revision
+  commands such as guarded DHCP reset/filter refresh, with per-node evidence.
 
-## Migration naming
+Desired configuration, observed configuration, applied revision, deployment
+results, drift, and audit are never collapsed into one record.
 
-```text
-000001_create_users.up.sql
-000001_create_users.down.sql
-000002_create_clusters_nodes.up.sql
-000002_create_clusters_nodes.down.sql
-```
+Revision hard-delete eligibility rechecks every active/applied/base/deployment/
+rollback/drift reference in one transaction. Deployment hard-delete eligibility
+requires queued/no-start state, untouched node tasks, and no drift reference.
+Archive preserves all foreign keys and immutable content.
 
-Down migrations are useful during early development. After stable production releases, destructive rollback should be treated cautiously.
+### Telemetry and operational status
 
-The first implemented pair is:
+- `statistics_poll_attempts`, `statistics_snapshots`, `statistics_buckets` —
+  bounded node-attributed collection evidence, exact results, and overlap-safe
+  hourly/daily aggregates.
+- `query_events`, `query_ingestion_checkpoints`, `query_ingestion_attempts` —
+  normalized node-attributed events, restart cursor/coverage, and attempts.
 
-```text
-000001_release_0_1.up.sql
-000001_release_0_1.down.sql
-```
+Query events use node-scoped source fingerprint/occurrence identity and bounded
+keyset/search indexes. Raw source payloads, credentials, and node URLs are not
+stored. Operational-history retention is independent from configuration history.
 
-Release 0.2 adds `000002_release_0_2.up.sql` and `.down.sql`. Upgrade is append-only from 0.1/0.1.1 and preserves all foundation records.
+### HA lifecycle and notifications
 
-Release 0.3 adds `000003_release_0_3.up.sql` and `.down.sql`. It promotes legacy imported drafts to the authoritative `nodeOverrides` shape, then adds immutable `configuration_revisions`, durable `deployments` and `deployment_nodes`, deduplicated `drift_events`, cluster reconciliation/active-revision state, node maintenance/applied/convergence state, and draft base revisions. The migration is append-only and does not alter released 0.1 or 0.2 files.
+- `node_lifecycle_settings` and `dns_probe_results` — configurable active-DNS
+  checks and immutable results.
+- `ha_operational_events` — deduplicated transition evidence.
+- `upgrade_operations` — durable operator-guided upgrade lifecycle.
+- `upstream_release_cache` — bounded AdGuard Home release awareness.
+- `notification_channels` — encrypted HTTPS destination, safe
+  `destination_summary`, name, and enabled state.
+- `notification_deliveries` — HA event delivery attempts with nullable channel
+  reference and durable safe `channel_name` snapshot.
 
-Release 0.4 adds `000004_release_0_4.up.sql` and `.down.sql`. It permits canonical schema versions 1 and 2 in the four existing versioned configuration tables. No released record is rewritten: schema-v1 snapshots/revisions keep their JSON and hash, while new v2 observations, drafts, and revisions use the same repositories and relationships. Down migration is intentionally blocked by PostgreSQL constraints until all v2 records have been removed in a disposable development environment.
+Deleting a notification channel sets the delivery foreign key to null rather
+than cascading operational history. HA event and audit records are unaffected.
 
-Release 0.4.1 Phase 8B adds
-`000005_release_0_4_1_dhcp_operations.up.sql` and `.down.sql`. It stores
-`operational_commands` separately from desired revisions/deployments and stores
-explicit per-node outcomes in `operational_command_node_results`. UUID
-idempotency is unique per requesting user. Terminal records reference their
-append-only audit event and optional post-command observation without storing
-raw upstream responses or credentials.
+### Product operations
 
-Migration files are embedded in the `migrations` Go package. The runner takes a PostgreSQL advisory lock, executes each version in a transaction, and rejects checksum changes to previously applied versions. The controller applies pending migrations by default; `cmd/migrate` provides explicit up and single-step development down modes.
+- `controller_release_cache` — bounded controller release-awareness cache;
+  excluded from portable restore.
+- `system_settings` — singleton optimistic persistent product settings.
 
-## JSON usage
+Portable backup metadata is produced outside persistent product tables. Standard
+backup retains control-plane rows, including archive status; Full also retains
+bounded operational-history data.
 
-Use JSONB for:
+## JSON and indexing
 
-- Version-variable AdGuard Home capability documents.
-- Immutable canonical configuration documents.
-- Structured diffs.
-- Audit metadata.
-- Raw source statistics.
+JSONB is appropriate for versioned canonical configuration, capability
+documents, structured diffs, bounded statistics vectors, and safe audit metadata.
+It must not replace core relationships. Canonical documents carry explicit
+schema versions and stable hashes; released schema-v1 records are not rewritten
+when schema-v2 support is added.
 
-Do not use JSONB to avoid modelling core relationships.
+Indexes support cluster/time listing, revision numbering/archive filters,
+deployment status/archive filters, drift deduplication, retained-time cleanup,
+Query Log keyset/trigram search, and worker claims. High-volume cleanup is
+bounded to avoid long uninterruptible transactions.
 
-## Timestamps
+## Migration ledger
 
-Use `timestamptz`.
+| Version | Current schema purpose |
+|---|---|
+| `000001` | Users, sessions, audit, clusters/nodes, encrypted credentials, health. |
+| `000002` | Immutable observations, capabilities, and configuration inventory/draft. |
+| `000003` | Immutable revisions, deployments/results, drift, reconciliation state. |
+| `000004` | Canonical configuration schema v2 capability. |
+| `000005`–`000008` | Operational commands, UI/control-plane hardening, query/health support. |
+| `000009` | Statistics attempts, snapshots, and buckets. |
+| `000010` | Query Log events, checkpoints, attempts, and search indexes. |
+| `000011` | Operational-health retained-time indexes. |
+| `000012` | DNS probes, HA events, lifecycle settings, guided upgrades, webhooks/deliveries. |
+| `000013` | Users/product settings, controller release cache, backup productization. |
+| `000014` | Revision/deployment archive metadata and non-cascading webhook delivery identity. |
 
-## Identifiers
-
-Use UUIDs generated by the application or PostgreSQL.
-
-Avoid exposing sequential IDs.
-
-Release 0.1 UUIDs are generated with `crypto/rand` in the application before transactions begin.
-
-## Release 0.9 productisation
-
-Migration `000013_release_0_9_productisation` adds singleton
-`controller_release_cache` and `system_settings` tables. The release cache holds
-bounded non-secret stable release metadata and failure state. System settings
-use optimistic `record_version` and audit the acting user. Existing users table
-semantics support multiple administrator identities; no role constraint is
-widened and no historical identity is deleted.
-
-Portable backup retains the migration ledger and schema for every table.
-Standard Backup excludes data—not schema—for sessions, release caches,
-Statistics, Query Log ingestion/events, DNS probes, HA events, and notification
-deliveries. Full Backup includes retained operational history. Users, password
-hashes, enabled state, nodes/encrypted credentials, configuration history,
-deployments, drift, audit, lifecycle/upgrade continuity, notification channels,
-and system settings are recovery data.
+Down migrations exist for development and controlled rollback analysis. They may
+be destructive—especially where newer history cannot fit the older model—and
+must not be run against retained production data without a documented,
+preflighted recovery procedure.
