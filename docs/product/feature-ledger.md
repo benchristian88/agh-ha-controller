@@ -196,6 +196,7 @@ recorded only after `development/release-0.9-validation.md` is completed.
 | Menu interaction | Implemented; automated checks pass | Controlled peer state; hover open; delayed leave; gap traversal; click/touch; outside pointer; focus departure; arrows/Home/End; Escape focus return; controlled mobile peer disclosures | Real mouse, touch, Safari/iOS, and Firefox exercise |
 | Atlas visual foundation | Implemented; asset checks pass | Canonical V3 `PRIMARY_ANGLED_GAP` SVG marks; final light/dark lockups in header/login; phone symbol fallback; source masters outside public root | Final browser rasterization and approved visual sign-off |
 | Favicon/Apple/PWA | Implemented; asset checks pass | One approved icon family; valid AGH HA-named standalone manifest; ICO/SVG/16/32/180/192/512 references and dimensions; no service worker | Favicon cache refresh, iOS saved-app, Android install, standalone launch |
+| Dashboard information hierarchy | Implemented; automated checks pass | One primary node-health fraction; symmetric Controller health and 24-hour DNS activity panels; canonical Safety Interventions and query-weighted Average Processing; explicit partial/unavailable states; shared semantic typography | Packaged Light/Dark/System desktop/tablet/phone browser matrix |
 | Naming boundary | Preserved | Atlas is visual artwork only; no repository/module/binary/service/image/env/config/API/database technical rename | Full deliberate rename remains Release 1.0 |
 
 Release 0.9.1 changes presentation and browser-local state only. Release 0.9

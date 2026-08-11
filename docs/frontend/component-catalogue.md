@@ -136,6 +136,12 @@ Operational Status, HA Operations, and Node Lifecycle. It owns the primary
 surface, label/value gap, optional supporting detail, and responsive wrapping;
 feature pages provide content only.
 
+Dashboard's two larger summary panels remain feature compositions because they
+combine headings, aggregate status, descriptive failure/partial-state copy,
+four inset definition-list values, and route-specific actions. They use the
+shared card, eyebrow, heading, status, and button treatments and one symmetric
+layout; they are not replacements for `MetricCard` or `StatusBadge`.
+
 `DataTable` optionally renders one expanded record as an adjacent table row.
 Feature code owns the record-specific disclosure button and operational detail;
 the shared table owns row adjacency, full-column span, selected styling, and

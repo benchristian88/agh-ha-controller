@@ -342,6 +342,27 @@ Most interface text should use 400 or 500. Avoid excessive heavy bold.
 
 Metric values may use approximately 28–32px.
 
+### Dashboard typography roles
+
+The Dashboard uses the compact implemented application scale and shared
+spacing tokens rather than introducing feature-local type tokens:
+
+| Role | Implementation |
+|---|---|
+| Page eyebrow | `.eyebrow`: 0.72rem, 700, uppercase, muted, tracked |
+| Page title | shared `h1`: 1.45rem, 600 |
+| Panel eyebrow | `.eyebrow`: same semantic treatment as the page eyebrow |
+| Panel and section title | shared `h2`: 1.08rem, 600 |
+| Panel description | 0.88rem, 400, muted, 1.5 line height |
+| Top KPI label | shared `.metric-card span`: 0.82rem, sentence case, muted |
+| Top KPI value | shared `.metric-card strong`: 1.6rem, 550 |
+| Summary-tile label | 0.7rem, 650, uppercase, muted, tracked |
+| Summary-tile value | 1.05rem, 600 |
+| Node metadata | shared `.detail-list` and `.muted` treatments |
+
+Visual uppercase is presentation only. Panel titles remain semantic `h2`
+elements and node names remain `h3` elements.
+
 ---
 
 ## Spacing
@@ -599,6 +620,25 @@ Use cards only for coherent groups:
 - Capability or warning panels.
 
 Do not put every individual field into its own card.
+
+### Dashboard information hierarchy
+
+The Dashboard answers, in order: what the operator manages, whether controller
+subsystems are operating, what DNS is doing, and the state of each node.
+
+- The top summary is Managed nodes, Healthy nodes, Stale nodes, and Controller
+  role. Healthy nodes is the sole compact node-health fraction.
+- Controller health contains API, HA Redundancy, Statistics, and Query Log
+  state. Active DNS probe counts remain on Operational Status and HA
+  Operations rather than being repeated as another Dashboard fraction.
+- DNS activity uses the canonical 24-hour Statistics report for Queries,
+  Blocked percentage, Safety Interventions, and Average Processing. Coverage
+  diagnostics remain on Statistics and Operational Status.
+- The controller and DNS panels use the same header, description, 2-by-2
+  summary-tile grid, and wrapping action footer. Grid layout, not a fixed card
+  height, aligns their action areas.
+- Unknown data is not rendered as zero. Loading, unavailable, refresh-error,
+  and partial-report copy remains explicit while the panels stay discoverable.
 
 ---
 

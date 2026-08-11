@@ -137,12 +137,13 @@ h3 { font-size: 1rem; }
 .dashboard-summary-card:only-child { grid-column: 1 / -1; }
 .dashboard-summary-card__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--aghha-space-4); }
 .dashboard-summary-card__header h2, .dashboard-summary-card__header .eyebrow { margin-bottom: 0; }
-.dashboard-summary-card__description { min-height: 3em; margin: var(--aghha-space-3) 0 0; color: var(--aghha-text-muted); line-height: 1.5; }
-.dashboard-summary-card__metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--aghha-space-3); margin: var(--aghha-space-5) 0; }
+.dashboard-summary-card__header h2 { margin-top: var(--aghha-space-1); }
+.dashboard-summary-card__description { min-height: 3em; margin: var(--aghha-space-3) 0 0; color: var(--aghha-text-muted); font-size: .88rem; line-height: 1.5; }
+.dashboard-summary-card__metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--aghha-space-3); margin: var(--aghha-space-5) 0; }
 .dashboard-summary-card__metrics div { min-width: 0; padding: var(--aghha-space-3); border-radius: var(--aghha-radius-control); background: var(--aghha-page-subtle); }
-.dashboard-summary-card__metrics dt { color: var(--aghha-text-muted); font-size: .7rem; font-weight: 650; letter-spacing: .03em; text-transform: uppercase; }
+.dashboard-summary-card__metrics dt { color: var(--aghha-text-muted); font-size: .7rem; font-weight: 650; letter-spacing: .05em; overflow-wrap: anywhere; text-transform: uppercase; }
 .dashboard-summary-card__metrics dd { margin: var(--aghha-space-2) 0 0; overflow-wrap: anywhere; font-size: 1.05rem; font-weight: 600; }
-.dashboard-summary-card__footer { display: flex; margin-top: auto; }
+.dashboard-summary-card__footer { display: flex; flex-wrap: wrap; gap: var(--aghha-space-2); margin-top: auto; }
 .toggle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px 14px; }
 .repeat-row { padding-bottom: 14px; border-bottom: 1px solid var(--border); }
 .schedule-editor { display: grid; gap: 12px; }

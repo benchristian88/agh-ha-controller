@@ -66,6 +66,34 @@ Target current Chromium desktop/mobile first, then current Firefox and
 Safari/iOS as defined by the compatibility matrix. Do not infer Safari/iOS
 support from jsdom or Chromium alone.
 
+## Dashboard information-hierarchy polish — 11 August 2026
+
+This final Dashboard-only pass changes no backend contract, database record,
+polling interval, raw-node access, Node Detail behavior, or Release 0.9.2
+feature. The top summary retains Managed, Healthy, Stale, and Controller role.
+Controller health now contains API, HA Redundancy, Statistics, and Query Log;
+the superficially duplicate DNS serving-node fraction remains available on the
+detailed Operational Status and HA Operations surfaces. DNS activity replaces
+Dashboard coverage with the existing 24-hour `safetyInterventions` and
+`averageProcessingMs` fields. The latter remains query-weighted processing
+time, not upstream latency.
+
+The two panels share a 2-by-2 inset metric grid, description rhythm, and
+wrapping action footer. Supplementary loading, unavailable, refresh-error, and
+partial states remain visible without turning unknown totals into zero.
+Dashboard DOM coverage verifies the four top values, both four-metric panels,
+removed duplicate labels, canonical telemetry values, unavailable behavior,
+and Axe WCAG A/AA structure. Real-browser responsive/theme results are recorded
+with the gate evidence below rather than inferred from jsdom.
+
+| Gate | Result |
+|---|---|
+| Frontend regression | Passed: 44 Vitest files / 233 tests, TypeScript, Biome, asset validation, and production Vite build. The existing non-fatal chunk-size advisory remains. |
+| Explicit Light | Passed in local Chromium at 1440×1000, 1280×900, 768×1024, 500×900, and 844×500. Both panels retained four tiles and page-level overflow was false. |
+| Explicit Dark | Passed in local Chromium at the same five viewports. Both panels retained four tiles and page-level overflow was false. |
+| System inheritance | Passed in local Chromium at 1280×900 with emulated OS Dark: resolved theme was Dark while the visible preference remained System. |
+| Visual inspection | Passed for wide and phone layouts in Light and Dark plus System/Dark desktop. KPI wrapping, long metric labels, aligned panel actions, Node Health, semantic badges, and surface hierarchy remained readable. |
+
 ## Known limitations
 
 - Real-browser contrast, SVG rasterization, browser theme chrome, favicon

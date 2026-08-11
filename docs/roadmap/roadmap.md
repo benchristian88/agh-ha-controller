@@ -519,6 +519,8 @@ Avoid large new feature areas in 0.9.
 - Theme provider, persistence, OS-change handling, theme metadata, semantic
   token audit, header control, theme-specific header/login assets, controlled
   menu state, responsive behavior, asset validation, and documentation.
+- Final Dashboard-only information hierarchy and typography polish using the
+  existing operational-health and 24-hour Statistics contracts.
 - No DNS, desired-state, revision, deployment, drift, database, API, backup,
   user-administration, or update-awareness behavior changes.
 

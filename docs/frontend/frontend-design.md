@@ -40,7 +40,12 @@ accessible SVG activity lines, ranked domain/client/upstream panels, and a
 node-attributed coverage table share the existing responsive card/table/status
 language. Loading, unavailable, partial, stale, unsupported, maintenance, and
 refresh-error states are textual. The dashboard adds only a compact 24-hour
-summary and remains primarily a health surface.
+summary and remains primarily a health surface. Its final Release 0.9.1
+hierarchy keeps node health in the top summary, presents API/HA
+Redundancy/Statistics/Query Log as controller subsystems, and uses Queries,
+Blocked percentage, Safety Interventions, and query-weighted Average Processing
+for DNS activity. Statistics coverage stays on the full Statistics and
+collector-health surfaces.
 
 ## Release 0.6 Query Log
 

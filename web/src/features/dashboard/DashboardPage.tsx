@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { MetricCard } from "../../components/DataDisplay";
 import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
+import { PageHeader } from "../../components/Page";
 import { StatusBadge } from "../../components/StatusBadge";
 import { api } from "../../lib/api";
 import { clusterHealth, isStale } from "../../lib/freshness";
@@ -20,20 +21,35 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
   const [error, setError] = useState<unknown>();
   const [statistics, setStatistics] = useState<StatisticsReport>();
   const [operational, setOperational] = useState<OperationalStatus>();
+  const [statisticsLoading, setStatisticsLoading] = useState(true);
+  const [operationalLoading, setOperationalLoading] = useState(true);
+  const [statisticsError, setStatisticsError] = useState<unknown>();
+  const [operationalError, setOperationalError] = useState<unknown>();
 
   const load = useCallback(async () => {
+    void api
+      .statistics(cluster.id, "24h", scopeNodeId)
+      .then((result) => {
+        setStatistics(result);
+        setStatisticsError(undefined);
+      })
+      .catch((caught: unknown) => setStatisticsError(caught))
+      .finally(() => setStatisticsLoading(false));
+    void api
+      .operationalStatus(cluster.id)
+      .then((result) => {
+        setOperational(result);
+        setOperationalError(undefined);
+      })
+      .catch((caught: unknown) => setOperationalError(caught))
+      .finally(() => setOperationalLoading(false));
+
     try {
-      const [result, statisticsResult, operationalResult] = await Promise.all([
-        api.nodes(cluster.id),
-        api.statistics(cluster.id, "24h", scopeNodeId).catch(() => undefined),
-        api.operationalStatus(cluster.id).catch(() => undefined),
-      ]);
+      const result = await api.nodes(cluster.id);
       setNodes(result.items);
       setRefreshedAt(result.refreshedAt);
       setStaleAfterMs(result.staleAfterSeconds * 1000);
       setError(undefined);
-      setStatistics(statisticsResult);
-      setOperational(operationalResult);
     } catch (caught) {
       setError(caught);
     }
@@ -59,13 +75,11 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Overview</p>
-          <h1>{cluster.name}</h1>
-        </div>
-        <StatusBadge status={clusterHealth(currentNodes)} />
-      </header>
+      <PageHeader
+        eyebrow="Overview"
+        title={cluster.name}
+        primaryAction={<StatusBadge status={clusterHealth(currentNodes)} />}
+      />
       {error !== undefined && (
         <div className="notice notice--warning">
           Health refresh failed. Showing the last available data.
@@ -80,116 +94,127 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
         <MetricCard label="Stale nodes" value={String(stale)} />
         <MetricCard label="Controller role" value="Management only" />
       </section>
-      {(operational !== undefined ||
-        (statistics !== undefined && statistics.state !== "unavailable")) && (
-        <section
-          className="dashboard-summary-grid"
-          aria-label="Controller and DNS overview"
-        >
-          {operational !== undefined && (
-            <article className="card dashboard-summary-card">
-              <header className="dashboard-summary-card__header">
-                <div>
-                  <p className="eyebrow">Controller operations</p>
-                  <h2>HA and controller health</h2>
-                </div>
-                <StatusBadge status={operational.summary.state} />
-              </header>
-              <p className="dashboard-summary-card__description">
-                {operational.summary.message}
-              </p>
-              <dl className="dashboard-summary-card__metrics">
-                <div>
-                  <dt>API</dt>
-                  <dd className="operational-value">{operational.api}</dd>
-                </div>
-                <div>
-                  <dt>HA redundancy</dt>
-                  <dd className="operational-value">{operational.ha.state}</dd>
-                </div>
-                <div>
-                  <dt>DNS service</dt>
-                  <dd className="operational-value">
-                    {operational.ha.servingDnsNodes} /{" "}
-                    {operational.ha.totalNodes}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Statistics</dt>
-                  <dd className="operational-value">
-                    {operational.statistics.state}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Query log</dt>
-                  <dd className="operational-value">
-                    {operational.queryLog.state}
-                  </dd>
-                </div>
-              </dl>
-              <footer className="dashboard-summary-card__footer">
-                <a
-                  className="button button--secondary"
-                  href="/system/operational-status"
-                >
-                  View operational status
-                </a>
-                <a className="button button--secondary" href="/ha/operations">
-                  Open HA operations
-                </a>
-              </footer>
-            </article>
-          )}
-          {statistics !== undefined && statistics.state !== "unavailable" && (
-            <article className="card dashboard-summary-card">
-              <header className="dashboard-summary-card__header">
-                <div>
-                  <p className="eyebrow">Last 24 hours</p>
-                  <h2>DNS activity</h2>
-                </div>
-                <StatusBadge
-                  status={statistics.state === "ready" ? "healthy" : "degraded"}
-                />
-              </header>
-              <p className="dashboard-summary-card__description">
-                Aggregated DNS traffic across the nodes in the current scope.
-              </p>
-              <dl className="dashboard-summary-card__metrics">
-                <div>
-                  <dt>Queries</dt>
-                  <dd>
-                    {new Intl.NumberFormat().format(
-                      statistics.totals.dnsQueries,
-                    )}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Blocked</dt>
-                  <dd>
-                    {statistics.totals.blockedPercentage.toLocaleString(
-                      undefined,
-                      { maximumFractionDigits: 2 },
-                    )}
-                    %
-                  </dd>
-                </div>
-                <div>
-                  <dt>Coverage</dt>
-                  <dd>
-                    {statistics.coverage.includedNodes} /{" "}
-                    {statistics.coverage.expectedNodes} nodes
-                  </dd>
-                </div>
-              </dl>
-              <footer className="dashboard-summary-card__footer">
-                <a className="button button--secondary" href="/statistics">
-                  View statistics
-                </a>
-              </footer>
-            </article>
-          )}
-        </section>
-      )}
+      <section
+        className="dashboard-summary-grid"
+        aria-label="Controller and DNS overview"
+      >
+        <article className="card dashboard-summary-card">
+          <header className="dashboard-summary-card__header">
+            <div>
+              <p className="eyebrow">Controller operations</p>
+              <h2>Controller health</h2>
+            </div>
+            <StatusBadge
+              status={operational?.summary.state ?? "unknown"}
+              label={operationalLoading ? "Loading" : undefined}
+            />
+          </header>
+          <p className="dashboard-summary-card__description">
+            {operationalDescription(
+              operational,
+              operationalLoading,
+              operationalError,
+            )}
+          </p>
+          <dl className="dashboard-summary-card__metrics">
+            <SummaryMetric
+              label="API"
+              value={operationalValue(operational?.api, operationalLoading)}
+              operational
+            />
+            <SummaryMetric
+              label="HA redundancy"
+              value={operationalValue(
+                operational?.ha.state,
+                operationalLoading,
+              )}
+              operational
+            />
+            <SummaryMetric
+              label="Statistics"
+              value={operationalValue(
+                operational?.statistics.state,
+                operationalLoading,
+              )}
+              operational
+            />
+            <SummaryMetric
+              label="Query Log"
+              value={operationalValue(
+                operational?.queryLog.state,
+                operationalLoading,
+              )}
+              operational
+            />
+          </dl>
+          <footer className="dashboard-summary-card__footer">
+            <a
+              className="button button--secondary"
+              href="/system/operational-status"
+            >
+              View operational status
+            </a>
+            <a className="button button--secondary" href="/ha/operations">
+              Open HA operations
+            </a>
+          </footer>
+        </article>
+        <article className="card dashboard-summary-card">
+          <header className="dashboard-summary-card__header">
+            <div>
+              <p className="eyebrow">Last 24 hours</p>
+              <h2>DNS activity</h2>
+            </div>
+            <StatisticsStatus
+              statistics={statistics}
+              loading={statisticsLoading}
+            />
+          </header>
+          <p className="dashboard-summary-card__description">
+            {statisticsDescription(
+              statistics,
+              statisticsLoading,
+              statisticsError,
+            )}
+          </p>
+          <dl className="dashboard-summary-card__metrics">
+            <SummaryMetric
+              label="Queries"
+              value={statisticsValue(statistics, statisticsLoading, (report) =>
+                formatCount(report.totals.dnsQueries),
+              )}
+            />
+            <SummaryMetric
+              label="Blocked"
+              value={statisticsValue(
+                statistics,
+                statisticsLoading,
+                (report) => `${formatNumber(report.totals.blockedPercentage)}%`,
+              )}
+            />
+            <SummaryMetric
+              label="Safety interventions"
+              value={statisticsValue(statistics, statisticsLoading, (report) =>
+                formatCount(report.totals.safetyInterventions),
+              )}
+            />
+            <SummaryMetric
+              label="Average processing"
+              value={statisticsValue(
+                statistics,
+                statisticsLoading,
+                (report) =>
+                  `${formatNumber(report.totals.averageProcessingMs)} ms`,
+              )}
+            />
+          </dl>
+          <footer className="dashboard-summary-card__footer">
+            <a className="button button--secondary" href="/statistics">
+              View statistics
+            </a>
+          </footer>
+        </article>
+      </section>
       {currentNodes.length === 0 ? (
         <EmptyState title="Add your first AdGuard Home node">
           <p>
@@ -227,6 +252,96 @@ export function DashboardPage({ cluster }: { cluster: Cluster }) {
       </section>
     </>
   );
+}
+
+function SummaryMetric({
+  label,
+  value,
+  operational = false,
+}: {
+  label: string;
+  value: string;
+  operational?: boolean;
+}) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd className={operational ? "operational-value" : undefined}>{value}</dd>
+    </div>
+  );
+}
+
+function StatisticsStatus({
+  statistics,
+  loading,
+}: {
+  statistics?: StatisticsReport;
+  loading: boolean;
+}) {
+  if (loading) return <StatusBadge status="unknown" label="Loading" />;
+  if (statistics === undefined || statistics.state === "unavailable")
+    return <StatusBadge status="unknown" label="Unavailable" />;
+  return (
+    <StatusBadge
+      status={statistics.state === "ready" ? "healthy" : "degraded"}
+    />
+  );
+}
+
+function operationalDescription(
+  operational: OperationalStatus | undefined,
+  loading: boolean,
+  error: unknown,
+) {
+  if (loading) return "Checking controller subsystem health.";
+  if (operational === undefined)
+    return "Controller subsystem health is temporarily unavailable.";
+  if (error !== undefined)
+    return "Refresh failed. Showing the last available subsystem health.";
+  return operational.summary.message;
+}
+
+function statisticsDescription(
+  statistics: StatisticsReport | undefined,
+  loading: boolean,
+  error: unknown,
+) {
+  if (loading) return "Loading aggregated DNS activity for the current scope.";
+  if (statistics === undefined)
+    return "DNS activity is temporarily unavailable for the current scope.";
+  if (error !== undefined)
+    return "Refresh failed. Showing the last available DNS activity.";
+  if (statistics.state === "unavailable")
+    return "No usable 24-hour Statistics snapshot is available for the current scope.";
+  if (statistics.state === "partial")
+    return "Partial 24-hour DNS activity from the nodes currently reporting in this scope.";
+  return "Aggregated 24-hour DNS activity across the nodes in the current scope.";
+}
+
+function operationalValue(value: string | undefined, loading: boolean) {
+  if (loading) return "Loading…";
+  return value?.replaceAll("_", " ") ?? "Unavailable";
+}
+
+function statisticsValue(
+  statistics: StatisticsReport | undefined,
+  loading: boolean,
+  render: (report: StatisticsReport) => string,
+) {
+  if (loading) return "Loading…";
+  if (statistics === undefined || statistics.state === "unavailable")
+    return "—";
+  return render(statistics);
+}
+
+function formatCount(value: number) {
+  return new Intl.NumberFormat().format(value);
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 function NodeCard({
