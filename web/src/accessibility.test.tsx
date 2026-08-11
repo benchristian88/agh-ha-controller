@@ -3,11 +3,18 @@
 import { cleanup, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NotFoundPage } from "./routing/RouteStatePages";
 import { ApplicationShell } from "./shell/ApplicationShell";
+import { ThemeProvider } from "./theme/ThemeProvider";
+import { installMatchMedia } from "./theme/testMatchMedia";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+beforeEach(() => installMatchMedia());
 
 const user = {
   id: "user-1",
@@ -31,15 +38,17 @@ async function expectNoStructuralWcagViolations(container: HTMLElement) {
 describe("WCAG structural regression", () => {
   it("keeps route-state pages free of automated WCAG A/AA violations", async () => {
     const { container } = render(
-      <ApplicationShell
-        user={user}
-        clusters={[]}
-        pathname="/mistyped"
-        onSelectCluster={() => undefined}
-        onLogout={() => undefined}
-      >
-        <NotFoundPage pathname="/mistyped" />
-      </ApplicationShell>,
+      <ThemeProvider>
+        <ApplicationShell
+          user={user}
+          clusters={[]}
+          pathname="/mistyped"
+          onSelectCluster={() => undefined}
+          onLogout={() => undefined}
+        >
+          <NotFoundPage pathname="/mistyped" />
+        </ApplicationShell>
+      </ThemeProvider>,
     );
 
     await expectNoStructuralWcagViolations(container);
@@ -48,15 +57,17 @@ describe("WCAG structural regression", () => {
   it("keeps the expanded mobile hierarchy structurally accessible", async () => {
     const interaction = userEvent.setup();
     const { container, getByRole } = render(
-      <ApplicationShell
-        user={user}
-        clusters={[]}
-        pathname="/statistics"
-        onSelectCluster={() => undefined}
-        onLogout={() => undefined}
-      >
-        <h1>Statistics</h1>
-      </ApplicationShell>,
+      <ThemeProvider>
+        <ApplicationShell
+          user={user}
+          clusters={[]}
+          pathname="/statistics"
+          onSelectCluster={() => undefined}
+          onLogout={() => undefined}
+        >
+          <h1>Statistics</h1>
+        </ApplicationShell>
+      </ThemeProvider>,
     );
     await interaction.click(getByRole("button", { name: "Open navigation" }));
 

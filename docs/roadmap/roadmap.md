@@ -502,6 +502,36 @@ upgrade, packaged browser, Docker, and native/systemd gates remain pending.**
 
 Avoid large new feature areas in 0.9.
 
+## Release 0.9.1 — Theme, Brand Foundation & Header UX
+
+**Current status (11 August 2026): Implemented and locally validated; Release
+0.9 external gates and 0.9.1 real-browser/iOS validation remain pending.**
+
+### Outcomes
+
+- Robust browser-local System/Light/Dark selection and first-paint behavior.
+- Approved Atlas V3 visual assets staged without a technical product rename.
+- Accessible, coordinated desktop and mobile header/menu interaction.
+- One validated favicon, Apple, and Android/PWA asset and manifest system.
+
+### Scope
+
+- Theme provider, persistence, OS-change handling, theme metadata, semantic
+  token audit, header control, theme-specific header/login assets, controlled
+  menu state, responsive behavior, asset validation, and documentation.
+- Final Dashboard-only information hierarchy and typography polish using the
+  existing operational-health and 24-hour Statistics contracts.
+- No DNS, desired-state, revision, deployment, drift, database, API, backup,
+  user-administration, or update-awareness behavior changes.
+
+## Release 0.9.2 — Product Polish & Documentation Consolidation
+
+**Status: Planned.**
+
+Consolidate product polish and documentation after the 0.9/0.9.1 external
+validation evidence is recorded. Do not pull the Release 1.0 technical rename
+forward into this patch line.
+
 ## Release 1.0 — Rename, Stability & Supported Release
 
 ### Outcomes

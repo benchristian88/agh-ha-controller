@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+<title id="title">Atlas alternate rounded mark</title>
+<desc id="desc">Atlas symbol with rounded arc ends and a deliberate gap from the A.</desc>
+
+<g transform="translate(-18.071 103.059) scale(1.035)"><path d="M 187.806 547.997 A 345 345 0 1 1 836.194 547.997" fill="none" stroke="#111111" stroke-width="160" stroke-linecap="round"/>
+<path d="M 340 700 L 512 300 L 684 700" fill="none" stroke="#111111" stroke-width="170" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="442" y="720" width="140" height="56" rx="28" fill="#111111"/></g>
+</svg>

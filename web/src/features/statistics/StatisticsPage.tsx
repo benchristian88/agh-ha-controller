@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { MetricCard } from "../../components/DataDisplay";
 import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
 import { StatusBadge, type StatusKind } from "../../components/StatusBadge";
 import { api } from "../../lib/api";
@@ -118,21 +119,21 @@ export function StatisticsPage({ cluster }: { cluster: Cluster }) {
       ) : (
         <>
           <section className="metrics" aria-label="Aggregated DNS metrics">
-            <Metric
+            <MetricCard
               label="DNS queries"
               value={formatCount(report.totals.dnsQueries)}
             />
-            <Metric
+            <MetricCard
               label="Blocked by filters"
               value={formatCount(report.totals.blockedFiltering)}
               detail={`${formatPercent(report.totals.blockedPercentage)} of queries`}
             />
-            <Metric
+            <MetricCard
               label="Safety interventions"
               value={formatCount(report.totals.safetyInterventions)}
               detail={`${formatPercent(report.totals.safetyInterventionPercentage)} of queries`}
             />
-            <Metric
+            <MetricCard
               label="Average processing"
               value={`${formatNumber(report.totals.averageProcessingMs, 2)} ms`}
               detail="Query-weighted across nodes"
@@ -186,24 +187,6 @@ export function StatisticsPage({ cluster }: { cluster: Cluster }) {
         <CoverageTable report={report} />
       </section>
     </>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string;
-  detail?: string;
-}) {
-  return (
-    <div className="metric-card">
-      <span>{label}</span>
-      <strong>{value}</strong>
-      {detail !== undefined && <small>{detail}</small>}
-    </div>
   );
 }
 

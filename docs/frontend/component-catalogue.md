@@ -70,6 +70,13 @@ without changing the corresponding desired policy.
 
 ## Shell
 
+Release 0.9.1 adds `ThemeProvider`, `ThemeControl`, and the shared `AtlasBrand`
+renderer. Desktop navigation dropdowns and Administration use one controlled
+open-menu state with centralized delayed leave, peer switching, outside click,
+keyboard focus movement, and Escape return. Mobile groups are controlled peer
+disclosures. Theme and asset behavior is documented in
+`theme-brand-and-pwa.md`.
+
 - `AppHeader`
 - `PrimaryNavigation`
 - `NavigationDropdown`
@@ -115,6 +122,7 @@ without changing the corresponding desired policy.
 
 ## HA display
 
+- `MetricCard`
 - `StatusBadge`
 - `NodeBadge`
 - `RevisionBadge`
@@ -122,6 +130,17 @@ without changing the corresponding desired policy.
 - `StructuredDiff`
 - `ProgressTimeline`
 - `PartialSuccessPanel`
+
+`MetricCard` is the single summary/stat tile for Dashboard, Statistics,
+Operational Status, HA Operations, and Node Lifecycle. It owns the primary
+surface, label/value gap, optional supporting detail, and responsive wrapping;
+feature pages provide content only.
+
+Dashboard's two larger summary panels remain feature compositions because they
+combine headings, aggregate status, descriptive failure/partial-state copy,
+four inset definition-list values, and route-specific actions. They use the
+shared card, eyebrow, heading, status, and button treatments and one symmetric
+layout; they are not replacements for `MetricCard` or `StatusBadge`.
 
 `DataTable` optionally renders one expanded record as an adjacent table row.
 Feature code owns the record-specific disclosure button and operational detail;

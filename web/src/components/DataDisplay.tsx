@@ -2,6 +2,26 @@ import { Fragment, type ReactNode } from "react";
 import { EmptyState, ErrorState, LoadingSkeleton } from "./Feedback";
 import { StatusBadge, type StatusKind } from "./StatusBadge";
 
+export function MetricCard({
+  label,
+  value,
+  detail,
+  valueClassName,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  detail?: ReactNode;
+  valueClassName?: string;
+}) {
+  return (
+    <article className="metric-card">
+      <span>{label}</span>
+      <strong className={valueClassName}>{value}</strong>
+      {detail !== undefined && <small>{detail}</small>}
+    </article>
+  );
+}
+
 export interface DataTableColumn<Row> {
   id: string;
   header: ReactNode;

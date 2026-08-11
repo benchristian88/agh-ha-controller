@@ -6,7 +6,7 @@ Use horizontal desktop navigation.
 
 ```text
 Brand | Dashboard | Statistics | Settings ▾ | Filters ▾ | Query Log
-      | HA Controller ▾ | Setup Guide                   User/System
+      | HA Controller ▾ | Setup Guide         Theme     User/System
 ```
 
 ### Settings menu
@@ -96,6 +96,28 @@ Required context:
 - Settings, Filters, and HA Controller become expandable sections.
 - Context row remains visible or opens as a dedicated context sheet.
 - No mobile-only alternate hierarchy.
+- Theme selection remains a labelled native select in the header.
+- Only one controlled peer section is expanded. Escape closes the drawer and
+  restores focus to its trigger.
+
+## Menu interaction convention
+
+Desktop primary and administration menus share one controlled state model.
+
+```text
+mouse enters trigger        -> open and close any peer
+mouse enters popover        -> cancel pending close
+mouse leaves trigger+menu   -> close after 180ms
+click/touch disclosure      -> open or close
+Arrow/Home/End              -> move menu-item focus
+Escape                      -> close and focus disclosure
+focus leaves / outside click -> close
+```
+
+The delay bridges the intentional trigger-to-popover gap without leaving stale
+menus open. Timers belong to the shell state model, not individual menu items.
+Mobile disclosures use the same labels and peer-closing rule but never require
+hover.
 
 ## Administration menu
 
@@ -123,9 +145,12 @@ and derives checks from enabled nodes, observations, draft, immutable revisions,
 successful deployment, Statistics, Query Log, and HA state. No completed check
 is based solely on visiting a route.
 
-The login and shell share a neutral diamond/network mark. Browser favicon,
-Apple touch icon, 192/512 PWA icons, and `manifest.webmanifest` retain AGH HA
-Controller naming. No service worker or offline data cache is introduced.
+Release 0.9.1 stages the approved Atlas V3 angled-gap mark and final light/dark
+Atlas DNS lockups in the login and shell while retaining AGH HA Controller
+technical naming. Browser favicon, Apple touch icon, approved 192/512 PWA
+icons, and `manifest.webmanifest` use the reconciled Atlas asset family;
+manifest application naming remains AGH HA Controller. No service worker or
+offline data cache is introduced. See `theme-brand-and-pwa.md`.
 
 ## Configuration Control purpose
 

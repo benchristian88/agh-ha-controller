@@ -327,3 +327,13 @@ pre-1.0 RBAC model. Multiple identities, disabled state, password lifecycle,
 session revocation, audit attribution, and final-admin safety are first-class.
 Controller update awareness is cached information and host guidance, never a
 host execution boundary. Product text remains AGH HA Controller through 0.9.
+
+## Release 0.9.1 frontend presentation boundary
+
+Theme preference and resolved light/dark state are browser-local presentation
+state owned by one React provider and an early first-paint bootstrap. They do
+not enter PostgreSQL, controller settings, sessions, audits, desired state,
+revisions, deployments, or API payloads. Atlas assets are visual staging only;
+technical AGH HA Controller identifiers remain unchanged. Header/menu changes
+are client-side interaction changes and do not alter routing contracts or the
+controller's DNS-independent availability model.

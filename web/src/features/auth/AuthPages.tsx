@@ -1,4 +1,5 @@
 import { type FormEvent, type ReactNode, useState } from "react";
+import { AtlasBrand } from "../../components/Brand";
 import { ErrorState } from "../../components/Feedback";
 import { api } from "../../lib/api";
 import type { User } from "../../lib/types";
@@ -171,9 +172,7 @@ function AuthLayout({
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <div className="brand-mark" aria-hidden="true">
-          ◆
-        </div>
+        <AtlasBrand placement="login" />
         <h1>{title}</h1>
         <p className="muted">{subtitle}</p>
         {children}

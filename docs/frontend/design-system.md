@@ -118,6 +118,11 @@ Lower-frequency administration belongs in the user or system menu:
 - About
 - Sign Out
 
+The labelled System/Light/Dark control sits immediately before the desktop
+administration menu. Atlas theme-specific lockup assets provide the visual
+brand foundation; phone layouts use the approved symbol-only asset rather than
+compressing the lockup.
+
 ### Context row
 
 The context row appears below the main header.
@@ -153,6 +158,12 @@ Below the desktop breakpoint:
 
 Use semantic tokens rather than raw colours inside feature components.
 
+Atlas Blue is the interaction and selection colour. Green is reserved for
+health and success. Amber communicates warnings, red communicates danger or
+failure, and neutral colours provide structure and surface hierarchy. Brand
+Teal remains artwork-only unless a separately documented interaction role is
+approved. Feature pages must not redefine these roles.
+
 Required roles:
 
 ```css
@@ -178,15 +189,71 @@ Required roles:
 --warning-soft
 --danger
 --danger-soft
+--success-border
+--info-border
+--warning-border
+--danger-border
 --neutral-soft
 --link
 --overlay
 --focus
 ```
 
-### Original dark-theme reference palette
+### Surface hierarchy
 
-The original project palette remains a valid starting reference:
+All pages use the same four-level model:
+
+```text
+Page canvas     = --aghha-page
+Primary surface = --aghha-card
+Elevated popup  = --aghha-popup
+Subtle / inset  = --aghha-page-subtle
+Border          = --aghha-border
+Strong border   = --aghha-border-strong
+```
+
+`--aghha-header` is the shell surface and `--aghha-input` is the control
+surface. Both map into the hierarchy above; they do not create feature-local
+surface systems. Borders reinforce layer changes but must not be the only
+thing separating a card from the page. Heavy card shadows are not part of the
+system.
+
+The Release 0.9.1 refinement mappings are:
+
+| Role | Light | Dark |
+|---|---|---|
+| Page canvas | `#F3F5F7` | `#151A20` |
+| Primary surface/card | `#FFFFFF` | `#1D242D` |
+| Elevated popup | `#FFFFFF` | `#222A34` |
+| Subtle/inset surface | `#E9EEF3` | `#252E38` |
+| Border | `#D4DCE6` | `#34404D` |
+| Strong border | `#B8C4D1` | `#465463` |
+| Primary text | `#24303D` | `#E8EDF2` |
+| Secondary text | `#5E6C7D` | `#AAB5C1` |
+
+The page canvas is always darker than the primary surface. Inset cells are
+visibly distinct from their parent card in both themes. Neutral surfaces must
+not be tinted Atlas Blue.
+
+### Interaction and semantic mappings
+
+| Role | Light foreground / soft / border | Dark foreground / soft / border |
+|---|---|---|
+| Brand interaction | `#2563EB` / `#E9EFFF` | `#2563EB` / `#1B2D4D` |
+| Success / health | `#2F6B43` / `#EDF7F0` / `#B9D9C3` | `#7BC493` / `#1E3428` / `#2C513B` |
+| Information | `#2E6090` / `#EDF4FA` / `#BFD2E3` | `#8BBCE4` / `#203344` / `#31506A` |
+| Warning | `#7A4B0E` / `#FFF6E8` / `#E5CDA6` | `#E6B767` / `#3A3020` / `#5B492A` |
+| Danger / failure | `#923842` / `#FCEFF1` / `#E8BDC2` | `#E89A9F` / `#3D272B` / `#62383E` |
+
+Primary buttons, active navigation, links, focus rings, and selected controls
+use Atlas Blue. Semantic colours communicate state only. Normal healthy state
+uses compact dots and badges rather than large green-filled regions. Status
+components always retain a text label, and warnings/errors retain explanatory
+copy where action is required.
+
+### Historical dark-theme reference palette
+
+The original project palette is retained as historical context only:
 
 ```css
 --bg-app: #111827;
@@ -275,6 +342,27 @@ Most interface text should use 400 or 500. Avoid excessive heavy bold.
 
 Metric values may use approximately 28–32px.
 
+### Dashboard typography roles
+
+The Dashboard uses the compact implemented application scale and shared
+spacing tokens rather than introducing feature-local type tokens:
+
+| Role | Implementation |
+|---|---|
+| Page eyebrow | `.eyebrow`: 0.72rem, 700, uppercase, muted, tracked |
+| Page title | shared `h1`: 1.45rem, 600 |
+| Panel eyebrow | `.eyebrow`: same semantic treatment as the page eyebrow |
+| Panel and section title | shared `h2`: 1.08rem, 600 |
+| Panel description | 0.88rem, 400, muted, 1.5 line height |
+| Top KPI label | shared `.metric-card span`: 0.82rem, sentence case, muted |
+| Top KPI value | shared `.metric-card strong`: 1.6rem, 550 |
+| Summary-tile label | 0.7rem, 650, uppercase, muted, tracked |
+| Summary-tile value | 1.05rem, 600 |
+| Node metadata | shared `.detail-list` and `.muted` treatments |
+
+Visual uppercase is presentation only. Panel titles remain semantic `h2`
+elements and node names remain `h3` elements.
+
 ---
 
 ## Spacing
@@ -361,6 +449,14 @@ Feature pages must not define arbitrary max-width values.
 - Menus must remain inside the viewport.
 - Desktop and mobile navigation use the same labels and hierarchy.
 - Navigation must be keyboard accessible.
+- Desktop dropdowns use one controlled open-menu state. Mouse hover opens a
+  menu, moving between trigger and popover retains it, and leaving both closes
+  it after a 180ms travel delay. Click/touch toggles the disclosure; Escape,
+  focus departure, outside pointer activation, or selecting a destination
+  closes it. Opening a peer closes the previous menu.
+- Arrow keys, Home, and End move among open menu items. Escape restores focus
+  to the disclosure trigger. Mobile groups are controlled peer disclosures and
+  never depend on hover.
 
 ---
 
@@ -524,6 +620,25 @@ Use cards only for coherent groups:
 - Capability or warning panels.
 
 Do not put every individual field into its own card.
+
+### Dashboard information hierarchy
+
+The Dashboard answers, in order: what the operator manages, whether controller
+subsystems are operating, what DNS is doing, and the state of each node.
+
+- The top summary is Managed nodes, Healthy nodes, Stale nodes, and Controller
+  role. Healthy nodes is the sole compact node-health fraction.
+- Controller health contains API, HA Redundancy, Statistics, and Query Log
+  state. Active DNS probe counts remain on Operational Status and HA
+  Operations rather than being repeated as another Dashboard fraction.
+- DNS activity uses the canonical 24-hour Statistics report for Queries,
+  Blocked percentage, Safety Interventions, and Average Processing. Coverage
+  diagnostics remain on Statistics and Operational Status.
+- The controller and DNS panels use the same header, description, 2-by-2
+  summary-tile grid, and wrapping action footer. Grid layout, not a fixed card
+  height, aligns their action areas.
+- Unknown data is not rendered as zero. Loading, unavailable, refresh-error,
+  and partial-report copy remains explicit while the panels stay discoverable.
 
 ---
 
@@ -754,9 +869,21 @@ The UI must:
 
 - Support light, dark, and system preference.
 - Use identical semantic token names in both themes.
-- Persist user preference.
+- Persist browser-local preference under one provider; do not turn it into a
+  global controller setting.
+- Default invalid, missing, or unavailable persistence to System.
+- Resolve System through `prefers-color-scheme` and react to OS changes only
+  while System is selected.
+- Apply the resolved theme before first paint where practical and keep browser
+  theme-colour metadata synchronized.
 - Review charts, tooltips, dialogs, code editors, badges, and tables separately in both themes.
 - Avoid neon effects or excessive contrast in dark mode.
+
+Approved brand colours are Atlas Blue `#2563EB`, Atlas Teal `#0EA5A3`, Atlas
+Charcoal `#111111`, and White `#FFFFFF`. Primary interaction may use Atlas Blue;
+semantic success, warning, error, and information roles remain independent.
+Theme-specific logos use supplied assets rather than CSS filters. Asset and
+persistence details are in `theme-brand-and-pwa.md`.
 
 ---
 

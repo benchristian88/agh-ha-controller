@@ -118,6 +118,25 @@ audit with zero vulnerabilities, installer shell syntax, and `git diff
 on the macOS host. Full details are in
 `release-0.4.1-phase-10-regression-report.md`.
 
+## Release 0.9.1 theme and header validation
+
+Theme DOM tests cover the System default, explicit Light/Dark selection,
+browser persistence, invalid-value fallback, OS media-query changes, explicit
+preference stability, resolved theme attributes, and theme-specific brand
+artwork. Shell interaction tests cover coordinated hover/click state, peer
+switching, the 180ms trigger/popover travel delay, pointer leave, outside
+pointer activation, Arrow/Home/End focus movement, Escape focus return, mobile
+peer disclosures, and drawer dismissal. Existing Axe shell checks include the
+new labelled theme control and menu semantics.
+
+`npm run test:assets` separately validates manifest JSON and technical naming,
+the exact runtime SVG set, byte equality with approved Atlas V3 sources, ICO
+and HTML references, and exact 16/32/180/192/512 PNG dimensions. It prevents
+the retired neutral icon paths from returning. Real-browser first paint,
+contrast, pointer/touch travel, favicon caching, iOS saved-app behavior,
+Android installation, and standalone display remain external evidence tracked
+in `release-0.9.1-validation.md`.
+
 ## Integration tests
 
 Use real PostgreSQL.

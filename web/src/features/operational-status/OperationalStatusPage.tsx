@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { DataTable, type DataTableColumn } from "../../components/DataDisplay";
+import {
+  DataTable,
+  type DataTableColumn,
+  MetricCard,
+} from "../../components/DataDisplay";
 import { Banner, ErrorState, Loading } from "../../components/Feedback";
 import { StatusBadge, type StatusKind } from "../../components/StatusBadge";
 import { api } from "../../lib/api";
@@ -58,15 +62,36 @@ export function OperationalStatusPage({ cluster }: { cluster: Cluster }) {
       )}
 
       <section className="metrics" aria-label="Overall controller health">
-        <Metric label="Controller" value={status.summary.state} />
-        <Metric label="HA redundancy" value={status.ha.state} />
-        <Metric label="DNS service" value={status.dnsService.state} />
-        <Metric
+        <MetricCard
+          label="Controller"
+          value={status.summary.state.replaceAll("_", " ")}
+          valueClassName="operational-value"
+        />
+        <MetricCard
+          label="HA redundancy"
+          value={status.ha.state.replaceAll("_", " ")}
+          valueClassName="operational-value"
+        />
+        <MetricCard
+          label="DNS service"
+          value={status.dnsService.state.replaceAll("_", " ")}
+          valueClassName="operational-value"
+        />
+        <MetricCard
           label="Nodes"
           value={`${status.summary.healthyNodes} / ${status.summary.expectedNodes} healthy`}
+          valueClassName="operational-value"
         />
-        <Metric label="Statistics" value={status.statistics.state} />
-        <Metric label="Query Log" value={status.queryLog.state} />
+        <MetricCard
+          label="Statistics"
+          value={status.statistics.state.replaceAll("_", " ")}
+          valueClassName="operational-value"
+        />
+        <MetricCard
+          label="Query Log"
+          value={status.queryLog.state.replaceAll("_", " ")}
+          valueClassName="operational-value"
+        />
       </section>
 
       <section className="card operational-core">
@@ -287,16 +312,6 @@ const workerColumns: readonly DataTableColumn<
   },
 ];
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="metric-card">
-      <span>{label}</span>
-      <strong className="operational-value">
-        {value.replaceAll("_", " ")}
-      </strong>
-    </div>
-  );
-}
 function HealthDetail({
   label,
   state,

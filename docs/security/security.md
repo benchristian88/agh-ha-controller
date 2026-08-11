@@ -91,7 +91,7 @@ Node policy is explicitly `system`, `custom_ca`, or `insecure_http`. There is no
 - No secrets in browser storage.
 - No sensitive data in URLs.
 
-The same-origin server emits a restrictive Content Security Policy, frame denial, no-sniff, no-referrer, permissions restrictions, and `Cache-Control: no-store` on API responses. The frontend keeps credentials only in transient form state and never puts them in URLs or persistent browser storage.
+The same-origin server emits a restrictive Content Security Policy, frame denial, no-sniff, no-referrer, permissions restrictions, and `Cache-Control: no-store` on API responses. The frontend keeps credentials only in transient form state and never puts them in URLs or persistent browser storage. Release 0.9.1 stores only the non-sensitive `system`, `light`, or `dark` presentation preference in browser local storage; it is not identity, authorization, or controller configuration state.
 
 Release 0.2 configuration collection reuses decrypted node credentials only inside the service/adapter call and performs GET requests only. Raw node payloads are not logged or stored. Canonical documents exclude credentials and known secret material; failed observations retain only stable safe error codes.
 

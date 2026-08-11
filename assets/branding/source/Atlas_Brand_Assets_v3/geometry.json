@@ -1,0 +1,55 @@
+{
+  "canvas": [
+    1024,
+    1024
+  ],
+  "arc": {
+    "center": [
+      512.0,
+      430.0
+    ],
+    "radius": 345.0,
+    "stroke_width": 160.0,
+    "primary_terminal": "angled parallel to A legs",
+    "rounded_terminal_angles_degrees": [
+      160.0,
+      20.0
+    ]
+  },
+  "A": {
+    "apex": [
+      512.0,
+      300.0
+    ],
+    "left_foot": [
+      340.0,
+      700.0
+    ],
+    "right_foot": [
+      684.0,
+      700.0
+    ],
+    "stroke_width": 170.0,
+    "linecap": "round",
+    "linejoin": "round"
+  },
+  "foundation": {
+    "x": 442.0,
+    "y": 720.0,
+    "width": 140.0,
+    "height": 56.0,
+    "radius": 28.0
+  },
+  "optical_gap": 42.0,
+  "raw_visible_bbox": [
+    87,
+    5,
+    937,
+    785
+  ],
+  "transforms": {
+    "mark": "translate(-18.071 103.059) scale(1.035)",
+    "app": "translate(30.118 140.235) scale(0.941)",
+    "favicon": "translate(-30.118 93.765) scale(1.059)"
+  }
+}
