@@ -1,6 +1,6 @@
 # Statistics Aggregation
 
-Release 0.5 adds controller-owned, read-only statistics collection. It never
+Atlas DNS Controller provides controller-owned, read-only statistics collection. It never
 proxies DNS, mutates AdGuard Home statistics, or reads query-log events.
 
 ## Collection lifecycle
@@ -21,7 +21,7 @@ successful `1/1` pass is operationally healthy rather than partial.
 
 Longer fixed ranges remain explicit on the Statistics API. When a requested
 range exceeds a node's retention, that node is missing with
-`STATISTICS_RANGE_EXCEEDS_NODE_RETENTION`; AGH HA Controller does not manufacture longer
+`STATISTICS_RANGE_EXCEEDS_NODE_RETENTION`; Atlas DNS Controller does not manufacture longer
 history from a shorter snapshot. `expected_ranges` on durable poll attempts is
 the number eligible for that node during that pass, while `range_errors` also
 records the safe reason for configured-but-ineligible ranges.

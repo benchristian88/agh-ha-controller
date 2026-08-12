@@ -68,7 +68,7 @@ archives and performs non-mutating preflight. Standard includes the control
 plane, including archive status; Full also includes retained operational
 history. Sessions and release caches are excluded.
 
-Actual restore is offline through `agh-ha-backup restore`, with the controller
+Actual restore is offline through `atlas-dns-backup restore`, with the controller
 stopped and a new empty database. See the [backup procedure](../operations/backup-and-restore.md)
 and [format reference](../operations/backup-format.md). Store runtime settings
 such as session secret, database URL, public origin, and TLS separately.

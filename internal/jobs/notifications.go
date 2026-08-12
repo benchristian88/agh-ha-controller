@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
+	"github.com/benchristian88/atlas-dns/internal/operationalhealth"
 )
 
 type NotificationDeliverer interface {

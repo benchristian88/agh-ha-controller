@@ -2,7 +2,7 @@ package haoperations
 
 import "time"
 
-import "github.com/benchristian88/agh-ha-controller/internal/domain"
+import "github.com/benchristian88/atlas-dns/internal/domain"
 
 type InstallationType string
 

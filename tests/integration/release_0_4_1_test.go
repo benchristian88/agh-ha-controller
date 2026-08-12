@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/adguard"
-	"github.com/benchristian88/agh-ha-controller/internal/auth"
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/inventory"
-	"github.com/benchristian88/agh-ha-controller/internal/operations"
+	"github.com/benchristian88/atlas-dns/internal/adguard"
+	"github.com/benchristian88/atlas-dns/internal/auth"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/inventory"
+	"github.com/benchristian88/atlas-dns/internal/operations"
 )
 
 func TestDHCPOperationResultPersistsAndDeduplicates(t *testing.T) {

@@ -2,11 +2,11 @@
 
 ## Current scope
 
-The current Atlas visual foundation does not rename the technical product.
-Repository, module, binary, service, image, environment,
-API, database, config-path, manifest-name, and release-artifact identifiers
-remain **AGH HA Controller**. The deliberate complete textual and technical
-rename remains Release 1.0 work.
+Release 1.0 completes both the visual and technical Atlas DNS Controller
+identity. Repository, module, binary, service, image, environment, config-path,
+manifest, and release-artifact identifiers use the documented Atlas forms.
+Stable `/api/v1` paths and domain terms that correctly describe managed AdGuard
+Home nodes are deliberately unchanged.
 
 This work is frontend-only. Theme preference is browser-local presentation
 state; it does not create a controller setting, database record, API contract,
@@ -21,7 +21,7 @@ audit event, revision, or deployment.
 - the resolved light/dark theme used by theme-specific artwork; and
 - one setter used by the header control.
 
-The preference is stored under `agh-ha-controller.theme` in browser
+The preference is stored under `atlas-dns.theme` in browser
 `localStorage`. Invalid, unavailable, or unwritable storage falls back to
 System without blocking the application. System registers a media-query
 change listener; explicit Light or Dark does not react to OS changes.
@@ -56,9 +56,10 @@ touch behaviour applies.
 
 The header and authentication layout use the supplied light/dark Atlas DNS
 lockup SVGs. The header uses the approved symbol-only fallback at phone widths.
-The link's accessible name remains `AGH HA Controller dashboard`; decorative
-artwork is hidden from the accessibility tree so the staged visual name does
-not change the technical application contract.
+The desktop lockup is 200 px wide and 52 px high, the login lockup is constrained
+to 340 px, and the approved symbol-only asset is used at phone widths. The
+link's accessible name remains `Atlas DNS Controller dashboard`; decorative
+artwork is hidden from the accessibility tree.
 
 ## Approved assets
 
@@ -100,7 +101,7 @@ web/public/manifest.webmanifest
 ```
 
 `index.html` advertises ICO, SVG, 32px, 16px, and Apple variants. The manifest
-retains the AGH HA Controller name, root identity/scope, standalone display,
+retains the Atlas DNS Controller name, root identity/scope, standalone display,
 and only the approved opaque 192px and 512px icons. It does not claim maskable
 safe-area behavior that the source manifest does not specify. No service
 worker, offline cache, or background update mechanism is introduced.

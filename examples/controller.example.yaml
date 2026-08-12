@@ -2,10 +2,10 @@
 # environment variables in 0.1; use .env.example as the executable template.
 server:
   address: ":8080"
-  publicBaseURL: "https://agh-ha.example.test"
+  publicBaseURL: "https://atlas-dns.example.test"
 
 database:
-  url: "postgres://aghha:change-me@127.0.0.1:5432/aghha?sslmode=disable"
+  url: "postgres://atlas_dns:change-me@127.0.0.1:5432/atlas_dns?sslmode=disable"
 
 security:
   sessionSecretEnvironmentVariable: "SESSION_SECRET"

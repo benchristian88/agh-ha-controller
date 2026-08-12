@@ -7,9 +7,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/benchristian88/agh-ha-controller/internal/configuration"
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/inventory"
+	"github.com/benchristian88/atlas-dns/internal/configuration"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/inventory"
 )
 
 func (s *Store) SaveObservation(ctx context.Context, snapshot inventory.Snapshot, profile inventory.CapabilityProfile) error {

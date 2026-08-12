@@ -6,9 +6,9 @@ material configuration/lifecycle change.
 
 ## What to preserve
 
-- A Standard or Full `.aghhabackup` archive.
+- A Standard or Full `.atlasdnsbackup` archive.
 - Runtime environment configuration (`.env` or
-  `/etc/agh-ha-controller/agh-ha-controller.env`).
+  `/etc/atlas-dns/atlas-dns.env`).
 - Database/runtime TLS material and deployment configuration.
 - Source application version, restore target, and the preflight result.
 
@@ -46,11 +46,11 @@ clean-database restore exercise has completed.
 Passphrases must come from a bounded `0600` regular file that is not a symlink:
 
 ```bash
-agh-ha-backup create --type standard --output controller.aghhabackup \
-  --passphrase-file /run/aghha-backup-passphrase
+atlas-dns-backup create --type standard --output controller.atlasdnsbackup \
+  --passphrase-file /run/atlas-dns-backup-passphrase
 
-agh-ha-backup preflight --archive controller.aghhabackup \
-  --passphrase-file /run/aghha-backup-passphrase
+atlas-dns-backup preflight --archive controller.atlasdnsbackup \
+  --passphrase-file /run/atlas-dns-backup-passphrase
 ```
 
 Use `--type full` only when operational history is required and storage/privacy
@@ -68,10 +68,10 @@ Restore is intentionally offline and requires:
 4. An explicit `RESTORE_TO_EMPTY_DATABASE` confirmation.
 
 ```bash
-agh-ha-backup restore --archive controller.aghhabackup \
-  --passphrase-file /run/aghha-backup-passphrase \
-  --target-database-url-file /run/aghha-restore-database-url \
-  --credential-key-output /etc/agh-ha-controller/restored-credential.key \
+atlas-dns-backup restore --archive controller.atlasdnsbackup \
+  --passphrase-file /run/atlas-dns-backup-passphrase \
+  --target-database-url-file /run/atlas-dns-restore-database-url \
+  --credential-key-output /etc/atlas-dns/restored-credential.key \
   --confirm RESTORE_TO_EMPTY_DATABASE
 ```
 
@@ -87,12 +87,12 @@ directory. Stop only the controller and create a new database alongside the old
 one:
 
 ```bash
-docker compose stop controller
-docker compose exec postgres createdb -U aghha aghha_restored
+docker compose stop atlas-dns
+docker compose exec postgres createdb -U atlas_dns atlas_dns_restored
 docker compose run --rm --no-deps --user 0:0 \
-  --entrypoint agh-ha-backup \
-  --volume "$PWD/recovery:/recovery" controller restore \
-  --archive /recovery/controller.aghhabackup \
+  --entrypoint atlas-dns-backup \
+  --volume "$PWD/recovery:/recovery" atlas-dns restore \
+  --archive /recovery/controller.atlasdnsbackup \
   --passphrase-file /recovery/passphrase \
   --target-database-url-file /recovery/database-url \
   --credential-key-output /recovery/restored-credential.key \
@@ -101,9 +101,13 @@ docker compose run --rm --no-deps --user 0:0 \
 
 The target database URL must use Compose host `postgres`. Put the restored
 database name and recovered key into protected `.env`, then recreate only the
-controller. The temporary root user is limited to this stopped-controller
+`atlas-dns` service. The temporary root user is limited to this stopped-controller
 command; normal runtime remains unprivileged and must not mount the Docker
 socket.
+
+The command above assumes the default `POSTGRES_USER=atlas_dns`. Substitute the
+configured role and use a URL-encoded password in the protected target URL when
+the deployment differs.
 
 ## Post-restore verification
 

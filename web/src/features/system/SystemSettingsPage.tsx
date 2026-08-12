@@ -44,7 +44,7 @@ export function SystemSettingsPage() {
         <Loading label="Loading system settings…" />
       )}
       <SettingsGroup title="General">
-        <SettingRow title="Product name" control="AGH HA Controller" />
+        <SettingRow title="Product name" control="Atlas DNS Controller" />
         <SettingRow
           title="Configuration source"
           description="Runtime installation values remain in the protected environment file."

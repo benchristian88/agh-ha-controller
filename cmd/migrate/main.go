@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/benchristian88/agh-ha-controller/internal/database"
+	"github.com/benchristian88/atlas-dns/internal/database"
 )
 
 func main() {

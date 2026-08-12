@@ -3,7 +3,7 @@ package controlplane
 import (
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/configuration"
+	"github.com/benchristian88/atlas-dns/internal/configuration"
 )
 
 type Revision struct {

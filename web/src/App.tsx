@@ -85,7 +85,7 @@ export function App() {
     case "loading":
       return (
         <main className="centred-state">
-          <Loading label="Starting AGH HA Controller…" />
+          <Loading label="Starting Atlas DNS Controller…" />
         </main>
       );
     case "setup":

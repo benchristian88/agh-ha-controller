@@ -143,7 +143,7 @@ export function BackupPage() {
               <input
                 name="archive"
                 type="file"
-                accept=".aghhabackup,application/vnd.aghha.backup"
+                accept=".atlasdnsbackup,application/vnd.atlas-dns.backup"
                 required
               />
             </Field>
@@ -172,7 +172,7 @@ export function BackupPage() {
                 {new Date(preflight.manifest.createdAt).toLocaleString()}.
               </p>
               <p>
-                Restore uses <code>agh-ha-backup restore</code> against a new
+                Restore uses <code>atlas-dns-backup restore</code> against a new
                 empty database, invalidates browser sessions, and requires a
                 controller restart.
               </p>

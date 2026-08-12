@@ -1,7 +1,7 @@
 > Status: Reference material.
 >
 > This document records the AdGuard Home upstream UI and API model.
-> It is not the authoritative implementation specification for AGH HA Controller.
+> It is not the authoritative implementation specification for Atlas DNS Controller.
 > For current controller design decisions, see:
 > - [ADR-0026](../../decisions/ADR-0026-adopt-adguard-v2-inspired-ui-language.md)
 > - [navigation and shell](../navigation-and-shell.md)
@@ -13,7 +13,7 @@
 
 ## Purpose
 
-Record the current AdGuard Home user-facing information architecture and define the matching AGH HA Controller navigation.
+Record the current AdGuard Home user-facing information architecture and define the matching Atlas DNS Controller navigation.
 
 ## 1. Current AdGuard Home product areas
 
@@ -59,7 +59,7 @@ Query Log
 Setup Guide
 ```
 
-## 3. Recommended AGH HA Controller navigation
+## 3. Recommended Atlas DNS Controller navigation
 
 ```text
 Dashboard

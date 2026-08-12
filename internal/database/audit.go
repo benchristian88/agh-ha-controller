@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-import "github.com/benchristian88/agh-ha-controller/internal/domain"
+import "github.com/benchristian88/atlas-dns/internal/domain"
 
 func (s *Store) ListAuditEvents(ctx context.Context, limit, offset int) ([]domain.AuditEvent, error) {
 	rows, err := s.pool.Query(ctx, `

@@ -1,6 +1,6 @@
 # Security Guide
 
-AGH HA Controller holds administrator sessions, node credentials, desired
+Atlas DNS Controller holds administrator sessions, node credentials, desired
 configuration, query history, and recovery material. Deploy it as a privileged
 management system even though it is outside the DNS request path.
 
@@ -40,7 +40,7 @@ certificate chains where unsafe, file paths, node request bodies, and AdGuard
 Home error bodies are discarded at the adapter boundary. Logs use structured
 safe codes and controller-owned operation names.
 
-Protect `.env` or `/etc/agh-ha-controller/agh-ha-controller.env`, database
+Protect `.env` or `/etc/atlas-dns/atlas-dns.env`, database
 credentials, TLS material, metric token, backup passphrases, and recovered
 credential keys with least-privilege filesystem access. Rotate compromised
 values and invalidate affected sessions/backups.
@@ -137,7 +137,7 @@ backup first.
 
 ## Known security boundaries
 
-The product is pre-1.0, local-administrator-only, and does not yet provide OIDC,
+The stable 1.x product is local-administrator-only and does not provide OIDC,
 fine-grained RBAC, distributed login throttling, automatic secret rotation,
 signed release artifacts, or controller HA. Do not infer those controls from the
 current UI.

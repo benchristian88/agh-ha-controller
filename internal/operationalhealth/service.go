@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/haoperations"
-	"github.com/benchristian88/agh-ha-controller/internal/inventory"
-	"github.com/benchristian88/agh-ha-controller/internal/querylog"
-	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/haoperations"
+	"github.com/benchristian88/atlas-dns/internal/inventory"
+	"github.com/benchristian88/atlas-dns/internal/querylog"
+	"github.com/benchristian88/atlas-dns/internal/telemetry"
 )
 
 type Repository interface {

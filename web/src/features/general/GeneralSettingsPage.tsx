@@ -94,7 +94,7 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
 
   useEffect(() => {
     let cancelled = false;
-    const key = `aghha-policy-operation:${cluster.id}`;
+    const key = `atlas-policy-operation:${cluster.id}`;
     const stored = window.sessionStorage.getItem(key);
     if (stored === null) return;
     try {
@@ -264,7 +264,7 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
           : await api.clearQueryLog(cluster.id, target, idempotencyKey);
       setCommand("");
       setCommandResult(result);
-      const key = `aghha-policy-operation:${cluster.id}`;
+      const key = `atlas-policy-operation:${cluster.id}`;
       window.sessionStorage.setItem(key, JSON.stringify({ id: result.id }));
       while (result.status === "queued" || result.status === "running") {
         await new Promise((resolve) => window.setTimeout(resolve, 500));
@@ -284,7 +284,7 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
 
   function dismissCommandResult() {
     setCommandResult(undefined);
-    window.sessionStorage.removeItem(`aghha-policy-operation:${cluster.id}`);
+    window.sessionStorage.removeItem(`atlas-policy-operation:${cluster.id}`);
   }
 
   const safeSearch = shared?.services.safeSearch;

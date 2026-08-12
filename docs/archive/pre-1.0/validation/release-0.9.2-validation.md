@@ -1,8 +1,10 @@
 # Release 0.9.2 Validation Record
 
 This is a point-in-time development evidence record, not current product
-documentation. Release status remains constrained by the inherited external
-0.9/0.9.1 gates.
+documentation. On 12 August 2026, the product owner confirmed completion of the
+remaining operator validation and accepted Release 0.9.2 as the final
+feature-complete pre-1.0 baseline. That acceptance closes the Release 1.0 entry
+gate without changing the narrower provenance of the local evidence below.
 
 ## Scope
 
@@ -73,7 +75,7 @@ administrator/CSRF route guards, confirmation/audit, and lifecycle service rules
 The PostgreSQL integration test compiles in every Go run but was explicitly
 skipped locally because `TEST_DATABASE_URL` is unset.
 
-## Environment-gated evidence
+## Environment-gated evidence recorded during development
 
 - PostgreSQL 17 migration and `tests/integration/release_0_9_2_test.go`: compiled
   and skipped because `TEST_DATABASE_URL` is unset. The test covers active and
@@ -87,4 +89,6 @@ skipped locally because `TEST_DATABASE_URL` is unset.
 - Current packaged Chromium/Firefox/Safari/iOS desktop/tablet/mobile visual,
   overflow, focus, touch, PWA, and favicon matrix: pending.
 
-Local success must not be interpreted as completion of these external gates.
+These items were not completed on the development host. The product owner's
+12 August 2026 acceptance records completion of Release 0.9.2 at the operator
+gate; it does not recast unavailable local checks as locally observed evidence.

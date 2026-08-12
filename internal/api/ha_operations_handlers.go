@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/haoperations"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/haoperations"
 )
 
 func (s *Server) requireHA(response http.ResponseWriter, request *http.Request) bool {

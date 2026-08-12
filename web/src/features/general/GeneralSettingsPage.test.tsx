@@ -543,11 +543,11 @@ describe("General Settings", () => {
     ).not.toBeNull();
     expect(screen.getAllByText(/NODE_UNREACHABLE/).length).toBeGreaterThan(0);
     expect(
-      window.sessionStorage.getItem(`aghha-policy-operation:${cluster.id}`),
+      window.sessionStorage.getItem(`atlas-policy-operation:${cluster.id}`),
     ).not.toBeNull();
     await user.click(screen.getByRole("button", { name: "Dismiss result" }));
     expect(
-      window.sessionStorage.getItem(`aghha-policy-operation:${cluster.id}`),
+      window.sessionStorage.getItem(`atlas-policy-operation:${cluster.id}`),
     ).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 # User Guide
 
-AGH HA Controller presents one cluster at a time. The selected cluster scopes
+Atlas DNS Controller presents one cluster at a time. The selected cluster scopes
 node management, desired configuration, deployments, drift, Statistics, Query
 Log, and HA operations. Browser actions always go to the controller API; the
 browser never calls an AdGuard Home node directly.

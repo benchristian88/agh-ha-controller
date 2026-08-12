@@ -69,7 +69,7 @@ export function UsersPage({ currentUser }: { currentUser: User }) {
       <PageHeader
         eyebrow="System"
         title="Users"
-        description="Local administrator accounts. AGH HA Controller 0.9 preserves the established administrator-only permission model."
+        description="Local administrator accounts. Atlas DNS Controller 1.0 preserves the established administrator-only permission model."
       />
       {notice && (
         <Banner tone="success" title="User administration updated">

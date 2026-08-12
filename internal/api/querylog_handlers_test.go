@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/benchristian88/agh-ha-controller/internal/querylog"
+	"github.com/benchristian88/atlas-dns/internal/querylog"
 )
 
 type queryLogServiceFake struct {

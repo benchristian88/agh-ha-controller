@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	"github.com/benchristian88/agh-ha-controller/internal/configuration"
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/configuration"
+	"github.com/benchristian88/atlas-dns/internal/domain"
 )
 
 func (s *Server) handleUpdateConfigurationDraft(response http.ResponseWriter, request *http.Request) {

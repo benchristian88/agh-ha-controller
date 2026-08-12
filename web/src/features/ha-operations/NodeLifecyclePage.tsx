@@ -468,7 +468,7 @@ export function NodeLifecyclePage({
                 Start guided upgrade
               </button>
               <p>
-                AGH HA Controller records the operation and waits while you
+                Atlas DNS Controller records the operation and waits while you
                 execute the documented host-side update. It never runs an
                 arbitrary command.
               </p>

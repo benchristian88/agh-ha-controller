@@ -18,7 +18,7 @@ func TestPreflightAuthenticatesManifestAndEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := []byte("MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=")
-	manifest := Manifest{BackupFormatVersion: FormatVersion, ApplicationVersion: "0.9.0", BuildIdentifier: "test", DatabaseSchema: 12, CreatedAt: time.Unix(1, 0).UTC(), Type: Standard, IncludedComponents: []string{"control_plane"}, EntrySHA256: map[string]string{"database.dump": checksumBytes([]byte("postgres-custom-dump")), "credential.key": checksumBytes(key)}, RequiresPassphrase: true}
+	manifest := Manifest{BackupFormatVersion: FormatVersion, Application: Application, ApplicationVersion: "1.0.0", BuildIdentifier: "test", DatabaseSchema: 12, CreatedAt: time.Unix(1, 0).UTC(), Type: Standard, IncludedComponents: []string{"control_plane"}, EntrySHA256: map[string]string{"database.dump": checksumBytes([]byte("postgres-custom-dump")), "credential.key": checksumBytes(key)}, RequiresPassphrase: true}
 	inner, _ := json.Marshal(manifest)
 	plain := filepath.Join(directory, "payload.tar")
 	if err := writePayload(plain, dump, inner, key); err != nil {
@@ -30,7 +30,7 @@ func TestPreflightAuthenticatesManifestAndEntries(t *testing.T) {
 	}
 	digest, _ := checksumFile(cipher)
 	info, _ := os.Stat(cipher)
-	archive := filepath.Join(directory, "test.aghhabackup")
+	archive := filepath.Join(directory, "test.atlasdnsbackup")
 	if err := writeEnvelope(archive, cipher, Envelope{Manifest: manifest, PayloadSHA256: digest, PayloadBytes: info.Size()}); err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestPreflightRejectsWrongPassphraseAndCorruption(t *testing.T) {
 	dump := filepath.Join(directory, "database.dump")
 	_ = os.WriteFile(dump, []byte("dump"), 0o600)
 	key := []byte("key")
-	manifest := Manifest{BackupFormatVersion: FormatVersion, ApplicationVersion: "0.9.0", DatabaseSchema: 12, CreatedAt: time.Now().UTC(), Type: Full, EntrySHA256: map[string]string{"database.dump": checksumBytes([]byte("dump")), "credential.key": checksumBytes(key)}}
+	manifest := Manifest{BackupFormatVersion: FormatVersion, Application: Application, ApplicationVersion: "1.0.0", DatabaseSchema: 12, CreatedAt: time.Now().UTC(), Type: Full, EntrySHA256: map[string]string{"database.dump": checksumBytes([]byte("dump")), "credential.key": checksumBytes(key)}}
 	inner, _ := json.Marshal(manifest)
 	plain := filepath.Join(directory, "payload.tar")
 	_ = writePayload(plain, dump, inner, key)
@@ -60,7 +60,7 @@ func TestPreflightRejectsWrongPassphraseAndCorruption(t *testing.T) {
 	_ = encryptPayload(plain, cipher, "correct passphrase value")
 	digest, _ := checksumFile(cipher)
 	info, _ := os.Stat(cipher)
-	archive := filepath.Join(directory, "test.aghhabackup")
+	archive := filepath.Join(directory, "test.atlasdnsbackup")
 	_ = writeEnvelope(archive, cipher, Envelope{Manifest: manifest, PayloadSHA256: digest, PayloadBytes: info.Size()})
 	if _, err := Preflight(archive, "wrong passphrase", ""); err == nil {
 		t.Fatal("expected wrong passphrase rejection")
@@ -80,7 +80,7 @@ func TestPreflightRejectsAuthenticatedTrailingPayloadData(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := []byte("key")
-	manifest := Manifest{BackupFormatVersion: FormatVersion, ApplicationVersion: "0.9.0", DatabaseSchema: 13, CreatedAt: time.Now().UTC(), Type: Standard, EntrySHA256: map[string]string{"database.dump": checksumBytes([]byte("dump")), "credential.key": checksumBytes(key)}}
+	manifest := Manifest{BackupFormatVersion: FormatVersion, Application: Application, ApplicationVersion: "1.0.0", DatabaseSchema: 13, CreatedAt: time.Now().UTC(), Type: Standard, EntrySHA256: map[string]string{"database.dump": checksumBytes([]byte("dump")), "credential.key": checksumBytes(key)}}
 	inner, _ := json.Marshal(manifest)
 	plain := filepath.Join(directory, "payload.tar")
 	if err := writePayload(plain, dump, inner, key); err != nil {
@@ -98,7 +98,7 @@ func TestPreflightRejectsAuthenticatedTrailingPayloadData(t *testing.T) {
 	}
 	digest, _ := checksumFile(cipher)
 	info, _ := os.Stat(cipher)
-	archive := filepath.Join(directory, "test.aghhabackup")
+	archive := filepath.Join(directory, "test.atlasdnsbackup")
 	if err := writeEnvelope(archive, cipher, Envelope{Manifest: manifest, PayloadSHA256: digest, PayloadBytes: info.Size()}); err != nil {
 		t.Fatal(err)
 	}
@@ -108,10 +108,13 @@ func TestPreflightRejectsAuthenticatedTrailingPayloadData(t *testing.T) {
 }
 
 func TestCompatibilityRejectsFutureSchemaAndVersion(t *testing.T) {
-	if err := ValidateCompatibility(Manifest{ApplicationVersion: "0.10.0", DatabaseSchema: 12}, "0.9.0", 12); err == nil {
+	if err := ValidateCompatibility(Manifest{Application: "agh-ha-controller", ApplicationVersion: "0.9.2", DatabaseSchema: 12}, "1.0.0", 12); err == nil {
+		t.Fatal("expected pre-1.0 application identity rejection")
+	}
+	if err := ValidateCompatibility(Manifest{Application: Application, ApplicationVersion: "1.1.0", DatabaseSchema: 12}, "1.0.0", 12); err == nil {
 		t.Fatal("expected future application rejection")
 	}
-	if err := ValidateCompatibility(Manifest{ApplicationVersion: "0.8.0", DatabaseSchema: 13}, "0.9.0", 12); err == nil {
+	if err := ValidateCompatibility(Manifest{Application: Application, ApplicationVersion: "1.0.0", DatabaseSchema: 13}, "1.0.0", 12); err == nil {
 		t.Fatal("expected future schema rejection")
 	}
 }

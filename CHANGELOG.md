@@ -1,8 +1,49 @@
 # Changelog
 
-All notable changes to AGH HA Controller will be documented in this file.
+All notable changes to Atlas DNS Controller are documented in this file.
 
-The project intends to follow Semantic Versioning once the first public release is made.
+The stable 1.x line follows Semantic Versioning for documented public
+interfaces.
+
+## 1.0.0 - Unreleased
+
+### Changed
+
+- Completed the product and technical rename to Atlas DNS Controller / Atlas
+  DNS across UI, module/imports, commands, service/user/paths, Docker/Compose,
+  browser namespaces, environment variables, backup identity, build metadata,
+  release infrastructure, and current documentation.
+- Established 1.0 as the fresh-install stable baseline. Pre-1.0 installations
+  and backups are not supported migration sources; future 1.x upgrades use
+  append-only checksum-verified migrations and documented compatibility gates.
+- Replaced source-build production installation paths with versioned Linux
+  amd64/arm64 release archives, verified native installation, and a prebuilt
+  multi-platform GHCR image consumed by Docker Compose and Portainer.
+
+### Security and licensing
+
+- Licensed Atlas DNS Controller under BUSL-1.1 with the owner-provided
+  non-commercial personal/homelab Additional Use Grant, Apache-2.0 Change
+  License, and August 12, 2032 Change Date.
+- Renamed controller cookies/browser storage, preserved secret-redaction and
+  update-execution boundaries, added OCI licence/source metadata, and retained
+  checksum verification before native installation.
+
+### Compatibility
+
+- Introduced Atlas backup format identity (`.atlasdnsbackup`,
+  `ATLASDNSBACKUP`, application `atlas-dns`) and explicit fail-closed rejection
+  of pre-1.0 archives.
+- Published stable 1.x upgrade, migration, backup, compatibility, support, and
+  deprecation policies.
+
+### Validation
+
+- Release-candidate automation covers Go tests/race/vet/build, frontend unit,
+  accessibility, asset, type, lint and build checks, native archive assembly,
+  checksums, and multi-platform image publication. Clean-host/browser/real-node
+  evidence remains a required pre-tag release gate and is not inferred from
+  local automation.
 
 ## 0.9.2 - 2026-08-11
 

@@ -104,7 +104,7 @@ export function CustomRulesPage({ cluster }: { cluster: Cluster }) {
 
   useEffect(() => {
     let cancelled = false;
-    const key = `aghha-host-filter-operation:${cluster.id}`;
+    const key = `atlas-host-filter-operation:${cluster.id}`;
     const stored = window.sessionStorage.getItem(key);
     if (stored === null) return;
     try {
@@ -240,7 +240,7 @@ export function CustomRulesPage({ cluster }: { cluster: Cluster }) {
       );
       setDialogOpen(false);
       setCommandResult(result);
-      const key = `aghha-host-filter-operation:${cluster.id}`;
+      const key = `atlas-host-filter-operation:${cluster.id}`;
       window.sessionStorage.setItem(
         key,
         JSON.stringify({ id: result.id, input: submitted }),
@@ -265,7 +265,7 @@ export function CustomRulesPage({ cluster }: { cluster: Cluster }) {
     setCommandResult(undefined);
     setSubmittedInput(undefined);
     window.sessionStorage.removeItem(
-      `aghha-host-filter-operation:${cluster.id}`,
+      `atlas-host-filter-operation:${cluster.id}`,
     );
   }
 
