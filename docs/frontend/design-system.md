@@ -454,7 +454,6 @@ Use for:
 Use for:
 
 - Setup Guide.
-- Statistics and Query Log, with dense tables scrolling inside their regions.
 - All System administration routes.
 
 ### Wide
@@ -462,6 +461,7 @@ Use for:
 Use for:
 
 - Dashboard.
+- Statistics and Query Log.
 - Settings and Filters.
 - Nodes.
 - Node Detail and HA Operations.
@@ -475,9 +475,8 @@ Use for:
 Reserved for a future route whose content demonstrably requires the complete
 available desktop width. No current canonical route uses Full.
 
-Filters are one Wide family. Statistics and Query Log use Standard to keep
-their primary content aligned with the readable application measure; their
-tables retain contained horizontal scrolling. All System administration pages,
+Dashboard, Statistics, and Query Log share the Wide primary-application
+measure. Filters are one Wide family. All System administration pages,
 including Audit Log and Operational Status, use Standard consistently. Mobile
 always uses the available inline size regardless of the desktop maximum.
 
@@ -486,10 +485,10 @@ always uses the available inline size regardless of the desktop maximum.
 | Routes | Width | Content reason |
 |---|---|---|
 | `/` | Wide | Dashboard cards and node overview. |
-| `/statistics` | Standard | Charts and rankings aligned to the primary readable measure. |
+| `/statistics` | Wide | Matches Dashboard and provides room for charts, rankings, and node coverage. |
 | `/settings/general`, `/settings/dns`, `/settings/encryption`, `/settings/clients`, `/settings/dhcp` | Wide | Primary configuration forms, capability context, and structured tables. |
 | `/filters/blocklists`, `/filters/allowlists`, `/filters/rewrites`, `/filters/blocked-services`, `/filters/custom-rules` | Wide | One coherent Filters family with tables, catalogues, and editors. |
-| `/query-log` | Standard | Investigation controls stay aligned; its table scrolls locally when required. |
+| `/query-log` | Wide | Matches Dashboard while its investigation table scrolls locally when required. |
 | `/ha/nodes`, `/ha/nodes/{nodeId}`, `/ha/operations`, `/ha/configuration`, `/ha/revisions`, `/ha/deployments`, `/ha/drift` | Wide | Operational tables, comparisons, grids, and lifecycle controls. |
 | `/setup-guide` | Standard | Linear onboarding checklist. |
 | `/system/users`, `/system/audit`, `/system/operational-status`, `/system/settings`, `/system/backups`, `/system/updates`, `/system/about` | Standard | One coherent administration measure; dense tables remain locally scrollable. |

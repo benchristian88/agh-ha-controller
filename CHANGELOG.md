@@ -17,8 +17,8 @@ interfaces.
 ### Changed
 
 - Every canonical route now has a deliberate page-width assignment; Filters
-  are consistently Wide, while Statistics, Query Log, and all System routes use
-  Standard.
+  are consistently Wide, Statistics and Query Log match the Wide Dashboard,
+  and all System routes use Standard.
 - Replaced the header theme select with a compact accessible icon menu that
   preserves System, Light, and Dark preferences.
 - Removed redundant page-local Scope/state summaries from General, DNS,

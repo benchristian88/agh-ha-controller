@@ -195,8 +195,6 @@ export function resolveRoute(pathname: string): RouteResolution {
 
 export function routePageWidth(route: RouteResolution): RoutePageWidth {
   switch (route.kind) {
-    case "statistics":
-    case "query-log":
     case "audit":
     case "operational-status":
     case "setup-guide":
