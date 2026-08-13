@@ -52,7 +52,7 @@ export function AuditPage() {
   }, [load]);
 
   return (
-    <PageContainer size="wide">
+    <PageContainer size="standard">
       <PageHeader
         eyebrow="System"
         title="Audit log"

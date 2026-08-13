@@ -197,7 +197,8 @@ export function routePageWidth(route: RouteResolution): RoutePageWidth {
   switch (route.kind) {
     case "statistics":
     case "query-log":
-      return "full";
+    case "audit":
+    case "operational-status":
     case "setup-guide":
     case "users":
     case "backups":

@@ -11,10 +11,9 @@ ingestion gaps, process workers, PostgreSQL pool use, and approximate storage
 and retention bounds. It uses existing badges, banners, loading/error states,
 cards, and responsive data tables. Error codes are safe stable summaries.
 
-Operational Status deliberately uses the Wide page class despite living under
-Administration. Its diagnostic grids and node/subsystem tables benefit from the
-same horizontal room as operational HA pages; narrowing it to the Standard form
-measure would reduce scanability.
+Operational Status uses the Standard page class consistently with the other
+Administration routes. Its diagnostic grids reflow and its node/subsystem
+tables own contained horizontal scrolling instead of widening the page.
 
 Dashboard contains only a compact controller/Statistics/Query Log summary and
 links to the page. Statistics and Query Log retain their established coverage

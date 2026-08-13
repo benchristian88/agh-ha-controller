@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AtlasBrand } from "../components/Brand";
@@ -117,5 +123,23 @@ describe("theme preference", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("menu", { name: "Theme preference" })).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it("does not close before Safari delivers a tapped option click", async () => {
+    installMatchMedia(false);
+    const user = userEvent.setup();
+    renderTheme();
+    const trigger = screen.getByRole("button", {
+      name: "Theme preference: System",
+    });
+
+    await user.click(trigger);
+    const dark = screen.getByRole("menuitemradio", { name: "Dark" });
+    fireEvent.blur(trigger, { relatedTarget: null });
+    expect(screen.getByRole("menu", { name: "Theme preference" })).toBeTruthy();
+    fireEvent.click(dark);
+
+    expect(screen.getByText("dark:dark")).toBeTruthy();
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
   });
 });

@@ -1,10 +1,4 @@
-import {
-  type FocusEvent,
-  type KeyboardEvent,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { type ThemePreference, useTheme } from "./ThemeProvider";
 
 const OPTIONS: readonly {
@@ -37,8 +31,20 @@ export function ThemeControl() {
         setOpen(false);
       }
     };
+    const closeWhenFocusLeaves = (event: FocusEvent) => {
+      if (
+        event.target instanceof Node &&
+        !root.current?.contains(event.target)
+      ) {
+        setOpen(false);
+      }
+    };
     document.addEventListener("pointerdown", closeOutside);
-    return () => document.removeEventListener("pointerdown", closeOutside);
+    document.addEventListener("focusin", closeWhenFocusLeaves);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("focusin", closeWhenFocusLeaves);
+    };
   }, [open]);
 
   const close = (restoreFocus = false) => {
@@ -51,11 +57,6 @@ export function ThemeControl() {
   const choose = (next: ThemePreference) => {
     setPreference(next);
     close(true);
-  };
-
-  const handleBlur = (event: FocusEvent<HTMLElement>) => {
-    const next = event.relatedTarget;
-    if (!(next instanceof Node) || !root.current?.contains(next)) close();
   };
 
   const handleMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -95,7 +96,6 @@ export function ThemeControl() {
         aria-expanded={open}
         aria-controls="theme-preference-menu"
         title={`Theme: ${selectedLabel}`}
-        onBlur={handleBlur}
         onClick={() => setOpen((current) => !current)}
         onKeyDown={(event) => {
           if (event.key === "Escape" && open) {
@@ -112,7 +112,6 @@ export function ThemeControl() {
           id="theme-preference-menu"
           role="menu"
           aria-label="Theme preference"
-          onBlur={handleBlur}
           onKeyDown={handleMenuKeyDown}
         >
           {OPTIONS.map((option) => (

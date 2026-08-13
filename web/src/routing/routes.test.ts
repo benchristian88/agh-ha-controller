@@ -66,7 +66,7 @@ describe("canonical route safety", () => {
   it("assigns every route family its documented page width", () => {
     const expectedWidths = {
       "/": "wide",
-      "/statistics": "full",
+      "/statistics": "standard",
       "/settings/general": "wide",
       "/settings/dns": "wide",
       "/settings/encryption": "wide",
@@ -77,7 +77,7 @@ describe("canonical route safety", () => {
       "/filters/rewrites": "wide",
       "/filters/blocked-services": "wide",
       "/filters/custom-rules": "wide",
-      "/query-log": "full",
+      "/query-log": "standard",
       "/ha/nodes": "wide",
       "/ha/operations": "wide",
       "/ha/configuration": "wide",
@@ -86,8 +86,8 @@ describe("canonical route safety", () => {
       "/ha/drift": "wide",
       "/setup-guide": "standard",
       "/system/users": "standard",
-      "/system/audit": "wide",
-      "/system/operational-status": "wide",
+      "/system/audit": "standard",
+      "/system/operational-status": "standard",
       "/system/settings": "standard",
       "/system/backups": "standard",
       "/system/updates": "standard",

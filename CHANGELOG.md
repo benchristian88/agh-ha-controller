@@ -16,8 +16,8 @@ interfaces.
 
 ### Changed
 
-- Every canonical route now has a deliberate Standard, Wide, or Full page-width
-  assignment; Filters are consistently Wide and focused System pages use
+- Every canonical route now has a deliberate page-width assignment; Filters
+  are consistently Wide, while Statistics, Query Log, and all System routes use
   Standard.
 - Replaced the header theme select with a compact accessible icon menu that
   preserves System, Light, and Dark preferences.

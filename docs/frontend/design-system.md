@@ -454,8 +454,8 @@ Use for:
 Use for:
 
 - Setup Guide.
-- Users and focused System administration.
-- System Settings, Backup & Restore, Updates, and About.
+- Statistics and Query Log, with dense tables scrolling inside their regions.
+- All System administration routes.
 
 ### Wide
 
@@ -469,37 +469,30 @@ Use for:
 - Revisions.
 - Deployments.
 - Drift.
-- Audit Log and Operational Status, whose tables and diagnostic grids benefit
-  from operational width.
 
 ### Full
 
-Use only where justified:
+Reserved for a future route whose content demonstrably requires the complete
+available desktop width. No current canonical route uses Full.
 
-- Query Log.
-- Statistics.
-
-Filters are one Wide family. Operational Status remains Wide even though it is
-under Administration because it is a diagnostic dashboard, not a simple system
-form. System administration pages use Standard unless their data density has
-the explicit operational exception above. Mobile always uses the available
-inline size regardless of the desktop maximum.
+Filters are one Wide family. Statistics and Query Log use Standard to keep
+their primary content aligned with the readable application measure; their
+tables retain contained horizontal scrolling. All System administration pages,
+including Audit Log and Operational Status, use Standard consistently. Mobile
+always uses the available inline size regardless of the desktop maximum.
 
 ### Canonical route assignment
 
 | Routes | Width | Content reason |
 |---|---|---|
 | `/` | Wide | Dashboard cards and node overview. |
-| `/statistics` | Full | Charts, rankings, and node coverage. |
+| `/statistics` | Standard | Charts and rankings aligned to the primary readable measure. |
 | `/settings/general`, `/settings/dns`, `/settings/encryption`, `/settings/clients`, `/settings/dhcp` | Wide | Primary configuration forms, capability context, and structured tables. |
 | `/filters/blocklists`, `/filters/allowlists`, `/filters/rewrites`, `/filters/blocked-services`, `/filters/custom-rules` | Wide | One coherent Filters family with tables, catalogues, and editors. |
-| `/query-log` | Full | Largest node-attributed investigation table and filters. |
+| `/query-log` | Standard | Investigation controls stay aligned; its table scrolls locally when required. |
 | `/ha/nodes`, `/ha/nodes/{nodeId}`, `/ha/operations`, `/ha/configuration`, `/ha/revisions`, `/ha/deployments`, `/ha/drift` | Wide | Operational tables, comparisons, grids, and lifecycle controls. |
 | `/setup-guide` | Standard | Linear onboarding checklist. |
-| `/system/users` | Standard | Focused administrator cards and forms. |
-| `/system/audit` | Wide | Audit event table. |
-| `/system/operational-status` | Wide | Diagnostic grids and multiple operational tables. |
-| `/system/settings`, `/system/backups`, `/system/updates`, `/system/about` | Standard | Lower-density administration and readable forms/copy. |
+| `/system/users`, `/system/audit`, `/system/operational-status`, `/system/settings`, `/system/backups`, `/system/updates`, `/system/about` | Standard | One coherent administration measure; dense tables remain locally scrollable. |
 
 ---
 
