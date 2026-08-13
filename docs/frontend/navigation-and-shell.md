@@ -146,10 +146,10 @@ successful deployment, Statistics, Query Log, and HA state. No completed check
 is based solely on visiting a route.
 
 The approved Atlas V3 angled-gap mark and light/dark Atlas DNS lockups appear in
-the login and shell while AGH HA Controller technical naming remains unchanged.
+the login and shell as the final Atlas DNS Controller identity.
 Browser favicon, Apple touch icon, approved 192/512 PWA
 icons, and `manifest.webmanifest` use the reconciled Atlas asset family;
-manifest application naming remains AGH HA Controller. No service worker or
+manifest application naming remains Atlas DNS Controller. No service worker or
 offline data cache is introduced. See `theme-brand-and-pwa.md`.
 
 ## Configuration Control purpose

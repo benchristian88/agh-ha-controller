@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/benchristian88/agh-ha-controller/internal/updates"
+	"github.com/benchristian88/atlas-dns/internal/updates"
 )
 
 func (s *Store) ControllerReleaseCache(ctx context.Context) (updates.Cache, error) {

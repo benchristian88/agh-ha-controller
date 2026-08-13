@@ -60,7 +60,7 @@ Release 0.3 adds narrow writes for shared schema-v1 DNS and filtering fields. Re
 Release 0.4 keeps those boundaries and adds schema-v2 mapping/writes inside `internal/adguard`, richer canonical types in `internal/configuration`, capability gating and DHCP ordering in `internal/controlplane`, and one audited explicit refresh method in `internal/inventory`. The API and React client exchange canonical documents, never raw AdGuard responses. No new service or settings repository was introduced.
 
 `cmd/controller` wires these boundaries and owns graceful process lifecycle. `cmd/migrate` is a thin explicit migration entry point.
-`cmd/agh-ha-backup` is the Release 0.9 system-administration boundary for
+`cmd/atlas-dns-backup` is the Release 0.9 system-administration boundary for
 portable create, preflight, and offline restore. Web backup and preflight reuse
 the same `internal/backup` implementation; no online restore API exists.
 

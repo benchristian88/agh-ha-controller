@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/domain"
 )
 
 const catalogueClusterID = "11111111-1111-4111-8111-111111111111"

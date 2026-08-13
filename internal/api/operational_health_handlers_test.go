@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
+	"github.com/benchristian88/atlas-dns/internal/operationalhealth"
 )
 
 type operationalServiceFake struct{ status operationalhealth.Status }

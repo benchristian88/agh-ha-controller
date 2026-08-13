@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	projectmigrations "github.com/benchristian88/agh-ha-controller/migrations"
+	projectmigrations "github.com/benchristian88/atlas-dns/migrations"
 )
 
 const migrationAdvisoryLock int64 = 64012001

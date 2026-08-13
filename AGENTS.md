@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file defines the working rules for AI coding agents and human contributors building AGH HA Controller.
+This file defines the working rules for AI coding agents and human contributors building Atlas DNS Controller.
 
 ## Product objective
 

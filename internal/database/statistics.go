@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
+	"github.com/benchristian88/atlas-dns/internal/telemetry"
 )
 
 func (s *Store) RecordStatisticsPoll(ctx context.Context, attempt telemetry.PollAttempt, snapshots []telemetry.Snapshot) error {

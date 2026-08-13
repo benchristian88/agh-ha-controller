@@ -9,7 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/benchristian88/agh-ha-controller/internal/querylog"
+	"github.com/benchristian88/atlas-dns/internal/querylog"
 )
 
 func (s *Store) QueryLogCheckpoint(ctx context.Context, nodeID string) (querylog.Checkpoint, bool, error) {

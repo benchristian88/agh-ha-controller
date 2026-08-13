@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/adguard"
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
-	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
+	"github.com/benchristian88/atlas-dns/internal/adguard"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/operationalhealth"
+	"github.com/benchristian88/atlas-dns/internal/telemetry"
 )
 
 type StatisticsStore interface {

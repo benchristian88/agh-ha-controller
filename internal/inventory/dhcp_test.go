@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/domain"
 )
 
 const dhcpNodeID = "22222222-2222-4222-8222-222222222222"

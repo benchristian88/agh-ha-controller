@@ -14,11 +14,12 @@ unless a more specific row overrides it.
 | `docs/getting-started/*` | CURRENT PRODUCT DOCUMENTATION | Installation guidance. | No |
 | `docs/user-guide/*` | CURRENT PRODUCT DOCUMENTATION | Operator workflows. | No |
 | `docs/administration/*` | CURRENT PRODUCT DOCUMENTATION | Controller administration. | No |
-| `docs/operations/runbook.md`, `backup-and-restore.md`, `compatibility-matrix.md` | CURRENT PRODUCT DOCUMENTATION | Runtime, recovery, and compatibility guidance. | No |
+| `docs/operations/runbook.md`, `backup-and-restore.md`, `compatibility-matrix.md`, `upgrade-policy.md` | CURRENT PRODUCT DOCUMENTATION | Runtime, recovery, compatibility, and supported-upgrade guidance. | No |
 | `docs/operations/backup-format.md` | CURRENT ARCHITECTURE / TECHNICAL REFERENCE | Portable archive contract. | No |
-| `docs/product/support-and-deprecation-policy.md` | CURRENT PRODUCT DOCUMENTATION | Current pre-1.0 support boundary. | No |
+| `docs/operations/release-1.0-readiness.md` | RELEASE EVIDENCE | Local validation results and explicit external 1.0 gates. | No |
+| `docs/product/support-and-deprecation-policy.md` | CURRENT PRODUCT DOCUMENTATION | Stable 1.x community support boundary. | No |
 | `docs/reference/features.md` | CURRENT PRODUCT DOCUMENTATION | Sole authoritative feature catalogue. | No |
-| `docs/reference/rename-inventory.md` | TEMPORARY RELEASE-1.0 PREPARATION | Active systematic rename scope; retain until the rename is complete. | No |
+| `docs/reference/rename-inventory.md` | RELEASE EVIDENCE | Release 1.0 identifier-family audit and retained-reference rationale. | No |
 | `docs/reference/documentation-inventory.md` | CURRENT DEVELOPMENT / CONTRIBUTOR DOCUMENTATION | Documentation governance and classification. | No |
 | `docs/architecture/*`, `docs/api/*`, `docs/backend/*`, `docs/database/*`, `docs/diagrams/*` | CURRENT ARCHITECTURE / TECHNICAL REFERENCE | Current system and contract references. | No |
 | `docs/security/security.md` | CURRENT PRODUCT DOCUMENTATION | Security controls and operator guidance. | No |

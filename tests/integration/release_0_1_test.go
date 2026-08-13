@@ -19,12 +19,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/benchristian88/agh-ha-controller/internal/adguard"
-	controllerapi "github.com/benchristian88/agh-ha-controller/internal/api"
-	"github.com/benchristian88/agh-ha-controller/internal/auth"
-	"github.com/benchristian88/agh-ha-controller/internal/database"
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/inventory"
+	"github.com/benchristian88/atlas-dns/internal/adguard"
+	controllerapi "github.com/benchristian88/atlas-dns/internal/api"
+	"github.com/benchristian88/atlas-dns/internal/auth"
+	"github.com/benchristian88/atlas-dns/internal/database"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/inventory"
 )
 
 func TestRelease01OperatorWorkflow(t *testing.T) {
@@ -71,8 +71,8 @@ func TestRelease01OperatorWorkflow(t *testing.T) {
 		t.Fatalf("repeated setup status = %d, want 409; body = %s", repeatedSetup.StatusCode, readBody(t, repeatedSetup))
 	}
 	_ = readBody(t, repeatedSetup)
-	csrf := cookieValue(jar.Cookies(baseURL), "aghha_csrf")
-	if csrf == "" || cookieValue(jar.Cookies(baseURL), "aghha_session") == "" {
+	csrf := cookieValue(jar.Cookies(baseURL), "atlas_dns_csrf")
+	if csrf == "" || cookieValue(jar.Cookies(baseURL), "atlas_dns_session") == "" {
 		t.Fatal("setup did not issue session and CSRF cookies")
 	}
 
@@ -227,7 +227,7 @@ func integrationStore(t *testing.T) *database.Store {
 	if err != nil {
 		t.Fatal(err)
 	}
-	schema := "aghha_test_" + strings.ReplaceAll(id, "-", "")
+	schema := "atlas_dns_test_" + strings.ReplaceAll(id, "-", "")
 	identifier := pgx.Identifier{schema}.Sanitize()
 	if _, err := adminPool.Exec(ctx, "CREATE SCHEMA "+identifier); err != nil {
 		t.Fatal(err)

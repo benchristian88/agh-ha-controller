@@ -10,7 +10,7 @@ import {
 export type ThemePreference = "system" | "light" | "dark";
 export type ResolvedTheme = Exclude<ThemePreference, "system">;
 
-export const THEME_STORAGE_KEY = "agh-ha-controller.theme";
+export const THEME_STORAGE_KEY = "atlas-dns.theme";
 export const THEME_MEDIA_QUERY = "(prefers-color-scheme: dark)";
 export const THEME_COLORS: Record<ResolvedTheme, string> = {
   light: "#ffffff",

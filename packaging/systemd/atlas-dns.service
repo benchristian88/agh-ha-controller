@@ -1,0 +1,23 @@
+[Unit]
+Description=Atlas DNS Controller
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=atlas-dns
+Group=atlas-dns
+EnvironmentFile=/etc/atlas-dns/atlas-dns.env
+Environment=WEB_DIST_DIR=/usr/local/share/atlas-dns/web
+WorkingDirectory=/var/lib/atlas-dns
+ExecStart=/usr/local/bin/atlas-dns
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/atlas-dns
+
+[Install]
+WantedBy=multi-user.target

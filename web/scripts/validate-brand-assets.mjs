@@ -50,8 +50,8 @@ async function pngDimensions(path) {
 const manifest = JSON.parse(
   await readFile(resolve(publicRoot, "manifest.webmanifest"), "utf8"),
 );
-assert(manifest.name === "AGH HA Controller", "manifest technical name changed");
-assert(manifest.short_name === "AGH HA", "manifest short technical name changed");
+assert(manifest.name === "Atlas DNS Controller", "manifest product name is incorrect");
+assert(manifest.short_name === "Atlas DNS", "manifest short product name is incorrect");
 assert(manifest.start_url === "/" && manifest.scope === "/", "manifest scope changed");
 assert(manifest.display === "standalone", "manifest display must be standalone");
 assert(Array.isArray(manifest.icons) && manifest.icons.length === 2, "manifest must have one 192px and one 512px icon");
@@ -75,7 +75,7 @@ for (const name of expectedPublicIcons) {
 }
 const themeBootstrap = await readFile(resolve(publicRoot, "theme-init.js"), "utf8");
 assert(
-  themeBootstrap.includes("agh-ha-controller.theme") &&
+  themeBootstrap.includes("atlas-dns.theme") &&
     themeBootstrap.includes("prefers-color-scheme: dark"),
   "theme bootstrap does not resolve the documented preference",
 );

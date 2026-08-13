@@ -1,94 +1,42 @@
 # Release 1.0 Technical Rename Inventory
 
-Release 0.9.2 keeps **AGH HA Controller** and all `agh-ha-controller` technical
-identifiers. This inventory defines the deliberate future rename pass; it does
-not choose final replacement identifiers or authorize partial changes.
+This is the final identifier-family record for the controlled **AGH HA
+Controller → Atlas DNS Controller** rename. Historical release/ADR/archive text
+and genuine AdGuard Home domain terminology remain intentionally unchanged.
 
-## User-visible product naming
+| Legacy token / family | Representative locations | Purpose / class | Final treatment | Compatibility decision | Validation |
+|---|---|---|---|---|---|
+| `AGH HA Controller` and older display variants | Current UI, README, current docs, HTML/PWA metadata | A: user-visible controller identity | `Atlas DNS Controller`; short form `Atlas DNS` | No display alias | UI tests, asset check, current-doc audit |
+| `agh-ha-controller` repository/module | `go.mod`, Go imports, GitHub URLs, update feed | B/C: source and public distribution identity | `github.com/benchristian88/atlas-dns` and repository `atlas-dns` | GitHub repository rename is an owner action; old redirects are not used in current inputs | Go build/test/vet and URL audit |
+| Old controller/backup commands | Makefile, command directories, systemd, archives, docs | B/C: shipped command names | `atlas-dns`, `atlas-dns-backup`, `atlas-dns-migrate` | Fresh install; no pre-1 command shim | build, archive inspection, shell syntax |
+| Old service/user/path family | systemd, installer, Dockerfile, docs | B/C: host runtime identity | `atlas-dns.service`, user/group `atlas-dns`, `/etc/atlas-dns`, `/var/lib/atlas-dns`, `/usr/local/share/atlas-dns` | Pre-1 in-place migration unsupported | unit/installer review and clean-host gate |
+| Old Compose/image family | Compose, workflow, Dockerfile, docs | B/C: container distribution | project/service `atlas-dns`; `ghcr.io/benchristian88/atlas-dns` | Production pulls exact image; development build is an override | Compose configuration, multi-platform candidate gate |
+| `aghha` database defaults | Compose, examples, installer, tests | B: default deployment identity | database/role `atlas_dns` | Database tables/columns and released migrations are not cosmetically renamed | migration/integration and current-example audit |
+| `CONTROLLER_*` product build/runtime variables | Makefile, Docker, Compose, docs | C: operator/build configuration | `ATLAS_DNS_VERSION`, `ATLAS_DNS_COMMIT`, `ATLAS_DNS_BUILT_AT`, `ATLAS_DNS_BIND_ADDRESS`, `ATLAS_DNS_PORT` | Generic variables such as `DATABASE_URL`, `PUBLIC_BASE_URL`, and `SESSION_SECRET` remain | configuration search and builds |
+| `aghha_session`, `aghha_csrf` | API/auth/frontend tests | C: browser security identifiers | `atlas_dns_session`, `atlas_dns_csrf` | Pre-1 browser sessions intentionally expire; sessions are never portable | auth/CSRF tests |
+| `aghha-*` browser/CSS/storage namespaces | CSS variables, theme and operation storage, TSX/tests | B/C: controller-owned frontend namespace | coherent `atlas-*` namespace | Browser-local pre-1 state may reset; no persistent server data | selector search, frontend test/build, browser gate |
+| `.aghhabackup`, `AGHHABACKUP`, old application identity | Backup envelope/code/tests/history | C/D: persisted archive format | `.atlasdnsbackup`, `ATLASDNSBACKUP`, MIME `application/vnd.atlas-dns.backup`, app `atlas-dns` | Pre-1 archives fail closed and are documented unsupported; rejection fixture remains | backup/API/CLI tests and clean restore gate |
+| Product User-Agent/source attribution | updater, filters, notifications | B/C: outbound controller identity | `Atlas-DNS-Controller` or `Atlas DNS Controller` as appropriate | No compatibility alias | adapter/service tests and search |
+| Product metrics/logging | telemetry, structured logs, docs | C: operational identifiers | Existing generic metric names and structured components are retained where they do not expose the old brand | Avoid needless dashboard/API churn; no legacy product prefix was found | metric/auth tests and semantic audit |
+| `/api/v1`, JSON fields, error codes, tables/columns | API/database source and docs | C: first stable API/data contract | Retained unless controller branding leaked | Stability takes priority over cosmetic renaming; migrations stay append-only | contract/integration tests |
+| Historical old names | `CHANGELOG.md`, accepted ADRs, `docs/archive/pre-1.0`, pre-1 rejection tests | D: accurate history/compatibility evidence | Retain | Required to explain prior releases and fail-closed compatibility | final classified search |
+| `AdGuard`, `AdGuard Home`, contextual `AGH` | adapters, capabilities, configuration, UI, docs/tests | D: managed upstream product/domain | Retain | These describe the DNS server Atlas manages and are not Atlas branding | case-sensitive semantic review |
 
-- UI startup/login/setup/header/navigation, page titles, About, error text, and
-  accessibility labels under `web/src/`.
-- Root README, repository policies, current docs, ADR prose, changelog/history,
-  diagrams, screenshots, and generated release notes.
-- HTML title/meta description/theme metadata, `web/index.html`, SVG lockups,
-  favicons, Apple touch icon, raster PWA icons, and alt text.
-- `web/public/manifest.webmanifest`: application `name`, `short_name`,
-  description, icon purpose, and installed-app identity.
-- Current Atlas source artwork identifiers/masters: review separately from
-  product/technical strings; do not assume every `atlas` source token changes.
+## Final namespace decisions
 
-## Repository and source identifiers
+- Display: `Atlas DNS Controller`; short display: `Atlas DNS`.
+- Repository/module/image slug: `atlas-dns`.
+- Frontend/CSS prefix: `atlas-`; cookie/database-safe prefix: `atlas_dns`.
+- Binary/service/user/group: `atlas-dns`.
+- Backup: `atlas-dns-backup`, `.atlasdnsbackup`, `ATLASDNSBACKUP`, application
+  identity `atlas-dns`.
+- Stable API paths and schema internals are not renamed for appearance.
 
-- Repository/directory name `agh-ha-controller` and all GitHub URLs,
-  documentation links, clone commands, badges, issue/security-advisory links,
-  release metadata source, and update links.
-- Go module path and every import in `go.mod`, Go source/tests, generated tooling,
-  and downstream consumers.
-- Go package/build metadata, linker variables, user-agent strings, audit actor or
-  origin labels, backup format application identifiers, and migration comments
-  where compatibility permits.
-- npm package name/version metadata and lockfile root package record.
+## External coordination
 
-## Executables, services, and packaging
-
-- `agh-ha-controller` and `agh-ha-backup` binary names, Make targets/paths,
-  release archive names, checksum/SBOM component names, and CLI help/examples.
-- `agh-ha-controller.service`, systemd unit description, service user/group
-  `aghha`, installed unit name, journal commands, and restart/upgrade behavior.
-- Installation paths `/etc/agh-ha-controller`, `/var/lib/agh-ha-controller`,
-  `/usr/local/share/agh-ha-controller`, environment filename, and migration plan
-  or compatibility aliases for existing installations.
-- Docker Compose project/service/image `agh-ha-controller`, build labels,
-  container user/path assumptions, named volumes, network/DNS aliases, health
-  checks, and published image/repository coordinates.
-- Dockerfile paths/user-agent/build args and `.dockerignore`/release scripts.
-- Debian/LXC examples, reverse-proxy examples, monitoring job names, and backup
-  automation commands.
-
-## Configuration and external contracts
-
-- Environment variable names only where product-prefixed names exist; preserve
-  generic contract names such as `DATABASE_URL` unless an explicit migration
-  requires otherwise. Inventory `.env.example`, Compose, systemd environment,
-  tests, docs, and deployment automation.
-- Database name/user defaults (`aghha`), database URLs, role ownership, schema
-  comments, seed/fixture names, and backup target examples.
-- API paths, JSON identifiers, error codes, cookie names, CSRF/session names,
-  metric names/labels, request headers, and webhook payload `source`/event fields.
-  Compatibility must be decided before changing any externally consumed value.
-- Backup extension `.aghhabackup`, outer/inner manifest application identifiers,
-  encryption labels, format-version compatibility, CLI confirmations, and
-  recovered-key filenames.
-- Local storage keys for theme/browser state, cache keys, PWA scope/start URL,
-  and existing bookmarks/legacy route redirects.
-
-## Operational and integration references
-
-- Structured log service/component names, Prometheus scrape configuration,
-  dashboards/alerts, audit action metadata, support bundles, and runbooks.
-- PostgreSQL database/role, Docker volumes, systemd enablement, firewall/reverse
-  proxy rules, TLS certificates, DNS names, and external secret-manager entries.
-- GitHub release API owner/repository, release URLs, updater cache records, and
-  current-version comparison behavior.
-- CI job/artifact/cache names, scripts, test snapshots/fixtures, browser
-  screenshots, deployment examples, and any personal marketplace/plugin data.
-
-## Compatibility work required
-
-1. Select canonical display, slug, module, binary, service, image, database,
-   config-path, backup, and external-contract names as one decision.
-2. Generate an occurrence report with case-sensitive searches for
-   `AGH HA Controller`, `agh-ha-controller`, `aghha`, `agh_ha`, `agh-ha`, GitHub
-   URLs, backup extensions, and known Atlas artwork/source tokens.
-3. Classify each occurrence as display-only, internal, externally consumed, or
-   persisted. Define aliases/migrations before editing persisted/external names.
-4. Update code, packaging, docs, assets, tests, release infrastructure, and
-   examples in one controlled branch; do not strand mixed frontend/API builds.
-5. Test clean Docker/native installs, upgrades from the final 0.9.2 build,
-   service/path migration, database access, backup preflight/restore, browser/PWA
-   upgrade, old bookmarks, metrics, webhooks, and rollback.
-6. Re-run secret/copy/link/asset scans and publish explicit operator migration
-   instructions plus the final compatibility window.
-
-The 1.0 pass should use repository-wide tooling rather than this prose alone;
-this inventory names semantic categories that a string search can miss.
+The repository owner must rename the GitHub repository to `atlas-dns`, then
+update this checkout's existing HTTPS remote to
+`https://github.com/benchristian88/atlas-dns.git`. The first GHCR publication may
+also require making the linked package public. After both actions, rerun link,
+release-feed, anonymous image-pull, and multi-platform manifest checks. Current
+release inputs do not intentionally depend on GitHub's old-name redirects.

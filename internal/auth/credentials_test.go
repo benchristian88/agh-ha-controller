@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/domain"
 )
 
 func TestCredentialCipherRoundTripAndNodeBinding(t *testing.T) {

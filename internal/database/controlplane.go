@@ -8,9 +8,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/benchristian88/agh-ha-controller/internal/controlplane"
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/inventory"
+	"github.com/benchristian88/atlas-dns/internal/controlplane"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/inventory"
 )
 
 func (s *Store) UpdateConfigurationDraft(ctx context.Context, draft inventory.Draft, expectedVersion int, event domain.AuditEvent) error {

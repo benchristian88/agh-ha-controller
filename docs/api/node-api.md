@@ -1,8 +1,8 @@
 # AdGuard Home Node API Adapter
 
-## Release 0.6 Query Log reads
+## Query Log reads
 
-For the explicitly reviewed v0.107.52–v0.107.78 range, AGH HA Controller reads
+For the explicitly reviewed v0.107.52–v0.107.78 range, Atlas DNS Controller reads
 `GET /control/querylog` with `limit` (maximum 500), empty `search`,
 `response_status=all`, and the previous response's `oldest` value as
 `older_than`. Results are newest-first. Offset exists in portions of the
@@ -20,13 +20,14 @@ to 64 KiB and normalizes only controller-domain values. Legacy
 
 The source can repeat records across overlapping windows, discard history due
 to node policy or clear, reset after restart, and cannot distinguish completely
-identical events with an ID. AGH HA Controller documents and exposes those limitations via
+identical events with an ID. Atlas DNS Controller documents and exposes those limitations via
 checkpoint/gap coverage; it does not log raw payloads or attempt to reverse
 client anonymisation.
 
-## Release 0.2 purpose
+## Adapter purpose
 
-The adapter is the only package that consumes raw AdGuard Home HTTP payloads. Release 0.1 performs a read-only status probe at:
+The adapter is the only package that consumes raw AdGuard Home HTTP payloads.
+Its base discovery operation is a read-only status probe at:
 
 ```text
 GET {baseUrl}/control/status
@@ -57,11 +58,16 @@ There is no option that skips TLS certificate or hostname verification. Node req
 
 ## Compatibility
 
-The tested Release 0.1 contract is AdGuard Home `v0.107.x`. Later versions with the compatible status payload are reported as supported. Older versions are reported as unsupported and malformed or unversioned responses as unknown/incompatible.
+The supported status/configuration range is defined by the compatibility matrix
+and explicit contract fixtures. Older versions are unsupported; newer,
+malformed, or unversioned contracts are unknown/incompatible until reviewed.
 
-Release 0.2 additionally reads `GET /control/dns_info` and `GET /control/filtering/status`. Contract fixtures cover v0.107.52 and v0.107.61. DNS and filtering are the only schema-v1 supported feature areas; unsupported areas are visible rather than silently discarded. All calls remain read-only.
+The adapter also reads `GET /control/dns_info` and
+`GET /control/filtering/status`. Contract fixtures cover v0.107.52 and
+v0.107.61. DNS and filtering are the only schema-v1 supported feature areas;
+unsupported areas are visible rather than silently discarded.
 
-## Release 0.4 configuration contract
+## Configuration contract
 
 Configuration compatibility begins at v0.107.52, but that version remains on frozen schema v1. Schema v2 supports v0.107.53 through the current stable v0.107.78 contract. The adapter reads status, DNS, filtering, persistent clients, rewrites, blocked services, safety/Safe Search, query-log policy, statistics policy, TLS status, and optional DHCP status. Feature flags record each successfully observed area; missing required features block preview before mutation.
 
@@ -69,16 +75,22 @@ Configuration compatibility begins at v0.107.52, but that version remains on fro
 |---|---:|---|
 | Earlier than v0.107.52 | Unsupported | Status remains observable, but inventory/deployment is blocked |
 | v0.107.52 | 1 | Historical DNS/filtering contract only |
-| v0.107.53–v0.107.78 | 2 | Release 0.4 contract; patch-level cache, timeout, filter-interval, rewrite, and ignored-list capabilities are explicit |
+| v0.107.53–v0.107.78 | 2 | Patch-level cache, timeout, filter-interval, rewrite, and ignored-list capabilities are explicit |
 | Newer v0.107 or v0.108 contracts | Unknown | Inventory/deployment blocked until fixtures and compatibility rules are updated |
 
 The committed compatibility boundary is contract-tested at v0.107.52/v0.107.53, with the existing v0.107.61 fixtures, and against the v0.107.78 OpenAPI additions. A node can report DHCP unavailable (including platforms where AdGuard Home returns its documented not-implemented status); the capability remains false and DHCP cannot enter that node's desired override.
 
 The writer uses the documented `/control/dns_config`, `/control/filtering/*`, `/control/clients/*`, `/control/rewrite/*`, `/control/blocked_services/update`, safety enable/disable, `/control/safesearch/settings`, `/control/querylog/config/update`, `/control/stats/config/update`, and `/control/dhcp/*` endpoints. Query-log/statistics updates use `PUT`; existing collections are reconciled rather than blindly duplicated. `/control/filtering/refresh` is exposed as a separate audited operation.
 
-Release 0.4.1 additionally reads `GET /control/blocked_services/all` as observed catalogue metadata. v0.107.52–v0.107.67 return `blocked_services` entries with `id`, `name`, `rules`, and Base64 `icon_svg`. From v0.107.68, entries may add `group_id` and the response adds `groups: [{"id": "..."}]`. The adapter accepts both contracts, validates stable IDs/names/groups, and returns only ID, name, and optional group ID. It does not retain rules or icon data, and it never uses deprecated `/blocked_services/services`, `/list`, or `/set` endpoints.
+`GET /control/blocked_services/all` supplies observed catalogue metadata.
+v0.107.52–v0.107.67 return `blocked_services` entries with `id`, `name`,
+`rules`, and Base64 `icon_svg`. From v0.107.68, entries may add `group_id` and
+the response adds `groups: [{"id": "..."}]`. The adapter accepts both
+contracts, validates stable IDs/names/groups, and returns only ID, name, and
+optional group ID. It does not retain rules or icon data, and it never uses
+deprecated `/blocked_services/services`, `/list`, or `/set` endpoints.
 
-Release 0.4.1 Phase 8A adds two node-specific safety reads. Interface discovery
+Two node-specific safety reads support DHCP workflows. Interface discovery
 uses `GET /control/dhcp/interfaces`. The v0.107.78 response is an object keyed
 by interface name whose values contain `name`, `hardware_address`,
 `ipv4_addresses`, `ipv6_addresses`, `gateway_ip`, and pipe-delimited `flags`.
@@ -94,7 +106,7 @@ AdGuard `error` strings and response bodies are never returned, logged, or
 stored. Although AdGuard exposes this read-only check as POST, the controller
 does not treat it as a configuration mutation.
 
-## Release 0.5 statistics contract
+## Statistics contract
 
 The adapter reads `GET /control/stats/config` and
 `GET /control/stats?recent={milliseconds}` only for the explicitly tested

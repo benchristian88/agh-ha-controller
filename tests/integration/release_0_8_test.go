@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/haoperations"
+	"github.com/benchristian88/atlas-dns/internal/haoperations"
 )
 
 func TestRelease08LifecycleSchemaPersistsSafeOperationalEvidence(t *testing.T) {

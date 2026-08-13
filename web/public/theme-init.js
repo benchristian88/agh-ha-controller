@@ -1,5 +1,5 @@
 (() => {
-  const key = "agh-ha-controller.theme";
+  const key = "atlas-dns.theme";
   let preference = "system";
   try {
     const stored = window.localStorage.getItem(key);

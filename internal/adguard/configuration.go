@@ -15,11 +15,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/configuration"
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/inventory"
-	"github.com/benchristian88/agh-ha-controller/internal/operations"
-	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
+	"github.com/benchristian88/atlas-dns/internal/configuration"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/inventory"
+	"github.com/benchristian88/atlas-dns/internal/operations"
+	"github.com/benchristian88/atlas-dns/internal/telemetry"
 )
 
 type ConfigurationReader struct{ probe *Probe }
@@ -1090,7 +1090,7 @@ func (r *ConfigurationReader) reconcileFilterURLs(ctx context.Context, request d
 			}
 		}
 		if !found {
-			if err := r.post(ctx, request, "/control/filtering/add_url", map[string]any{"name": "Managed by AGH HA Controller", "url": target, "whitelist": whitelist}); err != nil {
+			if err := r.post(ctx, request, "/control/filtering/add_url", map[string]any{"name": "Managed by Atlas DNS Controller", "url": target, "whitelist": whitelist}); err != nil {
 				return err
 			}
 		}

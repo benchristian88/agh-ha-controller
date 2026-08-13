@@ -13,24 +13,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/auth"
-	"github.com/benchristian88/agh-ha-controller/internal/backup"
-	"github.com/benchristian88/agh-ha-controller/internal/controlplane"
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/haoperations"
-	"github.com/benchristian88/agh-ha-controller/internal/inventory"
-	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
-	"github.com/benchristian88/agh-ha-controller/internal/operations"
-	"github.com/benchristian88/agh-ha-controller/internal/querylog"
-	"github.com/benchristian88/agh-ha-controller/internal/systemsettings"
-	"github.com/benchristian88/agh-ha-controller/internal/telemetry"
-	"github.com/benchristian88/agh-ha-controller/internal/updates"
-	"github.com/benchristian88/agh-ha-controller/internal/useradmin"
+	"github.com/benchristian88/atlas-dns/internal/auth"
+	"github.com/benchristian88/atlas-dns/internal/backup"
+	"github.com/benchristian88/atlas-dns/internal/controlplane"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/haoperations"
+	"github.com/benchristian88/atlas-dns/internal/inventory"
+	"github.com/benchristian88/atlas-dns/internal/operationalhealth"
+	"github.com/benchristian88/atlas-dns/internal/operations"
+	"github.com/benchristian88/atlas-dns/internal/querylog"
+	"github.com/benchristian88/atlas-dns/internal/systemsettings"
+	"github.com/benchristian88/atlas-dns/internal/telemetry"
+	"github.com/benchristian88/atlas-dns/internal/updates"
+	"github.com/benchristian88/atlas-dns/internal/useradmin"
 )
 
 const (
-	sessionCookieName = "aghha_session"
-	csrfCookieName    = "aghha_csrf"
+	sessionCookieName = "atlas_dns_session"
+	csrfCookieName    = "atlas_dns_csrf"
 	requestIDHeader   = "X-Request-ID"
 	csrfHeader        = "X-CSRF-Token"
 	idempotencyHeader = "Idempotency-Key"
@@ -494,7 +494,7 @@ func (s *Server) handleFrontend(response http.ResponseWriter, request *http.Requ
 	if _, err := os.Stat(indexPath); err != nil {
 		response.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		response.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = response.Write([]byte("AGH HA Controller frontend has not been built.\n"))
+		_, _ = response.Write([]byte("Atlas DNS Controller frontend has not been built.\n"))
 		return
 	}
 	http.ServeFile(response, request, indexPath)

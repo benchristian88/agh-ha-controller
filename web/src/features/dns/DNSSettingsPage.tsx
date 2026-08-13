@@ -117,7 +117,7 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
   useEffect(() => {
     let cancelled = false;
     const stored = window.sessionStorage.getItem(
-      `aghha-dns-operation:${cluster.id}`,
+      `atlas-dns-operation:${cluster.id}`,
     );
     if (stored === null) return;
     try {
@@ -143,18 +143,18 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
               result.status === "succeeded"
             ) {
               window.sessionStorage.removeItem(
-                `aghha-dns-operation:${cluster.id}`,
+                `atlas-dns-operation:${cluster.id}`,
               );
             } else {
               setCommandResult(result);
             }
           }
         } catch {
-          window.sessionStorage.removeItem(`aghha-dns-operation:${cluster.id}`);
+          window.sessionStorage.removeItem(`atlas-dns-operation:${cluster.id}`);
         }
       })();
     } catch {
-      window.sessionStorage.removeItem(`aghha-dns-operation:${cluster.id}`);
+      window.sessionStorage.removeItem(`atlas-dns-operation:${cluster.id}`);
     }
     return () => {
       cancelled = true;
@@ -294,7 +294,7 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
       setCommand("");
       setCommandResult(result);
       window.sessionStorage.setItem(
-        `aghha-dns-operation:${cluster.id}`,
+        `atlas-dns-operation:${cluster.id}`,
         JSON.stringify({ id: result.id, upstreams: submittedUpstreams }),
       );
       while (result.status === "queued" || result.status === "running") {
@@ -303,7 +303,7 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
         setCommandResult(result);
       }
       if (command === "test" && result.status === "succeeded") {
-        window.sessionStorage.removeItem(`aghha-dns-operation:${cluster.id}`);
+        window.sessionStorage.removeItem(`atlas-dns-operation:${cluster.id}`);
       }
       if (
         command === "cache" &&
@@ -322,7 +322,7 @@ export function DNSSettingsPage({ cluster }: { cluster: Cluster }) {
   function dismissCommandResult() {
     setCommandResult(undefined);
     setCommandUpstreams([]);
-    window.sessionStorage.removeItem(`aghha-dns-operation:${cluster.id}`);
+    window.sessionStorage.removeItem(`atlas-dns-operation:${cluster.id}`);
   }
 
   const cacheToggleMissing = missingFeature("cache_toggle");

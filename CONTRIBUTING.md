@@ -1,6 +1,6 @@
 # Contributing
 
-AGH HA Controller is a pre-1.0 management-plane product. Contributions should
+Atlas DNS Controller is a stable management-plane product. Contributions should
 preserve its operating and security boundaries rather than adding unrelated
 capability or widening support claims without evidence.
 
@@ -38,8 +38,10 @@ A pull request should include:
 - Documentation changes.
 - Screenshots for UI changes.
 
-Do not submit external contributions until the licence and contribution terms
-described in ADR-0020 are resolved.
+By submitting a contribution, you agree that it may be distributed under the
+repository's [Business Source License 1.1](LICENSE). No contributor licence
+agreement or copyright assignment is currently required. Do not submit code or
+assets that you do not have the right to contribute.
 
 ## Commit guidance
 

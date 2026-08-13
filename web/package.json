@@ -1,7 +1,8 @@
 {
-  "name": "agh-ha-controller-web",
+  "name": "atlas-dns-web",
   "private": true,
-  "version": "0.9.2-dev",
+  "version": "1.0.0-dev",
+  "license": "BUSL-1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",

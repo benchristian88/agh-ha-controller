@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/updates"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/updates"
 )
 
 func TestRelease09UserLifecycleAndSettingsPersistence(t *testing.T) {
@@ -50,7 +50,7 @@ func TestRelease09UserLifecycleAndSettingsPersistence(t *testing.T) {
 		t.Fatalf("updated settings enabled=%v version=%d err=%v", checksEnabled, recordVersion, err)
 	}
 
-	cache := updates.Cache{Version: "v0.9.1", ReleaseURL: "https://github.com/benchristian88/agh-ha-controller/releases/tag/v0.9.1", ReleaseNotes: "Security fixes", CheckedAt: now, ExpiresAt: now.Add(6 * time.Hour)}
+	cache := updates.Cache{Version: "v0.9.1", ReleaseURL: "https://github.com/benchristian88/atlas-dns/releases/tag/v0.9.1", ReleaseNotes: "Security fixes", CheckedAt: now, ExpiresAt: now.Add(6 * time.Hour)}
 	if err := store.SaveControllerReleaseCache(ctx, cache); err != nil {
 		t.Fatal(err)
 	}

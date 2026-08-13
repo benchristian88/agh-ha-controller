@@ -1,0 +1,162 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version without the v prefix, for example 1.0.0-rc.1
+        required: true
+        type: string
+      publish:
+        description: Publish the GitHub Release and GHCR image
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    env:
+      TEST_DATABASE_URL: postgres://atlas_dns:atlas-dns-ci@127.0.0.1:5432/atlas_dns?sslmode=disable
+      IMAGE_NAME: ghcr.io/benchristian88/atlas-dns
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_DB: atlas_dns
+          POSTGRES_USER: atlas_dns
+          POSTGRES_PASSWORD: atlas-dns-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U atlas_dns -d atlas_dns"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: "1.24.x"
+          cache: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Resolve release metadata
+        id: release
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == tag ]]; then
+            version=${GITHUB_REF_NAME#v}
+            publish=true
+          else
+            version=${INPUT_VERSION#v}
+            publish=${INPUT_PUBLISH:-false}
+          fi
+          if [[ ! ${version} =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: ${version}" >&2
+            exit 1
+          fi
+          if [[ "${GITHUB_REF_TYPE}" == tag && "${GITHUB_REF_NAME}" != "v${version}" ]]; then
+            echo "Tag and resolved release version differ." >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "publish=${publish}" >> "${GITHUB_OUTPUT}"
+          echo "commit=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "${GITHUB_OUTPUT}"
+          if [[ ${version} == *-* ]]; then echo "prerelease=true" >> "${GITHUB_OUTPUT}"; else echo "prerelease=false" >> "${GITHUB_OUTPUT}"; fi
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm ci
+      - name: Run release gates
+        run: |
+          make fmt-check
+          make docs-check
+          make lint
+          make test
+          make test-race
+          npm --prefix web audit --omit=dev
+      - name: Build native release archives and checksums
+        env:
+          ATLAS_DNS_VERSION: ${{ steps.release.outputs.version }}
+          ATLAS_DNS_COMMIT: ${{ steps.release.outputs.commit }}
+          ATLAS_DNS_BUILT_AT: ${{ steps.release.outputs.built_at }}
+        run: make release-artifacts ATLAS_DNS_VERSION="${ATLAS_DNS_VERSION}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: atlas-dns-${{ steps.release.outputs.version }}
+          path: dist/release/${{ steps.release.outputs.version }}/
+          if-no-files-found: error
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Log in to GHCR
+        if: steps.release.outputs.publish == 'true'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Refuse to overwrite an exact release identity
+        if: steps.release.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if gh release view "v${VERSION}" >/dev/null 2>&1; then
+            echo "GitHub Release v${VERSION} already exists." >&2
+            exit 1
+          fi
+          if docker buildx imagetools inspect "${IMAGE_NAME}:${VERSION}" >/dev/null 2>&1; then
+            echo "Container image ${IMAGE_NAME}:${VERSION} already exists." >&2
+            exit 1
+          fi
+      - name: Generate container tags
+        id: image
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          tags="${IMAGE_NAME}:${VERSION}"
+          if [[ ${VERSION} != *-* ]]; then
+            IFS=. read -r major minor patch <<< "${VERSION}"
+            tags="${tags},${IMAGE_NAME}:${major}.${minor},${IMAGE_NAME}:${major},${IMAGE_NAME}:latest"
+          fi
+          echo "tags=${tags}" >> "${GITHUB_OUTPUT}"
+      - name: Build and optionally publish multi-platform image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ steps.release.outputs.publish == 'true' }}
+          tags: ${{ steps.image.outputs.tags }}
+          build-args: |
+            VERSION=${{ steps.release.outputs.version }}
+            COMMIT=${{ steps.release.outputs.commit }}
+            BUILT_AT=${{ steps.release.outputs.built_at }}
+          provenance: mode=max
+          sbom: true
+      - name: Publish GitHub Release
+        if: steps.release.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.release.outputs.version }}
+          PRERELEASE: ${{ steps.release.outputs.prerelease }}
+        run: |
+          args=("v${VERSION}" "dist/release/${VERSION}/"* --title "Atlas DNS Controller ${VERSION}" --generate-notes)
+          if [[ ${PRERELEASE} == true ]]; then args+=(--prerelease); fi
+          gh release create "${args[@]}"

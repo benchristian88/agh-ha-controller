@@ -1,7 +1,7 @@
 # Feature Catalogue
 
 This is the authoritative catalogue of capabilities present in the current
-AGH HA Controller tree. Release chronology belongs in [CHANGELOG.md](../../CHANGELOG.md).
+Atlas DNS Controller tree. Release chronology belongs in [CHANGELOG.md](../../CHANGELOG.md).
 Compatibility labels and incomplete external validation remain governed by the
 [compatibility matrix](../operations/compatibility-matrix.md) and validation
 records.

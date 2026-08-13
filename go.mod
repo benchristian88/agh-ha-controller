@@ -1,4 +1,4 @@
-module github.com/benchristian88/agh-ha-controller
+module github.com/benchristian88/atlas-dns
 
 go 1.24.0
 

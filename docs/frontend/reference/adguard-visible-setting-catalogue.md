@@ -1,7 +1,7 @@
 > Status: Reference material.
 >
 > This document records the AdGuard Home upstream UI and API model.
-> It is not the authoritative implementation specification for AGH HA Controller.
+> It is not the authoritative implementation specification for Atlas DNS Controller.
 > For current controller design decisions, see:
 > - [ADR-0026](../../decisions/ADR-0026-adopt-adguard-v2-inspired-ui-language.md)
 > - [navigation and shell](../navigation-and-shell.md)
@@ -13,7 +13,7 @@
 
 ## Purpose
 
-Catalogue the visible operator concepts and the control patterns AGH HA Controller should implement.
+Catalogue the visible operator concepts and the control patterns Atlas DNS Controller should implement.
 
 The catalogue deliberately describes **operator controls**, not merely API field types.
 

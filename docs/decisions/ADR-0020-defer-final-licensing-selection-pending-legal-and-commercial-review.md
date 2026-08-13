@@ -1,6 +1,6 @@
 # ADR-0020: Defer final licensing selection pending legal and commercial review
 
-**Status:** Proposed  
+**Status:** Superseded by ADR-0033
 **Date:** 26 July 2026  
 **Decision owners:** Project owner and maintainers  
 **Related PDD:** `docs/archive/pre-1.0/product/product-design-document.md`

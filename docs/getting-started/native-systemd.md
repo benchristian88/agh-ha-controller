@@ -1,89 +1,106 @@
 # Install on Debian 13 with systemd
 
-This is the authoritative native installation and upgrade guide. The reference
-target is a Debian 13 host or unprivileged LXC with systemd.
+This is the supported native installation and update guide. The reference
+target is Debian 13 on amd64 or arm64 with systemd. Installation consumes a
+prebuilt GitHub Release archive and never compiles Atlas DNS Controller.
 
 ## Requirements
 
-- Git, Make, OpenSSL, Go 1.24, Node.js 22, and npm.
-- PostgreSQL 17 server/client tools, including matching `pg_dump` and
+- Root access on Debian 13 or a compatible unprivileged LXC.
+- PostgreSQL 17 server and client tools, including matching `pg_dump` and
   `pg_restore` major versions.
-- Root access for provisioning the service and local database.
+- `curl`, `sha256sum`, `tar`, OpenSSL, and systemd.
 - An HTTPS browser-visible origin and controller-to-node administration API
   access.
 
-## Install
+Go, Node.js, npm, Make, Git, and a repository checkout are not required.
+
+## Download and verify the installer
 
 ```bash
-git clone https://github.com/benchristian88/agh-ha-controller.git
-cd agh-ha-controller
-sudo PUBLIC_BASE_URL=https://controller.example.test ./scripts/install-systemd.sh
+mkdir atlas-dns-install && cd atlas-dns-install
+curl -fsSLO https://github.com/benchristian88/atlas-dns/releases/download/v1.0.0/install-systemd.sh
+curl -fsSLO https://github.com/benchristian88/atlas-dns/releases/download/v1.0.0/checksums.txt
+grep ' install-systemd.sh$' checksums.txt | sha256sum --check
+chmod 0755 install-systemd.sh
 ```
 
-The installer builds the Go controller, backup CLI, and frontend; creates the
-unprivileged `aghha` account and local PostgreSQL database; generates protected
-runtime secrets; and installs `agh-ha-controller.service`. Reruns preserve
-`/etc/agh-ha-controller/agh-ha-controller.env` and its secrets.
+Review the verified script, then run it with an exact version:
 
-Terminate TLS with a trusted reverse proxy and route the browser origin to the
-controller HTTP listener. `PUBLIC_BASE_URL` must match the externally visible
-HTTPS origin so secure cookies and CSRF origin checks behave correctly.
+```bash
+sudo ATLAS_DNS_VERSION=1.0.0 \
+  PUBLIC_BASE_URL=https://controller.example.test \
+  ./install-systemd.sh
+```
+
+The installer detects amd64/arm64, downloads the matching release archive over
+TLS, obtains `checksums.txt`, verifies the archive before extraction, checks all
+required runtime files, and then installs them. It creates the unprivileged
+`atlas-dns` account and local PostgreSQL database, generates protected runtime
+secrets, installs `atlas-dns.service`, starts it, and waits for `/ready`.
+
+Omitting `ATLAS_DNS_VERSION` resolves GitHub's latest stable release. Exact
+version selection is recommended for reproducibility. Prereleases must be
+selected explicitly.
+
+Terminate TLS with a trusted reverse proxy. `PUBLIC_BASE_URL` must exactly match
+the browser-visible HTTPS origin so Secure cookies and CSRF origin validation
+work correctly.
 
 ## Verify
 
 ```bash
-systemctl --no-pager --full status agh-ha-controller
-journalctl -u agh-ha-controller --since '10 minutes ago'
+systemctl --no-pager --full status atlas-dns
+journalctl -u atlas-dns --since '10 minutes ago'
 curl --fail http://127.0.0.1:8080/health
 curl --fail http://127.0.0.1:8080/ready
+/usr/local/bin/atlas-dns --version
 ```
 
-Open `PUBLIC_BASE_URL`, create the initial administrator, and complete the Setup
-Guide. The controller service does not listen on a DNS port.
+Open `PUBLIC_BASE_URL`, create the initial administrator, add a node, and check
+Operational Status. Atlas DNS Controller does not listen on DNS ports.
 
-## Upgrade
+## Installed files
 
-1. Create and preflight a portable backup; retain the current environment file.
-2. Read [CHANGELOG.md](../../CHANGELOG.md) and the compatibility matrix.
-3. Fetch and select the intended tag or commit.
-4. Rerun the installer with the same public origin.
+- `/usr/local/bin/atlas-dns` — API, frontend, and workers.
+- `/usr/local/bin/atlas-dns-backup` — backup/preflight/offline restore CLI.
+- `/usr/local/bin/atlas-dns-migrate` — explicit migration utility.
+- `/usr/local/share/atlas-dns/web` — version-matched frontend.
+- `/usr/local/share/atlas-dns/LICENSE` — BUSL-1.1 terms.
+- `/etc/atlas-dns/atlas-dns.env` — root-owned `0600` runtime configuration.
+- `/var/lib/atlas-dns` — service-owned restricted working state.
+- `/etc/systemd/system/atlas-dns.service` — hardened service unit.
+
+Never copy the environment file into logs or issue reports.
+
+## Back up, update, and recover
+
+Create and preflight a backup before every update. Preserve the environment file
+separately. To update within supported 1.x, download and verify the new installer
+and checksums, review the release notes, then rerun with the exact new version.
+The installer preserves the environment file and restarts the service with the
+version-matched API and frontend.
+
+Downgrading a binary after a forward schema migration is unsupported unless the
+release notes explicitly say otherwise. Recover by stopping the service and
+restoring a verified backup into a new empty database; follow the
+[backup and restore guide](../operations/backup-and-restore.md).
+
+## Uninstall or rebuild
+
+Stop and disable the service before removing the installed runtime:
 
 ```bash
-git fetch --tags
-git checkout <approved-version>
-sudo PUBLIC_BASE_URL=https://controller.example.test ./scripts/install-systemd.sh
+sudo systemctl disable --now atlas-dns.service
+sudo rm -f /etc/systemd/system/atlas-dns.service
+sudo rm -f /usr/local/bin/atlas-dns /usr/local/bin/atlas-dns-backup /usr/local/bin/atlas-dns-migrate
+sudo systemctl daemon-reload
 ```
 
-The installer restarts and verifies the service so the frontend and API cannot
-remain on different builds. Confirm `/ready`, About metadata, active revision,
-node connectivity, and collector recovery.
-
-## Files and ownership
-
-- `/usr/local/bin/agh-ha-controller` — controller/API/worker binary.
-- `/usr/local/bin/agh-ha-backup` — offline backup administration CLI.
-- `/usr/local/share/agh-ha-controller/web` — built frontend.
-- `/etc/agh-ha-controller/agh-ha-controller.env` — root-owned runtime secrets.
-- `/var/lib/agh-ha-controller` — restricted working state.
-- `/etc/systemd/system/agh-ha-controller.service` — hardened service unit.
-
-Do not copy the environment file into issue reports or logs.
-
-## Back up and restore
-
-Use System → Backup & Restore or `agh-ha-backup`. Restore is deliberately
-offline: stop the controller and restore only into a new empty database. Follow
-the [backup and restore procedure](../operations/backup-and-restore.md).
-
-## Troubleshooting
-
-- Installer reports missing commands: install every required build and
-  PostgreSQL 17 utility before rerunning.
-- Service fails after install: inspect `journalctl` and validate
-  `DATABASE_URL`, `PUBLIC_BASE_URL`, and file permissions without printing
-  secret values.
-- Secure session fails: verify HTTPS termination and the exact public origin.
-- Node operations fail: check controller-to-node HTTPS routing independently of
-  client DNS routing.
-
-See the [operations runbook](../operations/runbook.md) for runtime recovery.
+These commands intentionally retain `/etc/atlas-dns/atlas-dns.env`,
+`/usr/local/share/atlas-dns`, `/var/lib/atlas-dns`, PostgreSQL state, and the
+service account. Keep them and a verified backup until rebuild/recovery is
+confirmed; remove retained data only under a separate explicit destruction
+decision. Reinstall by downloading and verifying the chosen release's installer
+again. The supported transition from any pre-1.0 installation is a fresh Atlas
+DNS Controller 1.0 install, not an in-place service/path migration.

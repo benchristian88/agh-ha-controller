@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/domain"
 )
 
 const maxRequestBody = 1 << 20

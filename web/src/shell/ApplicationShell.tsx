@@ -223,7 +223,11 @@ export function ApplicationShell({
   return (
     <div className="app-shell">
       <header className="app-header">
-        <a className="brand" href="/" aria-label="AGH HA Controller dashboard">
+        <a
+          className="brand"
+          href="/"
+          aria-label="Atlas DNS Controller dashboard"
+        >
           <AtlasBrand placement="header" />
         </a>
         <nav className="desktop-navigation" aria-label="Primary navigation">

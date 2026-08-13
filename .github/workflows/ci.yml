@@ -8,28 +8,29 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      TEST_DATABASE_URL: postgres://aghha:aghha-ci@127.0.0.1:5432/aghha?sslmode=disable
+      TEST_DATABASE_URL: postgres://atlas_dns:atlas-dns-ci@127.0.0.1:5432/atlas_dns?sslmode=disable
+      ATLAS_DNS_VERSION: 1.0.0
     services:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_DB: aghha
-          POSTGRES_USER: aghha
-          POSTGRES_PASSWORD: aghha-ci
+          POSTGRES_DB: atlas_dns
+          POSTGRES_USER: atlas_dns
+          POSTGRES_PASSWORD: atlas-dns-ci
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U aghha -d aghha"
+          --health-cmd "pg_isready -U atlas_dns -d atlas_dns"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.24.x"
           cache: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
           cache: npm
