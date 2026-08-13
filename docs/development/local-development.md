@@ -72,7 +72,7 @@ To assemble candidate release archives, use a non-final version and an empty
 output path:
 
 ```bash
-ATLAS_DNS_VERSION=1.0.0-rc.local scripts/release-artifacts.sh
+ATLAS_DNS_VERSION=1.0.1-rc.local scripts/release-artifacts.sh
 ```
 
 Source compilation is a contributor workflow, not a supported production

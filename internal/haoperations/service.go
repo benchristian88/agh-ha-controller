@@ -385,7 +385,10 @@ func (s *Service) Summary(ctx context.Context, clusterID string) (HASummary, err
 	for _, probe := range probes {
 		probeByNode[probe.NodeID] = probe
 	}
-	summary := HASummary{}
+	// Keep the collection shape stable for a valid cluster with no configured
+	// nodes.  A nil slice serializes as null and forces browser clients to treat
+	// an ordinary first-run state as a malformed response.
+	summary := HASummary{Nodes: []HANodeStatus{}}
 	for _, node := range nodes {
 		dnsState := HANodeStatus{NodeID: node.ID, DNSStatus: "unknown", UDPStatus: "unknown", TCPStatus: "unknown"}
 		if probe, ok := probeByNode[node.ID]; ok {

@@ -9,6 +9,8 @@ export function SetupGuidePage({ cluster }: { cluster: Cluster }) {
   const [steps, setSteps] = useState<Step[]>();
   const [error, setError] = useState<unknown>();
   const load = useCallback(async () => {
+    setSteps(undefined);
+    setError(undefined);
     try {
       const [
         nodes,
@@ -19,7 +21,7 @@ export function SetupGuidePage({ cluster }: { cluster: Cluster }) {
         queries,
         health,
         operational,
-      ] = await Promise.allSettled([
+      ] = await Promise.all([
         api.nodes(cluster.id),
         api.configurationInventory(cluster.id),
         api.configurationRevisions(cluster.id),
@@ -29,13 +31,10 @@ export function SetupGuidePage({ cluster }: { cluster: Cluster }) {
         api.haStatus(cluster.id),
         api.operationalStatus(cluster.id),
       ]);
-      const nodeItems = nodes.status === "fulfilled" ? nodes.value.items : [];
-      const draft =
-        inventory.status === "fulfilled" ? inventory.value.draft : undefined;
-      const revisionItems =
-        revisions.status === "fulfilled" ? revisions.value.items : [];
-      const deploymentItems =
-        deployments.status === "fulfilled" ? deployments.value.items : [];
+      const nodeItems = nodes.items;
+      const draft = inventory.draft;
+      const revisionItems = revisions.items;
+      const deploymentItems = deployments.items;
       setSteps([
         {
           label: "Administrator configured",
@@ -57,9 +56,7 @@ export function SetupGuidePage({ cluster }: { cluster: Cluster }) {
         },
         {
           label: "Configuration observed",
-          complete:
-            inventory.status === "fulfilled" &&
-            inventory.value.snapshots.length > 0,
+          complete: inventory.snapshots.length > 0,
           href: "/ha/configuration",
           action: "Observe configuration",
         },
@@ -87,34 +84,29 @@ export function SetupGuidePage({ cluster }: { cluster: Cluster }) {
         },
         {
           label: "Statistics current",
-          complete:
-            statistics.status === "fulfilled" &&
-            statistics.value.totals.dnsQueries > 0,
+          complete: statistics.totals.dnsQueries > 0,
           href: "/statistics",
           action: "Check Statistics",
         },
         {
           label: "Query Log current",
-          complete:
-            queries.status === "fulfilled" && queries.value.items.length > 0,
+          complete: queries.items.length > 0,
           href: "/query-log",
           action: "Check Query Log",
         },
         {
           label: "HA/DNS health available",
-          complete:
-            health.status === "fulfilled" && health.value.nodes.length > 0,
+          complete: health.nodes.length > 0,
           href: "/ha/operations",
           action: "Check HA Operations",
         },
         {
           label: "Operational Status available",
-          complete: operational.status === "fulfilled",
+          complete: operational.summary !== undefined,
           href: "/system/operational-status",
           action: "Open Operational Status",
         },
       ]);
-      setError(undefined);
     } catch (caught) {
       setError(caught);
     }

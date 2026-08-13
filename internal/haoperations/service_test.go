@@ -120,6 +120,21 @@ func TestSummaryReportsAllDNSFailedAtRisk(t *testing.T) {
 	}
 }
 
+func TestSummaryReturnsEmptyNodeCollectionForNewCluster(t *testing.T) {
+	repository := &serviceRepositoryFake{settings: map[string]NodeSettings{}}
+	service := NewService(repository, nil, nil, nil, nil, nil)
+	summary, err := service.Summary(context.Background(), serviceClusterID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.Nodes == nil || len(summary.Nodes) != 0 {
+		t.Fatalf("nodes=%#v, want a non-nil empty collection", summary.Nodes)
+	}
+	if summary.TotalNodes != 0 || summary.State != "at_risk" {
+		t.Fatalf("summary=%#v", summary)
+	}
+}
+
 func TestMaintenancePreflightBlocksDeploymentAndActiveDHCP(t *testing.T) {
 	now := time.Date(2026, 8, 9, 0, 0, 0, 0, time.UTC)
 	document := configuration.Document{NodeSpecific: configuration.NodeSpecific{DHCP: &configuration.DHCPConfig{Enabled: true}}}

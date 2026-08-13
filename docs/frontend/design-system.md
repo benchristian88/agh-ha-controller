@@ -118,8 +118,8 @@ Lower-frequency administration belongs in the user or system menu:
 - About
 - Sign Out
 
-The labelled System/Light/Dark control sits immediately before the desktop
-administration menu. Atlas theme-specific lockup assets provide the visual
+The compact theme icon button sits immediately before the desktop administration
+menu and opens explicit Light, Dark, and System choices. Atlas theme-specific lockup assets provide the visual
 brand foundation; phone layouts use the approved symbol-only asset rather than
 compressing the lockup.
 
@@ -151,6 +151,11 @@ Below the desktop breakpoint:
 - Show Settings, Filters, and HA Controller as expandable groups.
 - Keep cluster and scope context visible or accessible through a context sheet.
 - Do not invent a separate mobile-only information architecture.
+- Keep the authenticated shell within the layout viewport on first render.
+  Document-level horizontal scrolling or clipping is not a responsive strategy;
+  wide tables and the context row own their deliberate contained scrolling.
+- Respect iOS safe-area insets in browser and standalone modes while preserving
+  normal browser zoom.
 
 ---
 
@@ -432,44 +437,69 @@ visual inset.
 
 ## Page width classes
 
-Pages must use one shared width class.
+Every canonical route receives one shared width class from the route table.
+Feature code must not rely on an omitted container to become accidentally Full
+or define arbitrary max-width values.
 
 ### Narrow
 
 Use for:
 
 - Login.
-- Setup steps.
 - Focused forms.
+- Route-state pages.
 
 ### Standard
 
 Use for:
 
-- General settings.
-- DNS settings.
-- Encryption.
-- DHCP configuration.
+- Setup Guide.
+- Users and focused System administration.
+- System Settings, Backup & Restore, Updates, and About.
 
 ### Wide
 
 Use for:
 
+- Dashboard.
+- Settings and Filters.
 - Nodes.
-- Clients.
-- Filter lists.
+- Node Detail and HA Operations.
+- Configuration Control.
 - Revisions.
 - Deployments.
 - Drift.
+- Audit Log and Operational Status, whose tables and diagnostic grids benefit
+  from operational width.
 
 ### Full
 
 Use only where justified:
 
 - Query Log.
-- Data-heavy Statistics pages.
+- Statistics.
 
-Feature pages must not define arbitrary max-width values.
+Filters are one Wide family. Operational Status remains Wide even though it is
+under Administration because it is a diagnostic dashboard, not a simple system
+form. System administration pages use Standard unless their data density has
+the explicit operational exception above. Mobile always uses the available
+inline size regardless of the desktop maximum.
+
+### Canonical route assignment
+
+| Routes | Width | Content reason |
+|---|---|---|
+| `/` | Wide | Dashboard cards and node overview. |
+| `/statistics` | Full | Charts, rankings, and node coverage. |
+| `/settings/general`, `/settings/dns`, `/settings/encryption`, `/settings/clients`, `/settings/dhcp` | Wide | Primary configuration forms, capability context, and structured tables. |
+| `/filters/blocklists`, `/filters/allowlists`, `/filters/rewrites`, `/filters/blocked-services`, `/filters/custom-rules` | Wide | One coherent Filters family with tables, catalogues, and editors. |
+| `/query-log` | Full | Largest node-attributed investigation table and filters. |
+| `/ha/nodes`, `/ha/nodes/{nodeId}`, `/ha/operations`, `/ha/configuration`, `/ha/revisions`, `/ha/deployments`, `/ha/drift` | Wide | Operational tables, comparisons, grids, and lifecycle controls. |
+| `/setup-guide` | Standard | Linear onboarding checklist. |
+| `/system/users` | Standard | Focused administrator cards and forms. |
+| `/system/audit` | Wide | Audit event table. |
+| `/system/operational-status` | Wide | Diagnostic grids and multiple operational tables. |
+| `/system/settings`, `/system/backups`, `/system/updates`, `/system/about` | Standard | Lower-density administration and readable forms/copy. |
 
 ---
 
@@ -929,6 +959,10 @@ The UI must:
   theme-colour metadata synchronized.
 - Review charts, tooltips, dialogs, code editors, badges, and tables separately in both themes.
 - Avoid neon effects or excessive contrast in dark mode.
+- Use a real approximately 44px icon button and an explicit keyboard/touch menu
+  for Light, Dark, and System. The selected preference remains visible through
+  icon, accessible name, and checked menu state; no hidden gesture is required
+  to return to System.
 
 Approved brand colours are Atlas Blue `#2563EB`, Atlas Teal `#0EA5A3`, Atlas
 Charcoal `#111111`, and White `#FFFFFF`. Primary interaction may use Atlas Blue;

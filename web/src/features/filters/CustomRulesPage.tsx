@@ -271,7 +271,7 @@ export function CustomRulesPage({ cluster }: { cluster: Cluster }) {
 
   if (loading && draft === undefined) {
     return (
-      <PageContainer size="full">
+      <PageContainer size="wide">
         <PageHeader title="Custom filter rules" />
         <LoadingSkeleton label="Loading custom filter rules" rows={6} />
       </PageContainer>
@@ -279,7 +279,7 @@ export function CustomRulesPage({ cluster }: { cluster: Cluster }) {
   }
   if (error !== undefined && draft === undefined) {
     return (
-      <PageContainer size="full">
+      <PageContainer size="wide">
         <PageHeader title="Custom filter rules" />
         <ErrorState error={error} retry={() => void load()} />
       </PageContainer>
@@ -287,7 +287,7 @@ export function CustomRulesPage({ cluster }: { cluster: Cluster }) {
   }
 
   return (
-    <PageContainer size="full" className="custom-rules-page">
+    <PageContainer size="wide" className="custom-rules-page">
       <PageHeader
         eyebrow="Filters"
         title="Custom filter rules"

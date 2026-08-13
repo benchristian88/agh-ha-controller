@@ -40,7 +40,7 @@ export function EncryptionPage({ cluster }: { cluster: Cluster }) {
   );
 
   return (
-    <PageContainer size="full" className="encryption-page">
+    <PageContainer size="wide" className="encryption-page">
       <PageHeader
         eyebrow="Observed node state"
         title="Encryption"

@@ -333,14 +333,14 @@ export function ClientsPage({ cluster }: { cluster: Cluster }) {
 
   if (loading && draft === undefined)
     return (
-      <PageContainer size="full">
+      <PageContainer size="wide">
         <PageHeader title="Persistent Clients" />
         <LoadingSkeleton label="Loading persistent clients" rows={6} />
       </PageContainer>
     );
   if (error !== undefined && draft === undefined)
     return (
-      <PageContainer size="full">
+      <PageContainer size="wide">
         <PageHeader title="Persistent Clients" />
         <ErrorState error={error} retry={() => void load()} />
       </PageContainer>
@@ -350,7 +350,7 @@ export function ClientsPage({ cluster }: { cluster: Cluster }) {
     removeIndex === undefined ? undefined : clients[removeIndex];
 
   return (
-    <PageContainer size="full">
+    <PageContainer size="wide">
       <PageHeader
         eyebrow="Settings"
         title="Persistent Clients"

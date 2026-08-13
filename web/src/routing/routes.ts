@@ -37,6 +37,8 @@ export type RouteResolution =
   | { kind: "redirect"; to: string }
   | { kind: "not-found" };
 
+export type RoutePageWidth = "narrow" | "standard" | "wide" | "full";
+
 export const CANONICAL_PATHS = [
   "/",
   "/statistics",
@@ -188,6 +190,26 @@ export function resolveRoute(pathname: string): RouteResolution {
       return { kind: "about" };
     default:
       return { kind: "not-found" };
+  }
+}
+
+export function routePageWidth(route: RouteResolution): RoutePageWidth {
+  switch (route.kind) {
+    case "statistics":
+    case "query-log":
+      return "full";
+    case "setup-guide":
+    case "users":
+    case "backups":
+    case "updates":
+    case "system-settings":
+    case "about":
+      return "standard";
+    case "not-found":
+    case "redirect":
+      return "narrow";
+    default:
+      return "wide";
   }
 }
 

@@ -4,6 +4,7 @@ import {
   LEGACY_REDIRECTS,
   preserveRouteState,
   resolveRoute,
+  routePageWidth,
 } from "./routes";
 
 describe("canonical route safety", () => {
@@ -60,6 +61,43 @@ describe("canonical route safety", () => {
   it("renders an explicit not-found result for unknown paths", () => {
     expect(resolveRoute("/mistyped-dashboard")).toEqual({ kind: "not-found" });
     expect(resolveRoute("/settings/not-real")).toEqual({ kind: "not-found" });
+  });
+
+  it("assigns every route family its documented page width", () => {
+    const expectedWidths = {
+      "/": "wide",
+      "/statistics": "full",
+      "/settings/general": "wide",
+      "/settings/dns": "wide",
+      "/settings/encryption": "wide",
+      "/settings/clients": "wide",
+      "/settings/dhcp": "wide",
+      "/filters/blocklists": "wide",
+      "/filters/allowlists": "wide",
+      "/filters/rewrites": "wide",
+      "/filters/blocked-services": "wide",
+      "/filters/custom-rules": "wide",
+      "/query-log": "full",
+      "/ha/nodes": "wide",
+      "/ha/operations": "wide",
+      "/ha/configuration": "wide",
+      "/ha/revisions": "wide",
+      "/ha/deployments": "wide",
+      "/ha/drift": "wide",
+      "/setup-guide": "standard",
+      "/system/users": "standard",
+      "/system/audit": "wide",
+      "/system/operational-status": "wide",
+      "/system/settings": "standard",
+      "/system/backups": "standard",
+      "/system/updates": "standard",
+      "/system/about": "standard",
+    } as const;
+
+    expect(Object.keys(expectedWidths)).toEqual([...CANONICAL_PATHS]);
+    for (const [path, width] of Object.entries(expectedWidths)) {
+      expect(routePageWidth(resolveRoute(path))).toBe(width);
+    }
   });
 });
 

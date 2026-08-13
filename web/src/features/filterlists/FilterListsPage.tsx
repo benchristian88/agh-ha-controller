@@ -12,7 +12,6 @@ import {
 import { PageContainer, PageHeader } from "../../components/Page";
 import {
   CapabilityWarning,
-  ScopeIndicator,
   SettingsGroup,
   UnsavedChangesNotice,
 } from "../../components/Settings";
@@ -278,7 +277,7 @@ export function FilterListsPage({
 
   if (loading && draft === undefined) {
     return (
-      <PageContainer size="full">
+      <PageContainer size="wide">
         <PageHeader title={config.title} />
         <LoadingSkeleton label={`Loading DNS ${plural}`} rows={8} />
       </PageContainer>
@@ -286,7 +285,7 @@ export function FilterListsPage({
   }
   if (error !== undefined && draft === undefined) {
     return (
-      <PageContainer size="full">
+      <PageContainer size="wide">
         <PageHeader title={config.title} />
         <ErrorState error={error} retry={() => void load()} />
       </PageContainer>
@@ -297,7 +296,7 @@ export function FilterListsPage({
     (result) => result.status === "failed",
   );
   return (
-    <PageContainer size="full" className={`filter-lists-page ${plural}-page`}>
+    <PageContainer size="wide" className={`filter-lists-page ${plural}-page`}>
       <PageHeader
         eyebrow="Filters"
         title={config.title}
@@ -348,33 +347,6 @@ export function FilterListsPage({
             saved={saved}
             onSave={() => void saveDraft()}
           />
-
-          <SettingsGroup title="Scope and state">
-            <dl className="blocked-services-state">
-              <div>
-                <dt>Scope</dt>
-                <dd>
-                  <ScopeIndicator scope="cluster" />
-                </dd>
-              </div>
-              <div>
-                <dt>Current draft</dt>
-                <dd>Version {draft.version}</dd>
-              </div>
-              <div>
-                <dt>Active revision</dt>
-                <dd>
-                  {activeRevision
-                    ? `Revision #${activeRevision.revisionNumber}`
-                    : "None"}
-                </dd>
-              </div>
-              <div>
-                <dt>Affected nodes</dt>
-                <dd>{affectedNodes.length}</dd>
-              </div>
-            </dl>
-          </SettingsGroup>
 
           <Banner tone="info" title="Removal is disable-oriented">
             Removing a URL changes the draft only. After publication and

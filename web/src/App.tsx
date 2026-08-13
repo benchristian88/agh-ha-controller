@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { EmptyState, ErrorState, Loading } from "./components/Feedback";
+import { PageContainer } from "./components/Page";
 import { AllowlistsPage } from "./features/allowlists/AllowlistsPage";
 import { AuditPage } from "./features/audit/AuditPage";
 import { LoginPage, SetupPage } from "./features/auth/AuthPages";
@@ -33,7 +34,11 @@ import { UsersPage } from "./features/users/UsersPage";
 import { ApiError, api } from "./lib/api";
 import type { Cluster, User } from "./lib/types";
 import { NotFoundPage } from "./routing/RouteStatePages";
-import { preserveRouteState, resolveRoute } from "./routing/routes";
+import {
+  preserveRouteState,
+  resolveRoute,
+  routePageWidth,
+} from "./routing/routes";
 import { ApplicationShell } from "./shell/ApplicationShell";
 
 type BootState =
@@ -262,7 +267,7 @@ function Application({ user, onLogout }: { user: User; onLogout: () => void }) {
       onSelectCluster={setSelectedID}
       onLogout={() => void logout()}
     >
-      {content}
+      <PageContainer size={routePageWidth(route)}>{content}</PageContainer>
     </ApplicationShell>
   );
 }

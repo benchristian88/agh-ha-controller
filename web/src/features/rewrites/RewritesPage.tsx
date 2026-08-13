@@ -278,14 +278,14 @@ export function RewritesPage({ cluster }: { cluster: Cluster }) {
 
   if (loading && draft === undefined)
     return (
-      <PageContainer size="full">
+      <PageContainer size="wide">
         <PageHeader title="DNS Rewrites" />
         <LoadingSkeleton label="Loading DNS rewrites" rows={6} />
       </PageContainer>
     );
   if (error !== undefined && draft === undefined)
     return (
-      <PageContainer size="full">
+      <PageContainer size="wide">
         <PageHeader title="DNS Rewrites" />
         <ErrorState error={error} retry={() => void load()} />
       </PageContainer>
@@ -295,7 +295,7 @@ export function RewritesPage({ cluster }: { cluster: Cluster }) {
     removeIndex === undefined ? undefined : rewrites[removeIndex];
 
   return (
-    <PageContainer size="full">
+    <PageContainer size="wide">
       <PageHeader
         eyebrow="Filters"
         title="DNS Rewrites"

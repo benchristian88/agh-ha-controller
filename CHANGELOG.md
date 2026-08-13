@@ -5,7 +5,32 @@ All notable changes to Atlas DNS Controller are documented in this file.
 The stable 1.x line follows Semantic Versioning for documented public
 interfaces.
 
-## 1.0.0 - Unreleased
+## 1.0.1 - Unreleased
+
+### Fixed
+
+- Setup Guide treats a new cluster with no configured nodes as incomplete
+  onboarding and keeps genuine API failures distinct from empty state.
+- Authenticated layouts are width-contained on iPhone-class viewports and use
+  iOS safe-area insets without disabling browser zoom.
+
+### Changed
+
+- Every canonical route now has a deliberate Standard, Wide, or Full page-width
+  assignment; Filters are consistently Wide and focused System pages use
+  Standard.
+- Replaced the header theme select with a compact accessible icon menu that
+  preserves System, Light, and Dark preferences.
+- Removed redundant page-local Scope/state summaries from General, DNS,
+  Blocklists, Allowlists, and Blocked Services.
+
+### Internal
+
+- Confirmed that the immutable `000001`–`000014` migration chain shipped in
+  1.0.0 is the physical v1.0 database baseline. Release 1.0.1 is schema-neutral
+  and adds no migration.
+
+## 1.0.0 - 2026-08-13
 
 ### Changed
 
