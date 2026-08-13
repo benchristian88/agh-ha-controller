@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
+	"github.com/benchristian88/atlas-dns/internal/operationalhealth"
 )
 
 func TestMetricsRequiresExplicitTokenAndUsesBoundedLabels(t *testing.T) {

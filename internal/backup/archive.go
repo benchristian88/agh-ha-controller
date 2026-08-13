@@ -22,13 +22,14 @@ import (
 
 	"filippo.io/age"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/version"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/version"
 )
 
 const (
 	FormatVersion     = 1
-	magic             = "AGHHABACKUP\n"
+	Application       = "atlas-dns"
+	magic             = "ATLASDNSBACKUP\n"
 	maxManifestBytes  = 64 << 10
 	MaxArchiveBytes   = 4 << 30
 	maxCredentialSize = 4096
@@ -43,6 +44,7 @@ const (
 
 type Manifest struct {
 	BackupFormatVersion int               `json:"backupFormatVersion"`
+	Application         string            `json:"application"`
 	ApplicationVersion  string            `json:"applicationVersion"`
 	BuildIdentifier     string            `json:"buildIdentifier"`
 	DatabaseSchema      int64             `json:"databaseSchemaVersion"`
@@ -94,7 +96,7 @@ func (s *Service) Create(ctx context.Context, backupType Type, passphrase string
 	if len(passphrase) < 16 || len(passphrase) > 1024 {
 		return Result{}, domain.Validation("passphrase", "must contain between 16 and 1024 characters")
 	}
-	temporary, err := os.MkdirTemp("", "aghha-backup-")
+	temporary, err := os.MkdirTemp("", "atlas-dns-backup-")
 	if err != nil {
 		return Result{}, fmt.Errorf("create restricted backup workspace: %w", err)
 	}
@@ -155,7 +157,7 @@ func (s *Service) Create(ctx context.Context, backupType Type, passphrase string
 		excluded = append(excluded, "statistics", "query_log", "dns_probe_history", "ha_operational_history")
 	}
 	info := version.Current()
-	manifest := Manifest{BackupFormatVersion: FormatVersion, ApplicationVersion: info.Version, BuildIdentifier: info.Commit, DatabaseSchema: schemaVersion, CreatedAt: s.now().UTC(), Type: backupType, IncludedComponents: components, ExcludedComponents: excluded, EntrySHA256: map[string]string{"database.dump": dumpChecksum, "credential.key": checksumBytes([]byte(base64.StdEncoding.EncodeToString(s.key)))}, RequiresPassphrase: true, SessionsRestored: false}
+	manifest := Manifest{BackupFormatVersion: FormatVersion, Application: Application, ApplicationVersion: info.Version, BuildIdentifier: info.Commit, DatabaseSchema: schemaVersion, CreatedAt: s.now().UTC(), Type: backupType, IncludedComponents: components, ExcludedComponents: excluded, EntrySHA256: map[string]string{"database.dump": dumpChecksum, "credential.key": checksumBytes([]byte(base64.StdEncoding.EncodeToString(s.key)))}, RequiresPassphrase: true, SessionsRestored: false}
 	innerManifest, err := json.Marshal(manifest)
 	if err != nil {
 		return Result{}, fmt.Errorf("encode backup manifest: %w", err)
@@ -178,7 +180,7 @@ func (s *Service) Create(ctx context.Context, backupType Type, passphrase string
 		return Result{}, fmt.Errorf("inspect encrypted payload: %w", err)
 	}
 	envelope := Envelope{Manifest: manifest, PayloadSHA256: payloadChecksum, PayloadBytes: payloadInfo.Size()}
-	archivePath := filepath.Join(temporary, fmt.Sprintf("agh-ha-controller-%s-%s.aghhabackup", backupType, manifest.CreatedAt.Format("20060102T150405Z")))
+	archivePath := filepath.Join(temporary, fmt.Sprintf("atlas-dns-%s-%s.atlasdnsbackup", backupType, manifest.CreatedAt.Format("20060102T150405Z")))
 	if err := writeEnvelope(archivePath, cipherPath, envelope); err != nil {
 		return Result{}, err
 	}
@@ -221,7 +223,7 @@ func ReadEnvelope(reader io.Reader) (Envelope, error) {
 	if err := decodeOneJSON(decoder, &envelope); err != nil {
 		return Envelope{}, domain.NewError(domain.ErrorValidation, "backup manifest is malformed")
 	}
-	if envelope.Manifest.BackupFormatVersion != FormatVersion || envelope.PayloadBytes <= 0 || envelope.PayloadBytes > MaxArchiveBytes || !validSHA256(envelope.PayloadSHA256) {
+	if envelope.Manifest.BackupFormatVersion != FormatVersion || envelope.Manifest.Application != Application || envelope.PayloadBytes <= 0 || envelope.PayloadBytes > MaxArchiveBytes || !validSHA256(envelope.PayloadSHA256) {
 		return Envelope{}, domain.NewError(domain.ErrorValidation, "backup format or payload size is unsupported")
 	}
 	return envelope, nil
@@ -366,7 +368,7 @@ func validatePayload(reader io.Reader, expected Manifest, extractDirectory strin
 	if count, err := reader.Read(trailing[:]); count != 0 || err != io.EOF {
 		return nil, Manifest{}, domain.NewError(domain.ErrorValidation, "backup payload contains trailing data")
 	}
-	if inner.BackupFormatVersion != expected.BackupFormatVersion {
+	if inner.BackupFormatVersion != expected.BackupFormatVersion || inner.Application != Application {
 		return nil, Manifest{}, domain.NewError(domain.ErrorValidation, "authenticated backup format is unsupported")
 	}
 	return checksums, inner, nil

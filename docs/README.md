@@ -1,4 +1,4 @@
-# AGH HA Controller Documentation
+# Atlas DNS Controller Documentation
 
 Current documentation explains how to install, use, administer, and operate the
 product. Development chronology is retained separately for traceability and is
@@ -7,7 +7,9 @@ not part of the operator documentation set.
 ## Get started
 
 - [Docker Compose installation](getting-started/docker.md)
+- [Portainer Stack installation](getting-started/portainer.md)
 - [Debian 13 and systemd installation](getting-started/native-systemd.md)
+- [Manual release archive installation](getting-started/manual-release.md)
 - [User guide](user-guide/overview.md)
 - [Administration guide](administration/administration.md)
 
@@ -17,6 +19,8 @@ not part of the operator documentation set.
 - [Backup and restore](operations/backup-and-restore.md)
 - [Backup format](operations/backup-format.md)
 - [Compatibility matrix](operations/compatibility-matrix.md)
+- [Upgrade and migration policy](operations/upgrade-policy.md)
+- [Release 1.0 readiness record](operations/release-1.0-readiness.md)
 - [Support and deprecation policy](product/support-and-deprecation-policy.md)
 
 ## Understand the product

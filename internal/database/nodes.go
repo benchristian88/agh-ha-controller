@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/domain"
 )
 
 func (s *Store) CreateNode(ctx context.Context, record domain.NodeRecord, event domain.AuditEvent) error {

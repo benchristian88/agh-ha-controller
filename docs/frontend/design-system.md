@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the visual and interaction system for AGH HA Controller.
+This document defines the visual and interaction system for Atlas DNS Controller.
 
 The design should feel familiar to AdGuard Home users while remaining an original implementation designed for multi-node management, desired-state configuration, revisions, deployments, and drift control.
 
@@ -204,15 +204,15 @@ Required roles:
 All pages use the same four-level model:
 
 ```text
-Page canvas     = --aghha-page
-Primary surface = --aghha-card
-Elevated popup  = --aghha-popup
-Subtle / inset  = --aghha-page-subtle
-Border          = --aghha-border
-Strong border   = --aghha-border-strong
+Page canvas     = --atlas-page
+Primary surface = --atlas-card
+Elevated popup  = --atlas-popup
+Subtle / inset  = --atlas-page-subtle
+Border          = --atlas-border
+Strong border   = --atlas-border-strong
 ```
 
-`--aghha-header` is the shell surface and `--aghha-input` is the control
+`--atlas-header` is the shell surface and `--atlas-input` is the control
 surface. Both map into the hierarchy above; they do not create feature-local
 surface systems. Borders reinforce layer changes but must not be the only
 thing separating a card from the page. Heavy card shadows are not part of the

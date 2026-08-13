@@ -12,10 +12,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/benchristian88/agh-ha-controller/internal/version"
+	"github.com/benchristian88/atlas-dns/internal/version"
 )
 
-const latestReleaseURL = "https://api.github.com/repos/benchristian88/agh-ha-controller/releases/latest"
+const latestReleaseURL = "https://api.github.com/repos/benchristian88/atlas-dns/releases/latest"
 
 type Cache struct {
 	Version      string    `json:"latestVersion,omitempty"`
@@ -92,7 +92,7 @@ func (s *Service) refresh(ctx context.Context, previous Cache) error {
 		return err
 	}
 	request.Header.Set("Accept", "application/vnd.github+json")
-	request.Header.Set("User-Agent", "AGH-HA-Controller")
+	request.Header.Set("User-Agent", "Atlas-DNS-Controller")
 	response, err := s.client.Do(request)
 	if err != nil {
 		return s.failure(ctx, previous, "CONTROLLER_UPDATE_CHECK_UNAVAILABLE")
@@ -149,14 +149,14 @@ func (s *Service) build(cache Cache) Status {
 	}
 	switch s.installationType {
 	case "docker":
-		status.UpdateMethod = "On the Docker Compose host, set CONTROLLER_VERSION in .env to the reviewed target, check out that release, rebuild, and recreate the service after creating a backup. This repository currently ships a source-build Compose definition rather than claiming a published image."
+		status.UpdateMethod = "Create and verify a backup, set ATLAS_DNS_VERSION in .env to the reviewed release, pull the prebuilt image, and recreate the service. Pin an exact version in production."
 		if cache.Version != "" {
-			status.UpdateCommand = "git fetch --tags\ngit checkout v" + cache.Version + "\ndocker compose build --pull\ndocker compose up --detach"
+			status.UpdateCommand = "ATLAS_DNS_VERSION=" + cache.Version + " docker compose pull atlas-dns\nATLAS_DNS_VERSION=" + cache.Version + " docker compose up --detach atlas-dns"
 		}
 	case "native_systemd":
-		status.UpdateMethod = "Verify the target release tag/commit and published artifact checksums, check out that exact release, then rerun the source-build systemd installer. Existing configuration and database state are preserved."
+		status.UpdateMethod = "Create and verify a backup, then rerun the native installer for the reviewed release. The installer downloads the matching prebuilt archive, verifies its published checksum, and preserves existing configuration and database state."
 		if cache.Version != "" {
-			status.UpdateCommand = "git fetch --tags\ngit checkout v" + cache.Version + "\nsudo CONTROLLER_VERSION=" + cache.Version + " PUBLIC_BASE_URL=https://controller.example.test ./scripts/install-systemd.sh"
+			status.UpdateCommand = "curl --fail --location --proto '=https' --tlsv1.2 https://github.com/benchristian88/atlas-dns/releases/download/v" + cache.Version + "/install-systemd.sh --output install-systemd.sh\ncurl --fail --location --proto '=https' --tlsv1.2 https://github.com/benchristian88/atlas-dns/releases/download/v" + cache.Version + "/checksums.txt --output checksums.txt\ngrep ' install-systemd.sh$' checksums.txt | sha256sum --check\nsudo ATLAS_DNS_VERSION=" + cache.Version + " PUBLIC_BASE_URL=https://controller.example.test bash install-systemd.sh"
 		}
 	default:
 		status.UpdateMethod = "Use the documented procedure for this installation and verify the release checksum before restarting."
@@ -172,7 +172,7 @@ func validRelease(tag, rawURL string) bool {
 		return false
 	}
 	parsed, err := url.Parse(rawURL)
-	return err == nil && parsed.Scheme == "https" && parsed.Host == "github.com" && strings.HasPrefix(parsed.Path, "/benchristian88/agh-ha-controller/releases/")
+	return err == nil && parsed.Scheme == "https" && parsed.Host == "github.com" && strings.HasPrefix(parsed.Path, "/benchristian88/atlas-dns/releases/")
 }
 
 func compare(left, right string) int {

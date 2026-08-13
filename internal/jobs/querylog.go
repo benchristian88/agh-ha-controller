@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
-	"github.com/benchristian88/agh-ha-controller/internal/querylog"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/operationalhealth"
+	"github.com/benchristian88/atlas-dns/internal/querylog"
 )
 
 const (

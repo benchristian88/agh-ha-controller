@@ -1,6 +1,6 @@
 # Controller API
 
-## Release 0.6 contract
+## Stable API boundary
 
 The controller serves its browser UI and JSON API from the same origin. JSON routes are versioned under:
 
@@ -10,7 +10,7 @@ The controller serves its browser UI and JSON API from the same origin. JSON rou
 
 `GET /health` and `GET /ready` are intentionally unversioned operational probes.
 
-## Release 0.9 administration and recovery
+## Administration and recovery
 
 All routes below require an enabled administrator session. Mutations also
 require the existing same-origin CSRF token.
@@ -18,11 +18,11 @@ require the existing same-origin CSRF token.
 - `GET /api/v1/users`, `POST /api/v1/users`, and
   `PATCH /api/v1/users/{userId}` list, create, and
   enable/disable local administrators. Responses omit password hashes and
-  session material. The only accepted 0.9 role is `administrator`.
+  session material. The only accepted role is `administrator`.
 - `POST /api/v1/users/{userId}/password-reset` replaces the Argon2id credential and
   revokes every target session. No credential is returned.
 - `POST /api/v1/system/backups` accepts `{type, passphrase}` and streams a Standard or
-  Full `.aghhabackup`. Passphrases are transient. Archive creation is audited.
+  Full `.atlasdnsbackup`. Passphrases are transient. Archive creation is audited.
 - `POST /api/v1/system/restore-preflight` accepts bounded multipart `archive` and
   `passphrase` fields, authenticates/validates without mutation, and returns the
   manifest and offline restore plan. Restore execution has no web endpoint.
@@ -40,8 +40,8 @@ Every response includes `X-Request-ID`. API responses use `Cache-Control: no-sto
 
 Successful setup or login creates:
 
-- `aghha_session`: opaque, HTTP-only, SameSite=Strict session cookie;
-- `aghha_csrf`: opaque, SameSite=Strict CSRF cookie readable by the UI.
+- `atlas_dns_session`: opaque, HTTP-only, SameSite=Strict session cookie;
+- `atlas_dns_csrf`: opaque, SameSite=Strict CSRF cookie readable by the UI.
 
 Cookies are marked Secure when `PUBLIC_BASE_URL` uses HTTPS. Authenticated `POST`, `PATCH`, and `DELETE` requests must copy the CSRF cookie into `X-CSRF-Token`. Only HMAC-SHA-256 hashes of both tokens are stored.
 
@@ -85,7 +85,9 @@ PATCH /api/v1/clusters/{clusterId}
 
 Create accepts `name` and `description`. Update accepts the complete mutable representation plus `version`. A stale version returns HTTP 409. Responses include an integer `version` and an ETag.
 
-Cluster deletion is deliberately not included in Release 0.1 because safe behavior for historical configuration, deployment, and audit relationships belongs to a later lifecycle design.
+Cluster deletion is deliberately not exposed because safe behavior for
+historical configuration, deployment, and audit relationships has no supported
+hard-delete contract.
 
 ## Statistics route
 
@@ -177,7 +179,9 @@ Create and update use:
 
 `credentials` are required on create and optional on update. If supplied on update, username and password must be supplied together and the action is audited as credential rotation. `customCaPem` is required when first selecting `custom_ca`, is write-only, and may be omitted on later updates to retain it.
 
-Before saving an enabled node, the controller verifies status, authentication, TLS policy, version, and DNS running state. Configuration changes occur only through explicit Release 0.3 deployment resources.
+Before saving an enabled node, the controller verifies status, authentication,
+TLS policy, version, and DNS running state. Configuration changes occur only
+through explicit deployment resources.
 
 Node responses include identity, URL, trust policy, enabled state, health, compatibility, version, polling timestamps, latency, safe error code, and `recordVersion`. They never include credentials, ciphertext, nonces, CA contents, or authentication headers. The cluster node-list envelope also includes `refreshedAt` and `staleAfterSeconds`; the latter is three configured health intervals so the UI freshness state follows runtime polling configuration.
 
@@ -463,6 +467,6 @@ uses the same fail-closed return validation.
 
 Creating an upgrade accepts a target version and returns a durable guided
 operation. The operator performs the native/systemd or Docker upgrade, then
-validates with the current node record version. AGH HA Controller freshly reads the
+validates with the current node record version. Atlas DNS Controller freshly reads the
 installed version before return checks. Unsupported installation types return
 a capability error and failed validation leaves maintenance enabled.

@@ -13,7 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/domain"
 )
 
 const RestoreConfirmation = "RESTORE_TO_EMPTY_DATABASE"
@@ -30,6 +30,9 @@ type RestoreOptions struct {
 }
 
 func ValidateCompatibility(manifest Manifest, targetVersion string, targetSchema int64) error {
+	if manifest.Application != Application {
+		return domain.NewError(domain.ErrorConflict, "backup was not created by Atlas DNS Controller 1.x")
+	}
 	if manifest.DatabaseSchema > targetSchema {
 		return domain.NewError(domain.ErrorConflict, "backup schema is newer than this controller supports")
 	}
@@ -54,7 +57,7 @@ func Restore(ctx context.Context, options RestoreOptions) (PreflightResult, erro
 	if options.PGRestore == "" {
 		options.PGRestore = "pg_restore"
 	}
-	temporary, err := os.MkdirTemp("", "aghha-restore-")
+	temporary, err := os.MkdirTemp("", "atlas-dns-restore-")
 	if err != nil {
 		return PreflightResult{}, err
 	}

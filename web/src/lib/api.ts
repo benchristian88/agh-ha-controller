@@ -79,7 +79,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
   if (!["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase())) {
-    headers.set("X-CSRF-Token", cookie("aghha_csrf"));
+    headers.set("X-CSRF-Token", cookie("atlas_dns_csrf"));
   }
   const response = await fetch(path, {
     ...options,
@@ -110,7 +110,7 @@ async function checkedResponse(
   options: RequestInit,
 ): Promise<Response> {
   const headers = new Headers(options.headers);
-  headers.set("X-CSRF-Token", cookie("aghha_csrf"));
+  headers.set("X-CSRF-Token", cookie("atlas_dns_csrf"));
   const response = await fetch(path, {
     ...options,
     headers,
@@ -198,7 +198,7 @@ export const api = {
     const disposition = response.headers.get("Content-Disposition") ?? "";
     const filename =
       disposition.match(/filename="([^"]+)"/)?.[1] ??
-      `agh-ha-controller-${type}.aghhabackup`;
+      `atlas-dns-${type}.atlasdnsbackup`;
     return {
       blob: await response.blob(),
       filename,

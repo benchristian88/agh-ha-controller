@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/backup"
-	"github.com/benchristian88/agh-ha-controller/internal/config"
-	"github.com/benchristian88/agh-ha-controller/internal/database"
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/version"
+	"github.com/benchristian88/atlas-dns/internal/backup"
+	"github.com/benchristian88/atlas-dns/internal/config"
+	"github.com/benchristian88/atlas-dns/internal/database"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/version"
 )
 
 func main() {
@@ -26,7 +26,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: agh-ha-backup create|preflight|restore [options]")
+		return fmt.Errorf("usage: atlas-dns-backup create|preflight|restore [options]")
 	}
 	switch os.Args[1] {
 	case "create":

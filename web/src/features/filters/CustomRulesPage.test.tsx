@@ -242,7 +242,7 @@ describe("Custom Filter Rules", () => {
         issues: [],
       }));
     window.sessionStorage.setItem(
-      `aghha-host-filter-operation:${cluster.id}`,
+      `atlas-host-filter-operation:${cluster.id}`,
       JSON.stringify({
         id: "successful-operation",
         input: { hostname: "ads.example", client: "", queryType: "" },
@@ -279,7 +279,7 @@ describe("Custom Filter Rules", () => {
     await waitFor(() =>
       expect(
         window.sessionStorage.getItem(
-          `aghha-host-filter-operation:${cluster.id}`,
+          `atlas-host-filter-operation:${cluster.id}`,
         ),
       ).toBeNull(),
     );

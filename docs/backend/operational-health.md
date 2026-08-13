@@ -1,6 +1,6 @@
 # Operational Health
 
-Release 0.7 adds one presentation-ready, authenticated cluster endpoint:
+Operational health uses one presentation-ready, authenticated cluster endpoint:
 
 ```text
 GET /api/v1/clusters/{clusterId}/operational-status

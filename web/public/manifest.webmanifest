@@ -1,6 +1,6 @@
 {
-  "name": "AGH HA Controller",
-  "short_name": "AGH HA",
+  "name": "Atlas DNS Controller",
+  "short_name": "Atlas DNS",
   "description": "Management plane for multiple AdGuard Home nodes",
   "id": "/",
   "start_url": "/",

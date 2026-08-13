@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/configuration"
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/inventory"
+	"github.com/benchristian88/atlas-dns/internal/configuration"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/inventory"
 )
 
 const (

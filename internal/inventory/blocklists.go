@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/domain"
 )
 
 // FilterListMetadata is volatile node-reported presentation data. It is kept

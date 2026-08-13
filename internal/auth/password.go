@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/crypto/argon2"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/domain"
 )
 
 const (

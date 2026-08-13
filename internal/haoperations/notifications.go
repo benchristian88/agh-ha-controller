@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/domain"
 )
 
 type PayloadProtector interface {
@@ -197,7 +197,7 @@ func (s *NotificationService) Test(ctx context.Context, actor domain.Actor, chan
 	if err != nil {
 		result.ErrorCode = "NOTIFICATION_SECRET_UNAVAILABLE"
 	} else {
-		body, marshalErr := json.Marshal(map[string]any{"type": "notification.test", "summary": "AGH HA Controller webhook test", "occurredAt": now})
+		body, marshalErr := json.Marshal(map[string]any{"type": "notification.test", "summary": "Atlas DNS Controller webhook test", "occurredAt": now})
 		if marshalErr != nil {
 			return NotificationTestResult{}, marshalErr
 		}
@@ -208,7 +208,7 @@ func (s *NotificationService) Test(ctx context.Context, actor domain.Actor, chan
 			result.ErrorCode = "NOTIFICATION_DESTINATION_INVALID"
 		} else {
 			request.Header.Set("Content-Type", "application/json")
-			request.Header.Set("User-Agent", "AGH-HA-Controller")
+			request.Header.Set("User-Agent", "Atlas-DNS-Controller")
 			client := &http.Client{Transport: s.client.Transport, Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error {
 				return http.ErrUseLastResponse
 			}}
@@ -278,7 +278,7 @@ func (s *NotificationService) DeliverNext(ctx context.Context) (bool, error) {
 		return true, s.failDelivery(ctx, delivery, "NOTIFICATION_DESTINATION_INVALID")
 	}
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("User-Agent", "AGH-HA-Controller")
+	request.Header.Set("User-Agent", "Atlas-DNS-Controller")
 	response, err := s.client.Do(request)
 	if err != nil {
 		return true, s.failDelivery(ctx, delivery, "NOTIFICATION_DELIVERY_FAILED")

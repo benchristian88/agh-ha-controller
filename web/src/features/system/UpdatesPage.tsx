@@ -83,7 +83,7 @@ export function UpdatesPage() {
           </SettingsGroup>
           <SettingsGroup
             title="Update method"
-            description="AGH HA Controller does not execute host commands or access the Docker socket."
+            description="Atlas DNS Controller does not execute host commands or access the Docker socket."
           >
             <SettingRow
               title="Installation type"

@@ -568,7 +568,7 @@ describe("DNS Settings", () => {
   it("restores failed command results and lets the operator dismiss them", async () => {
     mockLoad();
     window.sessionStorage.setItem(
-      `aghha-dns-operation:${cluster.id}`,
+      `atlas-dns-operation:${cluster.id}`,
       JSON.stringify({ id: "operation-restored", upstreams: ["1.1.1.1"] }),
     );
     const read = vi.spyOn(api, "dnsOperation").mockResolvedValue({
@@ -601,14 +601,14 @@ describe("DNS Settings", () => {
     await user.click(screen.getByRole("button", { name: "Dismiss result" }));
     expect(screen.queryByText("Upstream test result")).toBeNull();
     expect(
-      window.sessionStorage.getItem(`aghha-dns-operation:${cluster.id}`),
+      window.sessionStorage.getItem(`atlas-dns-operation:${cluster.id}`),
     ).toBeNull();
   });
 
   it("does not restore a completed successful upstream test", async () => {
     mockLoad();
     window.sessionStorage.setItem(
-      `aghha-dns-operation:${cluster.id}`,
+      `atlas-dns-operation:${cluster.id}`,
       JSON.stringify({ id: "operation-succeeded", upstreams: ["1.1.1.1"] }),
     );
     const read = vi.spyOn(api, "dnsOperation").mockResolvedValue({
@@ -639,7 +639,7 @@ describe("DNS Settings", () => {
     );
     expect(screen.queryByText("Upstream test result")).toBeNull();
     expect(
-      window.sessionStorage.getItem(`aghha-dns-operation:${cluster.id}`),
+      window.sessionStorage.getItem(`atlas-dns-operation:${cluster.id}`),
     ).toBeNull();
   });
 

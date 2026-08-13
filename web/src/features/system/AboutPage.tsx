@@ -23,7 +23,7 @@ export function AboutPage() {
     <PageContainer size="standard">
       <PageHeader
         eyebrow="System"
-        title="About AGH HA Controller"
+        title="About Atlas DNS Controller"
         description="Build, compatibility, attribution, and project information."
       />
       {error !== undefined && (
@@ -32,7 +32,7 @@ export function AboutPage() {
       {!info && !error && <Loading label="Loading build information…" />}
       {info && (
         <SettingsGroup title="Build">
-          <SettingRow title="Product" control="AGH HA Controller" />
+          <SettingRow title="Product" control="Atlas DNS Controller" />
           <SettingRow title="Version" control={<code>{info.version}</code>} />
           <SettingRow
             title="Build / commit"
@@ -51,8 +51,8 @@ export function AboutPage() {
       <SettingsGroup title="Project">
         <div className="settings-group-content about-project">
           <p>
-            AGH HA Controller is an independent project. It is not AdGuard Home
-            and is not an official AdGuard product.
+            Atlas DNS Controller is an independent project. It is not AdGuard
+            Home and is not an official AdGuard product.
           </p>
           <p>
             Supported managed configuration: AdGuard Home v0.107.52 on schema v1
@@ -62,7 +62,7 @@ export function AboutPage() {
           </p>
           <p>
             <a
-              href="https://github.com/benchristian88/agh-ha-controller"
+              href="https://github.com/benchristian88/atlas-dns"
               target="_blank"
               rel="noreferrer"
             >
@@ -70,7 +70,7 @@ export function AboutPage() {
             </a>{" "}
             ·{" "}
             <a
-              href="https://github.com/benchristian88/agh-ha-controller/tree/dev/docs"
+              href="https://github.com/benchristian88/atlas-dns/tree/HEAD/docs"
               target="_blank"
               rel="noreferrer"
             >
@@ -78,9 +78,11 @@ export function AboutPage() {
             </a>
           </p>
           <p>
-            <strong>Licence:</strong> no final licence has been selected; the
-            repository remains unlicensed pending the documented legal and
-            commercial decision.
+            <strong>Licence:</strong> Business Source License 1.1 (BUSL-1.1).
+            Non-commercial personal and homelab use is permitted; commercial
+            hosting or resale is prohibited. The Change License is Apache
+            License 2.0, effective no later than 12 August 2032 for this
+            release.
           </p>
         </div>
       </SettingsGroup>

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/domain"
 )
 
 var queryTypePattern = regexp.MustCompile(`^[A-Z][A-Z0-9-]{0,31}$`)

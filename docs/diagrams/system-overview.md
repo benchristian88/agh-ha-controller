@@ -3,7 +3,7 @@
 ```mermaid
 flowchart TB
     Browser[Administrator Browser]
-    Controller[AGH HA Controller]
+    Controller[Atlas DNS Controller]
     Worker[Background Jobs]
     Postgres[(PostgreSQL)]
     NodeA[AdGuard Home Node A]

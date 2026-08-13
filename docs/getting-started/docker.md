@@ -1,98 +1,123 @@
 # Install with Docker Compose
 
-This is the authoritative Docker installation and upgrade guide.
+This is the supported Docker Compose installation, update, rollback, and
+uninstall guide for Atlas DNS Controller 1.x. It pulls the published GHCR image;
+it does not compile source.
 
 ## Requirements
 
-- A host or LXC with Git, Docker Engine, and Docker Compose v2.
-- OpenSSL for generating secrets.
-- An HTTPS origin for normal use. TLS may terminate at a trusted reverse proxy.
-- Network access from the controller to each AdGuard Home administration API.
+- Docker Engine with the Compose v2 plugin.
+- OpenSSL for secret generation.
+- An HTTPS origin for normal browser use, usually through a trusted reverse
+  proxy.
+- Network access from the container to each AdGuard Home administration API.
 
-The controller container does not need the Docker socket, privileged mode, or a
-DNS port.
+Go, Node.js, npm, a repository checkout, privileged mode, a Docker socket mount,
+and DNS port exposure are not required.
 
-## Install
+## Install 1.0.0
+
+Create a deployment directory and download the versioned production inputs from
+the GitHub Release:
 
 ```bash
-git clone https://github.com/benchristian88/agh-ha-controller.git
-cd agh-ha-controller
-cp .env.example .env
+mkdir atlas-dns && cd atlas-dns
+curl -fsSLO https://github.com/benchristian88/atlas-dns/releases/download/v1.0.0/compose.yaml
+curl -fsSLo .env https://github.com/benchristian88/atlas-dns/releases/download/v1.0.0/atlas-dns.env.example
+```
+
+Generate three independent values:
+
+```bash
 openssl rand -hex 24
 openssl rand -base64 48
 openssl rand -base64 32
 ```
 
-Edit `.env` and set the generated values as `POSTGRES_PASSWORD`,
-`SESSION_SECRET`, and `CREDENTIAL_ENCRYPTION_KEY`. Set `PUBLIC_BASE_URL` to the
-browser-visible origin. The database password must use URL-safe characters
-because Compose interpolates it into `DATABASE_URL`.
+Edit `.env`. Set `POSTGRES_PASSWORD`, `SESSION_SECRET`, and
+`CREDENTIAL_ENCRYPTION_KEY` to those values, set `PUBLIC_BASE_URL` to the
+browser-visible origin, and keep `ATLAS_DNS_VERSION=1.0.0`. The database
+password must use URL-safe characters because Compose interpolates it into
+`DATABASE_URL`.
+
+Validate, pull, and start the published image:
 
 ```bash
 docker compose config
-docker compose up --build --detach
+docker compose pull
+docker compose up -d
 docker compose ps
-docker compose logs --tail=100 controller
+docker compose logs --tail=100 atlas-dns
 ```
 
-The stack starts PostgreSQL 17, builds the controller and frontend, applies
-append-only migrations, and publishes port 8080 by default. Set
-`CONTROLLER_BIND_ADDRESS` and `CONTROLLER_PORT` in `.env` to change host
-exposure. Open `PUBLIC_BASE_URL`, create the initial administrator, and follow
-the Setup Guide.
+Open `PUBLIC_BASE_URL`, create the initial administrator, and follow Setup
+Guide. The named PostgreSQL volume is authoritative persistent state;
+`atlas-dns-work` is restricted temporary workspace.
 
 ## Verify
 
 ```bash
 curl --fail http://127.0.0.1:8080/health
 curl --fail http://127.0.0.1:8080/ready
+docker image inspect ghcr.io/benchristian88/atlas-dns:1.0.0
 ```
 
-Then verify administrator login, add one cluster and node, test node
-connectivity, and inspect Operational Status. `/ready` is PostgreSQL-aware;
-`/health` only confirms process liveness.
-
-## Upgrade
-
-1. Create and preflight a portable backup. Preserve `.env` separately.
-2. Read [CHANGELOG.md](../../CHANGELOG.md) and the compatibility matrix.
-3. Fetch and select the intended tag or commit.
-4. Rebuild and recreate the stack.
-
-```bash
-git fetch --tags
-git checkout <approved-version>
-docker compose up --build --detach
-docker compose ps
-docker compose logs --tail=100 controller
-```
-
-Confirm `/ready`, build metadata in About, active revision, node connectivity,
-and collector recovery. Do not expose the Docker socket to the controller.
+Then verify login, About version metadata, one node connection, Operational
+Status, and collector recovery. `/ready` includes PostgreSQL; `/health` is only
+process liveness.
 
 ## Back up and restore
 
-Use System → Backup & Restore or the packaged `agh-ha-backup` command. The
-`controller-work` volume is temporary workspace, not retained backup storage.
-Download archives to separate protected storage and preserve `.env`. Follow the
-[backup and restore procedure](../operations/backup-and-restore.md) for the
-stopped-controller, empty-database restore workflow.
+Create and preflight a `.atlasdnsbackup` through System → Backup & Restore and
+copy it to protected storage outside Docker volumes. Preserve `.env`
+separately. Offline disaster recovery uses a new empty PostgreSQL database and
+the packaged `atlas-dns-backup` command as described in the
+[backup and restore guide](../operations/backup-and-restore.md).
 
-## Uninstall boundary
+## Update within 1.x
 
-`docker compose down` stops and removes containers but retains named volumes.
-Deleting `postgres-data` destroys controller records and is outside routine
-uninstallation; take and verify a backup before any volume removal.
+1. Review the release notes and compatibility matrix.
+2. Create and preflight a backup; retain the current `.env` and Compose file.
+3. Set `ATLAS_DNS_VERSION` to the exact reviewed 1.x version.
+4. Pull and recreate, then verify readiness and application metadata.
 
-## Troubleshooting
+```bash
+docker compose pull
+docker compose up -d
+docker compose ps
+docker compose logs --tail=100 atlas-dns
+```
 
-- `docker compose config` reports missing values: complete `.env`.
-- Controller remains unhealthy: inspect `docker compose logs controller` and
-  `docker compose logs postgres`.
-- Secure login cookie is not retained: use an HTTPS `PUBLIC_BASE_URL` and verify
-  reverse-proxy forwarding.
-- A node is unreachable: verify controller-to-node HTTPS routing and certificate
-  trust; DNS client routing is unrelated.
+Exact version tags are the supported production pin. Major/minor and `latest`
+tags are convenience pointers, not reproducible deployment identities.
 
-See the [operations runbook](../operations/runbook.md) for worker, storage,
-drift, and collection diagnostics.
+## Rollback boundary
+
+Database migrations are forward-only unless a release explicitly documents a
+compatible rollback. Reverting only the image after a schema migration is not a
+supported rollback. Preserve the previous Compose input and restore a verified
+backup into a new database when release notes require recovery.
+
+## Uninstall or rebuild
+
+`docker compose down` removes containers and retains named volumes. A fresh
+rebuild is:
+
+```text
+verified backup → docker compose down → new deployment → restore to new database
+```
+
+Removing `postgres-data` destroys controller state and is not routine
+uninstallation. Verify a recoverable backup before deleting any volume.
+
+## Development builds
+
+Source builds are contributor workflows only. From a checkout, developers may
+run:
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml build
+docker compose -f compose.yaml -f compose.dev.yaml up -d
+```
+
+Those commands are not the supported production installation path.

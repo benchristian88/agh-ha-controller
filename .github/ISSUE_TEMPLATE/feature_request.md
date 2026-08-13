@@ -7,7 +7,7 @@ about: Propose an operator-focused improvement
 
 ## Desired outcome
 
-## Why this belongs in AGH HA Controller
+## Why this belongs in Atlas DNS Controller
 
 ## Architecture considerations
 

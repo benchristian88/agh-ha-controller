@@ -37,7 +37,7 @@ func (c *ReleaseChecker) Refresh(ctx context.Context) error {
 		return err
 	}
 	request.Header.Set("Accept", "application/vnd.github+json")
-	request.Header.Set("User-Agent", "AGH-HA-Controller")
+	request.Header.Set("User-Agent", "Atlas-DNS-Controller")
 	response, err := c.client.Do(request)
 	if err != nil {
 		return c.recordFailure(ctx, "RELEASE_CHECK_UNAVAILABLE")

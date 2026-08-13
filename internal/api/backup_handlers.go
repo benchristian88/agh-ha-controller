@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/backup"
-	"github.com/benchristian88/agh-ha-controller/internal/database"
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/version"
+	"github.com/benchristian88/atlas-dns/internal/backup"
+	"github.com/benchristian88/atlas-dns/internal/database"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/version"
 )
 
 func (s *Server) handleCreateBackup(response http.ResponseWriter, request *http.Request) {
@@ -38,7 +38,7 @@ func (s *Server) handleCreateBackup(response http.ResponseWriter, request *http.
 		return
 	}
 	defer file.Close()
-	response.Header().Set("Content-Type", "application/vnd.aghha.backup")
+	response.Header().Set("Content-Type", "application/vnd.atlas-dns.backup")
 	response.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filepath.Base(result.Path)))
 	response.Header().Set("Content-Length", fmt.Sprintf("%d", result.Size))
 	response.Header().Set("X-Backup-Type", string(result.Manifest.Type))
@@ -96,7 +96,7 @@ func (s *Server) handleRestorePreflight(response http.ResponseWriter, request *h
 }
 
 func copyUploadedBackup(source multipart.File) (string, func(), error) {
-	directory, err := os.MkdirTemp("", "aghha-upload-")
+	directory, err := os.MkdirTemp("", "atlas-dns-upload-")
 	if err != nil {
 		return "", func() {}, err
 	}
@@ -105,7 +105,7 @@ func copyUploadedBackup(source multipart.File) (string, func(), error) {
 		cleanup()
 		return "", func() {}, err
 	}
-	path := filepath.Join(directory, "upload.aghhabackup")
+	path := filepath.Join(directory, "upload.atlasdnsbackup")
 	target, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		cleanup()

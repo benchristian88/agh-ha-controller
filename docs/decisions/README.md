@@ -2,9 +2,8 @@
 
 Architecture Decision Records capture durable decisions and their rationale.
 The audited status vocabulary is **Accepted**, **Superseded**, **Deprecated**,
-or **Proposed**. No current ADR is superseded or deprecated; ADR-0020 is the only
-proposal. Individual ADR content remains historical and is not rewritten to
-match later implementation chronology.
+or **Proposed**. Individual ADR content remains historical and is not rewritten
+to match later implementation chronology.
 
 | ADR | Status | Decision |
 |---|---|---|
@@ -27,7 +26,7 @@ match later implementation chronology.
 | [ADR-0017](ADR-0017-use-a-monorepo-and-documentation-first-delivery-model.md) | Accepted | Use a monorepo and documentation-first delivery model |
 | [ADR-0018](ADR-0018-defer-controller-ha-until-after-the-single-controller-product-is-stable.md) | Accepted | Defer controller HA until after the single-controller product is stable |
 | [ADR-0019](ADR-0019-limit-early-dhcp-support-to-safe-inventory-and-single-active-node-workflows.md) | Accepted | Limit early DHCP support to safe inventory and single-active-node workflows |
-| [ADR-0020](ADR-0020-defer-final-licensing-selection-pending-legal-and-commercial-review.md) | Proposed | Defer final licensing selection pending legal and commercial review |
+| [ADR-0020](ADR-0020-defer-final-licensing-selection-pending-legal-and-commercial-review.md) | Superseded by ADR-0033 | Defer final licensing selection pending legal and commercial review |
 | [ADR-0021](ADR-0021-release-0-1-runtime-and-security-foundations.md) | Accepted | Define Release 0.1 runtime and security foundations |
 | [ADR-0022](ADR-0022-support-git-based-systemd-and-docker-compose-installation-in-0-1-1.md) | Accepted | Support git-based systemd and Docker Compose installation in 0.1.1 |
 | [ADR-0023](ADR-0023-freeze-release-0-2-read-only-configuration-inventory.md) | Accepted | Freeze Release 0.2 as a read-only configuration inventory |
@@ -40,3 +39,4 @@ match later implementation chronology.
 | [ADR-0030](ADR-0030-coordinate-ha-lifecycle-without-owning-node-upgrades.md) | Accepted | Coordinate HA lifecycle and guided upgrades without owning node package execution |
 | [ADR-0031](ADR-0031-use-passphrase-encrypted-portable-controller-backups-and-offline-restore.md) | Accepted | Use passphrase-encrypted portable controller backups and offline restore |
 | [ADR-0032](ADR-0032-use-cached-github-release-awareness-and-host-guided-controller-updates.md) | Accepted | Use cached GitHub release awareness and host-guided controller updates |
+| [ADR-0033](ADR-0033-license-atlas-dns-controller-under-busl-1-1.md) | Accepted | License Atlas DNS Controller under Business Source License 1.1 |

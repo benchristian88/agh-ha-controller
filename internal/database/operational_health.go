@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/benchristian88/agh-ha-controller/internal/operationalhealth"
+	"github.com/benchristian88/atlas-dns/internal/operationalhealth"
 )
 
 func (s *Store) OperationalDatabase(ctx context.Context, statisticsRetention, queryLogRetention time.Duration) (operationalhealth.Database, error) {

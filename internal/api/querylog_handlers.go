@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/benchristian88/agh-ha-controller/internal/domain"
-	"github.com/benchristian88/agh-ha-controller/internal/querylog"
+	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/querylog"
 )
 
 func (s *Server) handleQueryEvents(response http.ResponseWriter, request *http.Request) {

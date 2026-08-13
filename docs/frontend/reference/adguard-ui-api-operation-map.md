@@ -1,7 +1,7 @@
 > Status: Reference material.
 >
 > This document records the AdGuard Home upstream UI and API model.
-> It is not the authoritative implementation specification for AGH HA Controller.
+> It is not the authoritative implementation specification for Atlas DNS Controller.
 > For current controller design decisions, see:
 > - [ADR-0026](../../decisions/ADR-0026-adopt-adguard-v2-inspired-ui-language.md)
 > - [navigation and shell](../navigation-and-shell.md)
@@ -13,11 +13,11 @@
 
 ## Purpose
 
-Map operator-facing controls to AdGuard Home API operations. AGH HA Controller should normally call its own controller API, which then stores desired state and translates deployments into these node API calls.
+Map operator-facing controls to AdGuard Home API operations. Atlas DNS Controller should normally call its own controller API, which then stores desired state and translates deployments into these node API calls.
 
 ## Important controller rule
 
-AdGuard Home performs direct node updates. AGH HA Controller should generally use:
+AdGuard Home performs direct node updates. Atlas DNS Controller should generally use:
 
 ```text
 UI control
@@ -201,7 +201,7 @@ Controller extension:
 | Logout | — | `GET /control/logout` | Session logout |
 | User profile | `GET /control/profile` | `PUT /control/profile/update` | `ProfileInfo` |
 
-AGH HA Controller will use its own authentication and setup APIs; these endpoints are relevant only when onboarding or managing individual AdGuard Home nodes.
+Atlas DNS Controller will use its own authentication and setup APIs; these endpoints are relevant only when onboarding or managing individual AdGuard Home nodes.
 
 ## 13. Implementation classification template
 

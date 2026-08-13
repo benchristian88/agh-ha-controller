@@ -1,6 +1,6 @@
 # Architecture Overview
 
-AGH HA Controller is a management plane around independently operating AdGuard
+Atlas DNS Controller is a management plane around independently operating AdGuard
 Home nodes. It coordinates desired configuration, deployment, drift, visibility,
 and safe lifecycle work without joining the live DNS request path.
 
@@ -10,7 +10,7 @@ and safe lifecycle work without joining the live DNS request path.
 Administrator browser
   │ same-origin HTTPS, authenticated /api/v1
   ▼
-AGH HA Controller
+Atlas DNS Controller
   ├─ API and frontend
   ├─ deployment/reconciliation workers
   ├─ health/statistics/query-log workers

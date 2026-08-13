@@ -2,7 +2,7 @@
 
 **Administration -> Operational Status** is available at
 `/system/operational-status`. Administration owns this page
-because the page answers whether AGH HA Controller itself is operating correctly; it is
+because the page answers whether Atlas DNS Controller itself is operating correctly; it is
 not another DNS configuration or HA lifecycle task.
 
 The page shows overall controller health, API/PostgreSQL status, independent

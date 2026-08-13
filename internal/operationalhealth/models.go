@@ -2,7 +2,7 @@ package operationalhealth
 
 import "time"
 
-import "github.com/benchristian88/agh-ha-controller/internal/haoperations"
+import "github.com/benchristian88/atlas-dns/internal/haoperations"
 
 type State string
 
