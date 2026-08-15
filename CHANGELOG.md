@@ -16,6 +16,10 @@ interfaces.
 - Return-to-service no longer deadlocks on drift that maintenance itself keeps
   from reconciling. Required live checks still fail closed; existing drift is
   retained as an actionable warning and reconciliation resumes after exit.
+- Return-to-service now treats disabled AdGuard Home TLS as explicitly not
+  applicable instead of failing on retained certificate metadata. Enabled TLS
+  remains fail-closed for invalid, mismatched, not-yet-valid, or expired
+  certificates and returns a safe actionable reason.
 - Deleting and re-adding a node now prunes only the deleted UUID's mutable draft
   override, preserves immutable history, and gives deployment preview clear
   refresh/import/publish guidance for a replacement node's new identity.

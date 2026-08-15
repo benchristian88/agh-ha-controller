@@ -105,10 +105,21 @@ reconciliation but does not erase drift evidence.
 
 Return-to-service runs fresh live checks. Existing drift is reported as a
 warning and reconciliation resumes after maintenance is cleared. A required
-API, observation/capability, DNS, configuration-state, DHCP, TLS, or collector
-failure leaves the node in Maintenance Mode; use the safe failed-check name,
-error code, and request ID in controller logs rather than relying on the page
-heading alone.
+API, observation/capability, DNS, configuration-state, DHCP-safety, applicable
+TLS, or configured-collector failure leaves the node in Maintenance Mode. The
+page reports safe check detail and a Request ID; controller logs retain the safe
+check name/status/code.
+
+The `tls` return check reads redacted state from the fresh AdGuard Home
+`GET /control/tls/status` observation. It is not a connection test to port 443
+or 853. If encryption is disabled, `not_applicable` is expected even when the
+node retains old certificate metadata. If encryption is enabled, repair the
+reported certificate time, certificate/chain validity, key validity, or
+certificate/key pairing issue in AdGuard Home, refresh the node, and retry.
+`unknown` means the fresh observation could not establish TLS applicability and
+fails closed. For an HTTPS administration URL, transport trust and hostname
+failures instead appear in the separate required `api` check as
+`NODE_TLS_FAILED`; Atlas never disables certificate verification.
 
 Archive hides terminal historical records without making them mutable. Hard
 deletion is restricted to unreferenced unused revisions and never-started,

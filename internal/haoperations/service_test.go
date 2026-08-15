@@ -143,9 +143,15 @@ func (f serviceObserverFake) Observe(context.Context, string) (inventory.Snapsho
 	return f.snapshot, f.err
 }
 
-type serviceStatusProbeFake struct{ err error }
+type serviceStatusProbeFake struct {
+	err     error
+	request *domain.NodeProbeRequest
+}
 
-func (f serviceStatusProbeFake) Status(context.Context, domain.NodeProbeRequest) (domain.NodeProbeResult, error) {
+func (f serviceStatusProbeFake) Status(_ context.Context, request domain.NodeProbeRequest) (domain.NodeProbeResult, error) {
+	if f.request != nil {
+		*f.request = request
+	}
 	return domain.NodeProbeResult{}, f.err
 }
 
@@ -248,18 +254,20 @@ func TestMaintenancePreflightBlocksDeploymentAndActiveDHCP(t *testing.T) {
 func TestMaintenanceLifecycleEntersReturnsAndHandlesDuplicates(t *testing.T) {
 	now := time.Date(2026, 8, 16, 0, 0, 0, 0, time.UTC)
 	node := healthyNode(serviceNodeA)
-	node.RecordVersion = 4
+	node.RecordVersion, node.BaseURL = 4, "http://192.0.2.10:3000"
+	document := configuration.Document{ObservedOnly: configuration.ObservedOnly{TLS: configuration.TLSStatus{Enabled: false, NotAfter: "2026-08-10T00:00:00Z"}}}
 	repository := &serviceRepositoryFake{
 		nodes:     []domain.Node{node, healthyNode(serviceNodeB)},
 		probes:    []DNSProbeResult{{NodeID: serviceNodeA, Status: "healthy", ProbedAt: now}, {NodeID: serviceNodeB, Status: "healthy", ProbedAt: now}},
-		snapshots: []inventory.Snapshot{{NodeID: serviceNodeA, ObservedAt: now, Document: &configuration.Document{}}},
+		snapshots: []inventory.Snapshot{{NodeID: serviceNodeA, ObservedAt: now, CollectionStatus: "succeeded", Document: &document}},
 		openDrift: true,
 		settings: map[string]NodeSettings{
 			serviceNodeA: {NodeID: serviceNodeA, DNSProbeHost: "192.0.2.10", DNSProbePort: 53, DNSProbeName: ".", DNSProbeType: "NS", ProbeUDP: true, ProbeTCP: true},
 		},
 	}
 	maintenance := &serviceMaintenanceFake{repository: repository}
-	service := NewService(repository, maintenance, serviceObserverFake{snapshot: inventory.Snapshot{NodeID: serviceNodeA, CollectionStatus: "succeeded"}}, serviceStatusProbeFake{}, serviceCredentialFake{}, serviceDNSProbeFake{})
+	var apiRequest domain.NodeProbeRequest
+	service := NewService(repository, maintenance, serviceObserverFake{snapshot: inventory.Snapshot{NodeID: serviceNodeA, CollectionStatus: "succeeded", Document: &document}}, serviceStatusProbeFake{request: &apiRequest}, serviceCredentialFake{}, serviceDNSProbeFake{})
 	service.now = func() time.Time { return now }
 
 	entered, err := service.EnterMaintenance(context.Background(), domain.Actor{UserID: serviceNodeB, RequestID: "request-enter"}, serviceNodeA, 4, false, "")
@@ -277,14 +285,20 @@ func TestMaintenanceLifecycleEntersReturnsAndHandlesDuplicates(t *testing.T) {
 	if err != nil || !validation.Succeeded || len(maintenance.calls) != 2 || maintenance.calls[1] {
 		t.Fatalf("return validation=%#v calls=%v err=%v", validation, maintenance.calls, err)
 	}
-	foundPendingReconciliation := false
+	foundPendingReconciliation, foundTLSNotApplicable := false, false
 	for _, check := range validation.Checks {
 		if check.Name == "convergence_drift" && check.Status == "warning" && !check.Required && check.ErrorCode == "CONFIGURATION_RECONCILIATION_PENDING" {
 			foundPendingReconciliation = true
 		}
+		if check.Name == "tls" && check.Status == "not_applicable" && !check.Required {
+			foundTLSNotApplicable = true
+		}
 	}
-	if !foundPendingReconciliation {
-		t.Fatalf("return did not preserve actionable drift warning: %#v", validation.Checks)
+	if !foundPendingReconciliation || !foundTLSNotApplicable {
+		t.Fatalf("return checks did not preserve drift warning and TLS applicability: %#v", validation.Checks)
+	}
+	if apiRequest.BaseURL != node.BaseURL || apiRequest.CertificatePolicy != node.CertificatePolicy {
+		t.Fatalf("HTTP-only administration probe request=%#v", apiRequest)
 	}
 	if repository.nodes[0].MaintenanceMode || repository.nodes[0].RecordVersion != 6 {
 		t.Fatalf("persisted node=%#v", repository.nodes[0])
@@ -313,7 +327,7 @@ func TestReturnToServiceFailureLeavesMaintenanceAndAuditsFailure(t *testing.T) {
 		},
 	}
 	maintenance := &serviceMaintenanceFake{repository: repository}
-	service := NewService(repository, maintenance, serviceObserverFake{snapshot: inventory.Snapshot{NodeID: serviceNodeA, CollectionStatus: "succeeded"}}, serviceStatusProbeFake{err: errors.New("API unavailable")}, serviceCredentialFake{}, serviceDNSProbeFake{})
+	service := NewService(repository, maintenance, serviceObserverFake{snapshot: inventory.Snapshot{NodeID: serviceNodeA, CollectionStatus: "succeeded", Document: &configuration.Document{}}}, serviceStatusProbeFake{err: errors.New("API unavailable")}, serviceCredentialFake{}, serviceDNSProbeFake{})
 	service.now = func() time.Time { return now }
 
 	validation, err := service.ReturnToService(context.Background(), domain.Actor{UserID: serviceNodeB, RequestID: "request-failed"}, serviceNodeA, 2)
@@ -329,6 +343,107 @@ func TestReturnToServiceFailureLeavesMaintenanceAndAuditsFailure(t *testing.T) {
 	if !strings.Contains(err.Error(), "api") {
 		t.Fatalf("failure omitted safe failed-check diagnostics: %v", err)
 	}
+}
+
+func TestReturnToServiceTLSApplicabilityMatrix(t *testing.T) {
+	now := time.Date(2026, 8, 16, 0, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name               string
+		tls                configuration.TLSStatus
+		observationErr     error
+		wantStatus         string
+		wantCode           string
+		wantSuccess        bool
+		wantMessage        string
+		httpAdministration bool
+	}{
+		{
+			name:       "not configured ignores retained expired metadata",
+			tls:        configuration.TLSStatus{Enabled: false, NotAfter: "2026-08-10T00:00:00Z"},
+			wantStatus: "not_applicable", wantSuccess: true, httpAdministration: true,
+		},
+		{
+			name:       "configured and healthy",
+			tls:        configuration.TLSStatus{Enabled: true, ValidCertificate: true, ValidChain: true, ValidKey: true, ValidPair: true, NotBefore: "2026-08-01T00:00:00Z", NotAfter: "2027-08-01T00:00:00Z"},
+			wantStatus: "pass", wantSuccess: true,
+		},
+		{
+			name:       "configured and expired",
+			tls:        configuration.TLSStatus{Enabled: true, ValidCertificate: true, ValidChain: true, ValidKey: true, ValidPair: true, NotAfter: "2026-08-10T00:00:00Z"},
+			wantStatus: "fail", wantCode: "TLS_CERTIFICATE_EXPIRED", wantMessage: "TLS certificate expired on 2026-08-10",
+		},
+		{
+			name:           "state unavailable",
+			observationErr: errors.New("observation unavailable"),
+			wantStatus:     "unknown", wantCode: "TLS_STATE_UNAVAILABLE",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			node := healthyNode(serviceNodeA)
+			node.MaintenanceMode, node.RecordVersion, node.ConvergenceStatus = true, 7, "maintenance"
+			if test.httpAdministration {
+				node.BaseURL = "http://192.0.2.10:3000"
+			}
+			document := configuration.Document{ObservedOnly: configuration.ObservedOnly{TLS: test.tls}}
+			snapshot := inventory.Snapshot{NodeID: serviceNodeA, ObservedAt: now, CollectionStatus: "succeeded", Document: &document}
+			repository := &serviceRepositoryFake{
+				nodes: []domain.Node{node}, snapshots: []inventory.Snapshot{snapshot},
+				settings: map[string]NodeSettings{serviceNodeA: {NodeID: serviceNodeA, DNSProbeHost: "192.0.2.10", DNSProbePort: 53, DNSProbeName: ".", DNSProbeType: "NS", ProbeUDP: true, ProbeTCP: true}},
+			}
+			maintenance := &serviceMaintenanceFake{repository: repository}
+			var apiRequest domain.NodeProbeRequest
+			service := NewService(repository, maintenance, serviceObserverFake{snapshot: snapshot, err: test.observationErr}, serviceStatusProbeFake{request: &apiRequest}, serviceCredentialFake{}, serviceDNSProbeFake{})
+			service.now = func() time.Time { return now }
+
+			validation, err := service.ReturnToService(context.Background(), domain.Actor{UserID: serviceNodeB, RequestID: "request-tls"}, serviceNodeA, 7)
+			tlsCheck, found := checkByName(validation.Checks, "tls")
+			if !found || tlsCheck.Status != test.wantStatus || tlsCheck.ErrorCode != test.wantCode || validation.Succeeded != test.wantSuccess {
+				t.Fatalf("validation=%#v tls=%#v found=%t err=%v", validation, tlsCheck, found, err)
+			}
+			if test.wantSuccess {
+				if err != nil || repository.nodes[0].MaintenanceMode || len(maintenance.calls) != 1 {
+					t.Fatalf("successful return node=%#v calls=%v err=%v", repository.nodes[0], maintenance.calls, err)
+				}
+			} else if err == nil || !repository.nodes[0].MaintenanceMode || len(maintenance.calls) != 0 {
+				t.Fatalf("failed return node=%#v calls=%v err=%v", repository.nodes[0], maintenance.calls, err)
+			}
+			if test.wantMessage != "" && (!strings.Contains(tlsCheck.Message, test.wantMessage) || !strings.Contains(err.Error(), test.wantMessage)) {
+				t.Fatalf("TLS diagnostic check=%#v err=%v", tlsCheck, err)
+			}
+			if test.httpAdministration && apiRequest.BaseURL != node.BaseURL {
+				t.Fatalf("HTTP administration request=%#v", apiRequest)
+			}
+		})
+	}
+}
+
+func TestReturnToServiceDNSFailureRemainsBlocking(t *testing.T) {
+	now := time.Date(2026, 8, 16, 0, 0, 0, 0, time.UTC)
+	node := healthyNode(serviceNodeA)
+	node.MaintenanceMode, node.RecordVersion, node.ConvergenceStatus = true, 3, "maintenance"
+	document := configuration.Document{}
+	repository := &serviceRepositoryFake{
+		nodes: []domain.Node{node}, snapshots: []inventory.Snapshot{{NodeID: serviceNodeA, CollectionStatus: "succeeded", Document: &document}},
+		settings: map[string]NodeSettings{serviceNodeA: {NodeID: serviceNodeA, DNSProbeHost: "192.0.2.10", DNSProbePort: 53, DNSProbeName: ".", DNSProbeType: "NS", ProbeUDP: true, ProbeTCP: true}},
+	}
+	maintenance := &serviceMaintenanceFake{repository: repository}
+	service := NewService(repository, maintenance, serviceObserverFake{snapshot: inventory.Snapshot{NodeID: serviceNodeA, CollectionStatus: "succeeded", Document: &document}}, serviceStatusProbeFake{}, serviceCredentialFake{}, serviceDNSProbeFake{err: errors.New("DNS unavailable")})
+	service.now = func() time.Time { return now }
+
+	validation, err := service.ReturnToService(context.Background(), domain.Actor{UserID: serviceNodeB, RequestID: "request-dns"}, serviceNodeA, 3)
+	if err == nil || validation.Succeeded || !repository.nodes[0].MaintenanceMode || len(maintenance.calls) != 0 || !strings.Contains(err.Error(), "dns") {
+		t.Fatalf("validation=%#v node=%#v calls=%v err=%v", validation, repository.nodes[0], maintenance.calls, err)
+	}
+}
+
+func checkByName(checks []Check, name string) (Check, bool) {
+	for _, check := range checks {
+		if check.Name == name {
+			return check, true
+		}
+	}
+	return Check{}, false
 }
 
 func TestCertificateThresholdsUseRedactedObservation(t *testing.T) {

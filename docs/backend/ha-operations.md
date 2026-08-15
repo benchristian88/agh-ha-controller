@@ -28,12 +28,36 @@ deployment, and reconciliation and suppresses its expected DNS-failure alerts.
 
 Return is fail-closed for live safety prerequisites. It freshly checks API,
 capability/configuration observation, DNS, availability of configuration/drift
-state, DHCP, TLS, and configured collectors. Existing drift or an unapplied
-active revision is retained as a non-blocking reconciliation warning: because
-maintenance suppresses deployment and reconciliation, exit must make the node
-eligible for repair rather than deadlocking it in maintenance. Any required
-failure leaves maintenance enabled and the safe API error names the failed
-checks.
+state, DHCP, conditionally applicable TLS, and configured collectors. Existing
+drift or an unapplied active revision is retained as a non-blocking
+reconciliation warning: because maintenance suppresses deployment and
+reconciliation, exit must make the node eligible for repair rather than
+deadlocking it in maintenance. Any required failure leaves maintenance enabled
+and the safe API error names the failed checks and their operator-safe reasons.
+
+Return checks use four explicit states: `pass`, `fail`, `not_applicable`, and
+`unknown` (`warning` remains available for informational reconciliation state).
+The current policy is:
+
+| Check | Policy | Evidence and failure behaviour |
+| --- | --- | --- |
+| Management API | Required | Direct authenticated request to the node's configured base URL. An HTTPS URL performs normal certificate-chain and base-URL hostname verification under the node's system/custom-CA policy; an HTTP-only node remains supported through its explicit insecure-HTTP policy. |
+| Observation and capabilities | Required | A fresh complete AdGuard Home configuration read must succeed. |
+| DNS | Required | The configured UDP/TCP DNS probes must be healthy. |
+| Configuration state | Required when unavailable; otherwise informational | Database/drift state must be readable. Existing drift or an unapplied revision is a reconciliation warning rather than a maintenance deadlock. |
+| DHCP safety | Required cluster invariant | Atlas must be able to verify that no more than one node is observed as active DHCP. A node without DHCP does not fail this check. |
+| TLS | Conditional | Required only when the fresh `/control/tls/status` observation reports `enabled: true`; disabled TLS is `not_applicable`. Unknown applicability fails closed alongside the required observation check. |
+| Statistics and Query Log collectors | Conditional | A configured collector must have resumable state. An unconfigured collector is `not_applicable`. |
+
+The check named `tls` is redacted configuration/certificate validation. During
+the fresh observation Atlas calls AdGuard Home `GET /control/tls/status` over
+the already-configured management transport and evaluates `enabled`, certificate
+and chain validity, key/pair validity, and the public not-before/not-after
+timestamps. It does **not** open a separate connection to HTTPS, DNS-over-TLS,
+or DNS-over-QUIC ports, and it does not independently match `server_name` or the
+certificate SAN list. HTTPS management transport and its expected hostname are
+covered by the separate API check. Private keys, certificate chains, paths, and
+raw node responses remain outside validation messages and logs.
 
 The Nodes and Node Detail surfaces both use this canonical lifecycle rather
 than clearing a browser-local flag. Successful transitions are persisted and

@@ -106,13 +106,15 @@ Query Log, Operational Status, and Audit pages instead of duplicating them.
 
 Maintenance preflight checks active deployments, DHCP ownership, remaining DNS
 capacity, and drift. Return is fail-closed until fresh management, observation,
-DNS, configuration-state availability, TLS, DHCP, and collector evidence
-passes. Existing drift is shown as a reconciliation warning and resumes normal
-handling after exit; it cannot be repaired while maintenance suppresses
-reconciliation. Nodes reloads the controller's persisted state after either
-transition; if a required return check fails, the node remains in maintenance
-and the page shows the failed safe check names instead of treating it as a
-successful exit.
+DNS, configuration-state availability, applicable TLS, DHCP safety, and
+configured collector evidence passes. TLS-disabled nodes report that check as
+not applicable; enabled TLS remains blocking if AdGuard Home reports invalid or
+expired public certificate metadata. Existing drift is shown as a
+reconciliation warning and resumes normal handling after exit; it cannot be
+repaired while maintenance suppresses reconciliation. Nodes reloads the
+controller's persisted state after either transition; if a required return
+check fails, the node remains in maintenance and the page shows the safe reason
+and Request ID instead of treating it as a successful exit.
 
 ## HA Operations
 
