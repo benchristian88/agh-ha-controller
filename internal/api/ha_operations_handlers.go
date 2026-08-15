@@ -127,10 +127,30 @@ func (s *Server) handleReturnToService(response http.ResponseWriter, request *ht
 	}
 	value, err := s.haOperations.ReturnToService(request.Context(), actor(request.Context()), request.PathValue("nodeId"), input.RecordVersion)
 	if err != nil {
+		if s.logger != nil && len(value.Checks) > 0 {
+			s.logger.WarnContext(request.Context(), "return-to-service checks failed",
+				"request_id", requestID(request.Context()),
+				"node_id", request.PathValue("nodeId"),
+				"failed_checks", safeFailedCheckDiagnostics(value.Checks),
+			)
+		}
 		s.writeError(response, request, err)
 		return
 	}
 	writeJSON(response, http.StatusOK, value)
+}
+
+func safeFailedCheckDiagnostics(checks []haoperations.Check) []map[string]string {
+	result := []map[string]string{}
+	for _, check := range checks {
+		if !check.Required || check.Status == "pass" {
+			continue
+		}
+		result = append(result, map[string]string{
+			"name": check.Name, "status": check.Status, "errorCode": check.ErrorCode,
+		})
+	}
+	return result
 }
 
 func (s *Server) handleStartUpgrade(response http.ResponseWriter, request *http.Request) {

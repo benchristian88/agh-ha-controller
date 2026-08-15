@@ -3,6 +3,7 @@ package haoperations
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -252,6 +253,7 @@ func TestMaintenanceLifecycleEntersReturnsAndHandlesDuplicates(t *testing.T) {
 		nodes:     []domain.Node{node, healthyNode(serviceNodeB)},
 		probes:    []DNSProbeResult{{NodeID: serviceNodeA, Status: "healthy", ProbedAt: now}, {NodeID: serviceNodeB, Status: "healthy", ProbedAt: now}},
 		snapshots: []inventory.Snapshot{{NodeID: serviceNodeA, ObservedAt: now, Document: &configuration.Document{}}},
+		openDrift: true,
 		settings: map[string]NodeSettings{
 			serviceNodeA: {NodeID: serviceNodeA, DNSProbeHost: "192.0.2.10", DNSProbePort: 53, DNSProbeName: ".", DNSProbeType: "NS", ProbeUDP: true, ProbeTCP: true},
 		},
@@ -274,6 +276,15 @@ func TestMaintenanceLifecycleEntersReturnsAndHandlesDuplicates(t *testing.T) {
 	validation, err := service.ReturnToService(context.Background(), domain.Actor{UserID: serviceNodeB, RequestID: "request-return"}, serviceNodeA, 5)
 	if err != nil || !validation.Succeeded || len(maintenance.calls) != 2 || maintenance.calls[1] {
 		t.Fatalf("return validation=%#v calls=%v err=%v", validation, maintenance.calls, err)
+	}
+	foundPendingReconciliation := false
+	for _, check := range validation.Checks {
+		if check.Name == "convergence_drift" && check.Status == "warning" && !check.Required && check.ErrorCode == "CONFIGURATION_RECONCILIATION_PENDING" {
+			foundPendingReconciliation = true
+		}
+	}
+	if !foundPendingReconciliation {
+		t.Fatalf("return did not preserve actionable drift warning: %#v", validation.Checks)
 	}
 	if repository.nodes[0].MaintenanceMode || repository.nodes[0].RecordVersion != 6 {
 		t.Fatalf("persisted node=%#v", repository.nodes[0])
@@ -314,6 +325,9 @@ func TestReturnToServiceFailureLeavesMaintenanceAndAuditsFailure(t *testing.T) {
 	}
 	if len(repository.audits) != 1 || repository.audits[0].Action != "node.maintenance_return_failed" {
 		t.Fatalf("audits=%#v", repository.audits)
+	}
+	if !strings.Contains(err.Error(), "api") {
+		t.Fatalf("failure omitted safe failed-check diagnostics: %v", err)
 	}
 }
 

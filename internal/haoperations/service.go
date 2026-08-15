@@ -631,11 +631,29 @@ func (s *Service) ReturnToService(ctx context.Context, actor domain.Actor, nodeI
 	validation.Checks = append(validation.Checks, Check{Name: "dns", Status: ternary(dnsErr == nil && dnsResult.Status == "healthy", "pass", "fail"), Required: true, ErrorCode: dnsResult.ErrorCode, Message: "Active DNS query over configured protocols"})
 	openDrift, driftErr := s.repository.OpenDriftExists(ctx, nodeID)
 	cluster, clusterErr := s.repository.ClusterByID(ctx, record.Node.ClusterID)
-	converged := driftErr == nil && clusterErr == nil && !openDrift && record.Node.ConvergenceStatus != "drifted"
+	configurationStateAvailable := driftErr == nil && clusterErr == nil
+	converged := configurationStateAvailable && !openDrift && record.Node.ConvergenceStatus != "drifted"
 	if clusterErr == nil && cluster.ActiveRevisionID != nil {
 		converged = converged && record.Node.AppliedRevisionID != nil && *record.Node.AppliedRevisionID == *cluster.ActiveRevisionID
 	}
-	validation.Checks = append(validation.Checks, Check{Name: "convergence_drift", Status: ternary(converged, "pass", "fail"), Required: true, ErrorCode: ternary(converged, "", "CONFIGURATION_NOT_CONVERGED"), Message: "No unresolved drift and the active revision is applied"})
+	configurationStatus := "pass"
+	configurationCode := ""
+	configurationMessage := "No unresolved drift and the active revision is applied"
+	configurationRequired := false
+	if !configurationStateAvailable {
+		configurationStatus = "fail"
+		configurationCode = "CONFIGURATION_STATE_UNAVAILABLE"
+		configurationMessage = "Configuration and drift state could not be verified"
+		configurationRequired = true
+	} else if !converged {
+		// Maintenance suppresses deployment and reconciliation.  Existing drift
+		// therefore cannot be a blocking return check: leaving maintenance is the
+		// transition that makes the node eligible for repair again.
+		configurationStatus = "warning"
+		configurationCode = "CONFIGURATION_RECONCILIATION_PENDING"
+		configurationMessage = "Configuration reconciliation is pending and will resume after maintenance"
+	}
+	validation.Checks = append(validation.Checks, Check{Name: "convergence_drift", Status: configurationStatus, Required: configurationRequired, ErrorCode: configurationCode, Message: configurationMessage})
 	activeDHCP := s.nodeActiveDHCP(ctx, record.Node.ClusterID, nodeID)
 	activeDHCPCount, activeDHCPError := s.activeDHCPNodes(ctx, record.Node.ClusterID)
 	dhcpSafe := activeDHCPError == nil && activeDHCPCount <= 1
@@ -679,7 +697,7 @@ func (s *Service) ReturnToService(ctx context.Context, actor domain.Actor, nodeI
 		if err := s.repository.RecordHAEventAndAudit(ctx, event, auditEvent); err != nil {
 			return validation, err
 		}
-		return validation, domain.NewError(domain.ErrorVerification, "node remains in maintenance because return-to-service validation failed")
+		return validation, domain.NewError(domain.ErrorVerification, "node remains in maintenance because required return-to-service checks failed: "+strings.Join(failedChecks, ", "))
 	}
 	node, err := s.maintenance.SetNodeMaintenance(ctx, actor, nodeID, false, expectedVersion)
 	if err != nil {

@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -133,6 +134,98 @@ func TestPreviewOrdersDHCPDisableBeforeEnable(t *testing.T) {
 	}
 	if len(preview.Nodes) != 2 || preview.Nodes[0].NodeID != disableID || preview.Nodes[1].NodeID != activeID {
 		t.Fatalf("preview order = %#v", preview.Nodes)
+	}
+}
+
+func TestReplacementNodeRequiresNewPublishedIdentityAndThenPreviewsSuccessfully(t *testing.T) {
+	const (
+		clusterID     = "11111111-1111-4111-8111-111111111111"
+		deletedID     = "22222222-2222-4222-8222-222222222222"
+		replacementID = "33333333-3333-4333-8333-333333333333"
+	)
+	listener := configuration.NodeSpecific{BindHosts: []string{"192.0.2.10"}, DNSPort: 53}
+	oldRevision := configuration.DesiredDocument{
+		SchemaVersion: configuration.SchemaVersion,
+		NodeOverrides: map[string]configuration.NodeSpecific{deletedID: listener},
+	}
+	replacementRevision := oldRevision
+	replacementRevision.NodeOverrides = map[string]configuration.NodeSpecific{replacementID: listener}
+	replacementEffective, err := configuration.Effective(replacementRevision, replacementID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	features := map[string]bool{}
+	for _, feature := range []string{"dns", "filtering", "clients", "rewrites", "blocked_services", "safety", "query_log", "statistics", "tls", "rewrite_toggle"} {
+		features[feature] = true
+	}
+	repository := &draftRepositoryFake{
+		nodes:     []domain.Node{{ID: replacementID, ClusterID: clusterID, Name: "Replacement DNS", Enabled: true}},
+		snapshots: []inventory.Snapshot{{NodeID: replacementID, Document: &replacementEffective, CollectionStatus: "succeeded"}},
+		profiles:  []inventory.CapabilityProfile{{NodeID: replacementID, Compatibility: string(domain.CompatibilitySupported), Features: features}},
+	}
+	service := NewService(repository)
+
+	stalePreview, err := service.previewDocument(context.Background(), clusterID, "old-revision", oldRevision, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stalePreview.Valid || len(stalePreview.Nodes) != 1 || stalePreview.Nodes[0].Valid {
+		t.Fatalf("pre-replacement revision unexpectedly valid: %#v", stalePreview)
+	}
+	foundGuidance := false
+	for _, issue := range stalePreview.Issues {
+		if issue.Field == "nodeOverrides."+replacementID && strings.Contains(issue.Message, "Replacement DNS") && strings.Contains(issue.Message, "publish a new revision") {
+			foundGuidance = true
+		}
+	}
+	if !foundGuidance {
+		t.Fatalf("replacement guidance missing: %#v", stalePreview.Issues)
+	}
+
+	currentPreview, err := service.previewDocument(context.Background(), clusterID, "replacement-revision", replacementRevision, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !currentPreview.Valid || len(currentPreview.Issues) != 0 || len(currentPreview.Nodes) != 1 || !currentPreview.Nodes[0].Valid {
+		t.Fatalf("replacement revision did not preview: %#v", currentPreview)
+	}
+}
+
+func TestPreviewExplainsOnboardingAndMaintenancePrerequisites(t *testing.T) {
+	const (
+		clusterID = "11111111-1111-4111-8111-111111111111"
+		nodeID    = "22222222-2222-4222-8222-222222222222"
+	)
+	document := configuration.DesiredDocument{
+		SchemaVersion: configuration.SchemaVersion,
+		NodeOverrides: map[string]configuration.NodeSpecific{nodeID: {BindHosts: []string{"192.0.2.10"}, DNSPort: 53}},
+	}
+	repository := &draftRepositoryFake{nodes: []domain.Node{{ID: nodeID, ClusterID: clusterID, Name: "New DNS", Enabled: true}}}
+	preview, err := NewService(repository).previewDocument(context.Background(), clusterID, "revision", document, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"capabilities have not been refreshed", "successful current configuration observation is required"} {
+		found := false
+		for _, issue := range preview.Issues {
+			found = found || strings.Contains(strings.ToLower(issue.Message), expected)
+		}
+		if !found {
+			t.Fatalf("missing actionable %q issue: %#v", expected, preview.Issues)
+		}
+	}
+
+	repository.nodes[0].MaintenanceMode = true
+	maintenancePreview, err := NewService(repository).previewDocument(context.Background(), clusterID, "revision", document, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundMaintenance := false
+	for _, issue := range maintenancePreview.Issues {
+		foundMaintenance = foundMaintenance || strings.Contains(issue.Message, "Maintenance Mode")
+	}
+	if maintenancePreview.Valid || !foundMaintenance {
+		t.Fatalf("all-maintenance preview was not actionable: %#v", maintenancePreview)
 	}
 }
 

@@ -26,9 +26,14 @@ open drift visible. Removing the last verified DNS node requires the exact
 break-glass confirmation. Maintenance excludes the node from normal polling,
 deployment, and reconciliation and suppresses its expected DNS-failure alerts.
 
-Return is fail-closed. It freshly checks API, capability/configuration
-observation, DNS, active-revision convergence, drift, DHCP, TLS, and configured
-collectors. Any required failure leaves maintenance enabled.
+Return is fail-closed for live safety prerequisites. It freshly checks API,
+capability/configuration observation, DNS, availability of configuration/drift
+state, DHCP, TLS, and configured collectors. Existing drift or an unapplied
+active revision is retained as a non-blocking reconciliation warning: because
+maintenance suppresses deployment and reconciliation, exit must make the node
+eligible for repair rather than deadlocking it in maintenance. Any required
+failure leaves maintenance enabled and the safe API error names the failed
+checks.
 
 The Nodes and Node Detail surfaces both use this canonical lifecycle rather
 than clearing a browser-local flag. Successful transitions are persisted and

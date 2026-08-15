@@ -11,6 +11,7 @@ import (
 
 	"github.com/benchristian88/atlas-dns/internal/auth"
 	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/haoperations"
 )
 
 func TestHAOperationsRoutesRequireAuthentication(t *testing.T) {
@@ -40,6 +41,20 @@ func TestHAOperationsRoutesRequireAuthentication(t *testing.T) {
 				t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 			}
 		})
+	}
+}
+
+func TestReturnToServiceLogDiagnosticsContainOnlySafeFailedCheckFields(t *testing.T) {
+	diagnostics := safeFailedCheckDiagnostics([]haoperations.Check{
+		{Name: "api", Status: "fail", Required: true, ErrorCode: "NODE_UNREACHABLE", Message: "safe presentation"},
+		{Name: "convergence_drift", Status: "warning", Required: false, ErrorCode: "CONFIGURATION_RECONCILIATION_PENDING"},
+		{Name: "dns", Status: "pass", Required: true},
+	})
+	if len(diagnostics) != 1 || diagnostics[0]["name"] != "api" || diagnostics[0]["errorCode"] != "NODE_UNREACHABLE" {
+		t.Fatalf("diagnostics=%#v", diagnostics)
+	}
+	if _, exposed := diagnostics[0]["message"]; exposed {
+		t.Fatalf("diagnostics exposed check message: %#v", diagnostics)
 	}
 }
 

@@ -13,6 +13,15 @@ interfaces.
   fail-closed return-to-service lifecycle, reconcile the persisted server
   state, and display validation or request failures instead of silently
   leaving the action unchanged.
+- Return-to-service no longer deadlocks on drift that maintenance itself keeps
+  from reconciling. Required live checks still fail closed; existing drift is
+  retained as an actionable warning and reconciliation resumes after exit.
+- Deleting and re-adding a node now prunes only the deleted UUID's mutable draft
+  override, preserves immutable history, and gives deployment preview clear
+  refresh/import/publish guidance for a replacement node's new identity.
+- Deployment preview now distinguishes missing capability discovery, an
+  unsupported API version, unavailable feature capabilities, missing current
+  observations, and an all-maintenance target set.
 - The five HA Controller → Nodes summary tiles share one row above the desktop
   breakpoint and wrap to three and one columns at smaller viewports without
   changing other convergence summaries.

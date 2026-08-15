@@ -106,10 +106,12 @@ Query Log, Operational Status, and Audit pages instead of duplicating them.
 
 Maintenance preflight checks active deployments, DHCP ownership, remaining DNS
 capacity, and drift. Return is fail-closed until fresh management, observation,
-DNS, convergence, TLS, DHCP, and collector evidence passes, unless an explicitly
-audited break-glass path applies. Nodes reloads the controller's persisted state
-after either transition; if return validation fails, the node remains in
-maintenance and the page shows the failure instead of treating it as a
+DNS, configuration-state availability, TLS, DHCP, and collector evidence
+passes. Existing drift is shown as a reconciliation warning and resumes normal
+handling after exit; it cannot be repaired while maintenance suppresses
+reconciliation. Nodes reloads the controller's persisted state after either
+transition; if a required return check fails, the node remains in maintenance
+and the page shows the failed safe check names instead of treating it as a
 successful exit.
 
 ## HA Operations
