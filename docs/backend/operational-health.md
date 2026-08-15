@@ -40,6 +40,14 @@ valid records and do not create malformed-record gaps. A genuine skipped
 record remains a degraded data-quality state even when the rest of the poll
 succeeds.
 
+A maintenance Statistics attempt is an intentional skipped poll. After the
+node returns to service, operational health continues using its most recent
+successful attempt while that success remains inside the normal Statistics
+staleness window. With no prior success, or once that success becomes stale,
+the node remains non-current until a scheduled collection succeeds. A partial
+node attempt counts toward coverage but propagates `degraded` to the collection
+and overall controller summary.
+
 ## Worker and retry behavior
 
 Workers are context-cancellable, run one pass at a time, and isolate nodes

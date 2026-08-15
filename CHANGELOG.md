@@ -20,6 +20,9 @@ interfaces.
   applicable instead of failing on retained certificate metadata. Enabled TLS
   remains fail-closed for invalid, mismatched, not-yet-valid, or expired
   certificates and returns a safe actionable reason.
+- Dashboard Statistics health now retains still-fresh successful evidence
+  across an intentional maintenance poll skip, and correctly rolls a genuine
+  per-node partial collection up to the controller's degraded state.
 - Deleting and re-adding a node now prunes only the deleted UUID's mutable draft
   override, preserves immutable history, and gives deployment preview clear
   refresh/import/publish guidance for a replacement node's new identity.
