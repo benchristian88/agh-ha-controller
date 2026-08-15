@@ -279,7 +279,18 @@ func statisticsHealth(nodes []domain.Node, attempts []telemetry.NodeAttempt, now
 				if attempt.Status == "unsupported" {
 					item.State = Unsupported
 				} else if attempt.Status == "maintenance" {
-					item.State = Maintenance
+					// A maintenance attempt is an intentional skipped poll, not a
+					// collection failure.  Once the node has returned to service,
+					// continue using a still-fresh prior success until the next
+					// scheduled poll replaces the maintenance evidence.
+					if attempt.LastSuccessAt == nil {
+						item.State = Unknown
+					} else if now.Sub(*attempt.LastSuccessAt) > staleAfter {
+						item.State = Stale
+					} else {
+						item.State = Healthy
+						item.ErrorCode = ""
+					}
 				} else if attempt.Status == "succeeded" {
 					item.State = Healthy
 				} else if attempt.Status == "partial" {
@@ -355,14 +366,17 @@ func queryLogHealth(nodes []domain.Node, checkpoints []querylog.Checkpoint, now 
 }
 
 func finishCollection(result *CollectionSummary) {
-	paused, maintenance, unknown, failed := 0, 0, 0, 0
+	paused, maintenance, unknown, failed, degraded := 0, 0, 0, 0, 0
 	for _, item := range result.Nodes {
 		if !item.counted {
 			continue
 		}
 		switch item.State {
-		case Healthy, Degraded:
+		case Healthy:
 			result.CurrentNodes++
+		case Degraded:
+			result.CurrentNodes++
+			degraded++
 		case Stale:
 			result.StaleNodes++
 		case Unsupported:
@@ -394,6 +408,8 @@ func finishCollection(result *CollectionSummary) {
 		result.State = Unknown
 	} else if failed == considered {
 		result.State = Failed
+	} else if degraded > 0 {
+		result.State = Degraded
 	} else if result.CurrentNodes == 0 {
 		result.State = Degraded
 	} else if result.CurrentNodes < result.ExpectedNodes {

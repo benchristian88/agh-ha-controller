@@ -94,3 +94,62 @@ func TestStatisticsEligibleRangeSuccessIsHealthy(t *testing.T) {
 		t.Fatalf("statistics health = %#v", result)
 	}
 }
+
+func TestStatisticsFreshSuccessSurvivesPostMaintenanceSkip(t *testing.T) {
+	now := time.Date(2026, 8, 16, 1, 0, 0, 0, time.UTC)
+	lastSuccess := now.Add(-30 * time.Minute)
+	nodes := []domain.Node{
+		{ID: "22222222-2222-4222-8222-222222222222", Name: "dns-primary", Enabled: true},
+		{ID: "33333333-3333-4333-8333-333333333333", Name: "dns-secondary", Enabled: true},
+	}
+	result := statisticsHealth(nodes, []telemetry.NodeAttempt{
+		{NodeID: nodes[0].ID, Status: "succeeded", CompletedAt: now, LastSuccessAt: &now, CollectedRanges: 3},
+		{NodeID: nodes[1].ID, Status: "maintenance", ErrorCode: "NODE_MAINTENANCE", CompletedAt: now.Add(-10 * time.Minute), LastSuccessAt: &lastSuccess},
+	}, now, 3*time.Hour, time.Hour)
+
+	if result.State != Healthy || result.CurrentNodes != 2 || result.CoveragePercent != 100 {
+		t.Fatalf("statistics health = %#v", result)
+	}
+	if result.Nodes[1].State != Healthy || result.Nodes[1].ErrorCode != "" || result.Nodes[1].LastSuccessAt == nil || !result.Nodes[1].LastSuccessAt.Equal(lastSuccess) {
+		t.Fatalf("post-maintenance node = %#v", result.Nodes[1])
+	}
+	if summary := aggregate(Status{Database: Database{State: Healthy}, Statistics: result}); summary.State != Healthy || summary.ActionRequired {
+		t.Fatalf("controller summary = %#v", summary)
+	}
+}
+
+func TestStatisticsPostMaintenanceWithoutFreshSuccessDegrades(t *testing.T) {
+	now := time.Date(2026, 8, 16, 1, 0, 0, 0, time.UTC)
+	staleSuccess := now.Add(-4 * time.Hour)
+	nodes := []domain.Node{
+		{ID: "22222222-2222-4222-8222-222222222222", Name: "dns-primary", Enabled: true},
+		{ID: "33333333-3333-4333-8333-333333333333", Name: "dns-secondary", Enabled: true},
+	}
+	result := statisticsHealth(nodes, []telemetry.NodeAttempt{
+		{NodeID: nodes[0].ID, Status: "succeeded", CompletedAt: now, LastSuccessAt: &now, CollectedRanges: 3},
+		{NodeID: nodes[1].ID, Status: "maintenance", ErrorCode: "NODE_MAINTENANCE", CompletedAt: now.Add(-10 * time.Minute), LastSuccessAt: &staleSuccess},
+	}, now, 3*time.Hour, time.Hour)
+
+	if result.State != Degraded || result.CurrentNodes != 1 || result.StaleNodes != 1 || result.Nodes[1].State != Stale {
+		t.Fatalf("statistics health = %#v", result)
+	}
+}
+
+func TestStatisticsPartialNodeDegradesCompleteCoverage(t *testing.T) {
+	now := time.Date(2026, 8, 16, 1, 0, 0, 0, time.UTC)
+	nodes := []domain.Node{
+		{ID: "22222222-2222-4222-8222-222222222222", Name: "dns-primary", Enabled: true},
+		{ID: "33333333-3333-4333-8333-333333333333", Name: "dns-secondary", Enabled: true},
+	}
+	result := statisticsHealth(nodes, []telemetry.NodeAttempt{
+		{NodeID: nodes[0].ID, Status: "succeeded", CompletedAt: now, CollectedRanges: 3},
+		{NodeID: nodes[1].ID, Status: "partial", ErrorCode: "STATISTICS_TIMEOUT", CompletedAt: now, CollectedRanges: 2},
+	}, now, 3*time.Hour, time.Hour)
+
+	if result.State != Degraded || result.CurrentNodes != 2 || result.CoveragePercent != 100 || result.Nodes[1].State != Degraded {
+		t.Fatalf("statistics health = %#v", result)
+	}
+	if summary := aggregate(Status{Database: Database{State: Healthy}, Statistics: result}); summary.State != Degraded || !summary.ActionRequired {
+		t.Fatalf("controller summary = %#v", summary)
+	}
+}
