@@ -42,7 +42,40 @@ if Atlas DNS Controller or PostgreSQL is unavailable.
   metadata.
 
 The [feature catalogue](docs/reference/features.md) is the authoritative current
-capability and boundary reference.
+capability and reference.
+
+## Configurtion Control
+
+Atlas DNS Controller separates editing, publishing and deployment so configuration changes remain controlled, auditable and recoverable.
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/images/atlas-dns-configcontrol.png">
+        <img src="docs/images/atlas-dns-configcontrol.png" alt="Configuration Control" width="250">
+      </a><br>
+      <strong>Configuration Control</strong><br>
+      Manage the cluster's desired DNS configuration from one place.
+    </td>
+
+    <td align="center">
+      <a href="docs/images/atlas-dns-revisions.png">
+        <img src="docs/images/atlas-dns-revisions.png" alt="Configuration Revisions" width="250">
+      </a><br>
+      <strong>Immutable Revisions</strong><br>
+      Publish versioned configuration with a permanent change history.
+    </td>
+
+    <td align="center">
+      <a href="docs/images/atlas-dns-deployments.png">
+        <img src="docs/images/atlas-dns-deployments.png" alt="Configuration Deployment" width="250">
+      </a><br>
+      <strong>Verified Deployments</strong><br>
+      Validate and deploy configuration safely across every managed node.
+    </td>
+  </tr>
+</table>
+
 
 ## Architecture
 
