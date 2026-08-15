@@ -1,14 +1,16 @@
 <p align="center">
-  <img src="web/public/branding/atlas-dns-lockup-light.svg"
-       alt="Atlas DNS Controller"
-       width="420">
-</p>
-<p align="center">
-# Atlas DNS Controller
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="web/public/branding/atlas-dns-lockup-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="web/public/branding/atlas-dns-lockup-light.svg">
+    <img
+      alt="Atlas DNS Controller"
+      src="web/public/branding/atlas-dns-lockup-light.svg"
+      width="420">
+  </picture>
 </p>
 
 Atlas DNS Controller is a management plane for multiple
-AdGuard Home nodes. It gives users one desired configuration, verified
+AdGuard Home nodes. It gives homelab users what they have always wanted, High Availablity Adguard Home, without the hassle of syncing config, and loosing statistics and logs.    Atlas DNS Controller provides one desired configuration, verified
 deployment, drift detection, immutable revision history, aggregated visibility,
 and safe lifecycle coordination while remaining outside the DNS request path.
 
@@ -19,9 +21,9 @@ if Atlas DNS Controller or PostgreSQL is unavailable.
 > product and is not endorsed by AdGuard Software Ltd.
 
 <p align="center">
-  <img src="docs/images/dashboard.png"
+  <img src="docs/images/atlas-dns-dashboard.png"
        alt="Atlas DNS Controller Dashboard"
-       width="1000">
+       width="800">
 </p>
 
 ## Capabilities
