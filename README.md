@@ -57,7 +57,6 @@ Atlas DNS Controller separates editing, publishing and deployment so configurati
       <strong>Configuration Control</strong><br>
       Manage the cluster's desired DNS configuration from one place.
     </td>
-
     <td align="center">
       <a href="docs/images/atlas-dns-revisions.png">
         <img src="docs/images/atlas-dns-revisions.png" alt="Configuration Revisions" width="250">
@@ -65,7 +64,6 @@ Atlas DNS Controller separates editing, publishing and deployment so configurati
       <strong>Immutable Revisions</strong><br>
       Publish versioned configuration with a permanent change history.
     </td>
-
     <td align="center">
       <a href="docs/images/atlas-dns-deployments.png">
         <img src="docs/images/atlas-dns-deployments.png" alt="Configuration Deployment" width="250">
