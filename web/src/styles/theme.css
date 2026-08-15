@@ -481,6 +481,7 @@ th[data-align="right"], td[data-align="right"] { text-align: right; }
 .convergence-summary > div { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--atlas-space-3); }
 .convergence-summary > div strong { min-width: 0; overflow-wrap: anywhere; }
 .convergence-summary dl { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--atlas-space-2); margin: var(--atlas-space-4) 0 0; }
+.convergence-summary--five dl { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .convergence-summary dl div { padding: var(--atlas-space-2); border-radius: var(--atlas-radius-control); background: var(--atlas-page-subtle); }
 .convergence-summary dt { color: var(--atlas-text-muted); font-size: .7rem; }
 .convergence-summary dd { margin: var(--atlas-space-1) 0 0; font-weight: 650; }
@@ -557,6 +558,7 @@ th[data-align="right"], td[data-align="right"] { text-align: right; }
   .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .statistics-panels { grid-template-columns: 1fr; }
   .dashboard-summary-grid { grid-template-columns: 1fr; }
+  .convergence-summary--five dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 620px) {
@@ -613,6 +615,7 @@ th[data-align="right"], td[data-align="right"] { text-align: right; }
   .dhcp-active-toggle { align-self: flex-start; }
   .dhcp-table-actions { flex-wrap: wrap; }
   .convergence-summary dl { grid-template-columns: 1fr 1fr; }
+  .convergence-summary--five dl { grid-template-columns: 1fr; }
   .progress-timeline__step, .partial-success-panel header, .banner { flex-direction: column; }
   .table-inline-detail { padding: var(--atlas-space-4); }
   .inline-operational-detail { min-width: min(620px, calc(100vw - 48px)); }

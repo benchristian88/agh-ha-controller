@@ -30,6 +30,13 @@ Return is fail-closed. It freshly checks API, capability/configuration
 observation, DNS, active-revision convergence, drift, DHCP, TLS, and configured
 collectors. Any required failure leaves maintenance enabled.
 
+The Nodes and Node Detail surfaces both use this canonical lifecycle rather
+than clearing a browser-local flag. Successful transitions are persisted and
+audited before the UI reloads canonical node state. Failed return validation is
+audited, remains visible to the operator, and leaves the node in maintenance.
+Repeating an already-completed enter or return request is an idempotent success
+and does not create another transition event.
+
 ## Certificate and version awareness
 
 Certificate state uses redacted observation metadata. Warning begins at 30 days,

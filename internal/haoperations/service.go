@@ -575,6 +575,13 @@ func (s *Service) MaintenancePreflight(ctx context.Context, nodeID string) (Main
 }
 
 func (s *Service) EnterMaintenance(ctx context.Context, actor domain.Actor, nodeID string, expectedVersion int, breakGlass bool, confirmation string) (domain.Node, error) {
+	node, err := s.repository.NodeByID(ctx, nodeID)
+	if err != nil {
+		return domain.Node{}, err
+	}
+	if node.MaintenanceMode {
+		return node, nil
+	}
 	preflight, err := s.MaintenancePreflight(ctx, nodeID)
 	if err != nil {
 		return domain.Node{}, err
@@ -585,7 +592,7 @@ func (s *Service) EnterMaintenance(ctx context.Context, actor domain.Actor, node
 	if preflight.BreakGlassRequired && (!breakGlass || confirmation != BreakGlassConfirmation) {
 		return domain.Node{}, domain.Validation("confirmation", "break-glass confirmation is required")
 	}
-	node, err := s.maintenance.SetNodeMaintenance(ctx, actor, nodeID, true, expectedVersion)
+	node, err = s.maintenance.SetNodeMaintenance(ctx, actor, nodeID, true, expectedVersion)
 	if err != nil {
 		return domain.Node{}, err
 	}
@@ -605,6 +612,11 @@ func (s *Service) ReturnToService(ctx context.Context, actor domain.Actor, nodeI
 		return ReturnValidation{}, err
 	}
 	validation := ReturnValidation{NodeID: nodeID}
+	if !record.Node.MaintenanceMode {
+		validation.Succeeded = true
+		validation.Checks = []Check{{Name: "maintenance_state", Status: "pass", Required: true, Message: "Node is already outside maintenance"}}
+		return validation, nil
+	}
 	credentials, credentialErr := s.credentials.Decrypt(nodeID, record.Secrets.Credentials)
 	var apiErr error
 	if credentialErr == nil {

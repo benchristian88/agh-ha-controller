@@ -22,6 +22,7 @@ func TestHAOperationsRoutesRequireAuthentication(t *testing.T) {
 		{http.MethodGet, "/api/v1/clusters/11111111-1111-4111-8111-111111111111/ha-history"},
 		{http.MethodGet, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/lifecycle"},
 		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/dns-probe"},
+		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/maintenance"},
 		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/return-to-service"},
 		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/upgrades"},
 		{http.MethodPost, "/api/v1/clusters/11111111-1111-4111-8111-111111111111/notification-channels"},
@@ -60,6 +61,7 @@ func TestHAOperationsMutationRequiresMatchingCSRF(t *testing.T) {
 	server.routes()
 	tests := []struct{ method, path string }{
 		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/dns-probe"},
+		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/return-to-service"},
 		{http.MethodPost, "/api/v1/clusters/11111111-1111-4111-8111-111111111111/notification-channels"},
 		{http.MethodPatch, "/api/v1/notification-channels/22222222-2222-4222-8222-222222222222"},
 		{http.MethodPost, "/api/v1/notification-channels/22222222-2222-4222-8222-222222222222/test"},

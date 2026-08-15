@@ -712,6 +712,12 @@ subsystems are operating, what DNS is doing, and the state of each node.
 - Unknown data is not rendered as zero. Loading, unavailable, refresh-error,
   and partial-report copy remains explicit while the panels stay discoverable.
 
+The HA Controller Nodes inventory summary is the five-tile variant of the
+shared convergence surface. It uses five equal `minmax(0, 1fr)` columns above
+the existing 1100px desktop breakpoint, three columns below that breakpoint,
+and one column at the 620px phone breakpoint. The shared four-tile convergence
+summary remains unchanged for Drift and other consumers.
+
 ---
 
 ## Shared components

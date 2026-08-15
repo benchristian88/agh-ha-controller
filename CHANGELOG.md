@@ -9,6 +9,13 @@ interfaces.
 
 ### Fixed
 
+- Nodes can return a node from Maintenance Mode through the canonical
+  fail-closed return-to-service lifecycle, reconcile the persisted server
+  state, and display validation or request failures instead of silently
+  leaving the action unchanged.
+- The five HA Controller → Nodes summary tiles share one row above the desktop
+  breakpoint and wrap to three and one columns at smaller viewports without
+  changing other convergence summaries.
 - Setup Guide treats a new cluster with no configured nodes as incomplete
   onboarding and keeps genuine API failures distinct from empty state.
 - Authenticated layouts are width-contained on iPhone-class viewports and use
