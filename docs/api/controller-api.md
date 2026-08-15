@@ -460,10 +460,20 @@ administrator-only, CSRF-protected, and audited.
 
 Lifecycle settings use optimistic `recordVersion` and configure DNS host/port,
 query name/type, expected RCODE, UDP/TCP, and installation type. An empty host
-uses the node URL hostname. Maintenance accepts `maintenance`, `recordVersion`,
+uses the node URL hostname. Maintenance accepts `enabled`, `recordVersion`,
 and, only when required, `breakGlass: true` plus the exact confirmation
 `CONTINUE_WITHOUT_DNS_REDUNDANCY`. Clearing maintenance through the legacy route
-uses the same fail-closed return validation.
+uses the same fail-closed return validation. Entering a node already in
+maintenance or returning a node already in service is idempotent and does not
+record a duplicate transition event. A failed return reports a stable API error
+that names the failed safe checks, includes their safe actionable messages, and
+leaves canonical maintenance state enabled. The response retains the normal
+request ID. Check statuses are `pass`, `fail`, `not_applicable`, `unknown`, or
+the informational `warning`. TLS is `not_applicable` when the fresh AdGuard Home
+observation reports encryption disabled; it is required and fail-closed when
+enabled, while unavailable applicability is `unknown` and blocking. Existing
+drift is returned as a warning and becomes eligible for
+normal reconciliation after successful exit.
 
 Creating an upgrade accepts a target version and returns a durable guided
 operation. The operator performs the native/systemd or Docker upgrade, then

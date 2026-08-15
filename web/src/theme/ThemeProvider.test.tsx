@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AtlasBrand } from "../components/Brand";
@@ -43,12 +49,10 @@ describe("theme preference", () => {
     const { container } = renderTheme();
 
     expect(
-      (
-        screen.getByRole("combobox", {
-          name: "Theme preference",
-        }) as HTMLSelectElement
-      ).value,
-    ).toBe("system");
+      screen.getByRole("button", {
+        name: "Theme preference: System",
+      }),
+    ).toBeTruthy();
     expect(screen.getByText("system:light")).toBeTruthy();
     expect(document.documentElement.dataset.theme).toBe("light");
 
@@ -68,14 +72,16 @@ describe("theme preference", () => {
     document.head.append(themeColor);
     renderTheme();
 
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Theme preference" }),
-      "dark",
-    );
+    const trigger = screen.getByRole("button", {
+      name: "Theme preference: System",
+    });
+    await user.click(trigger);
+    await user.click(screen.getByRole("menuitemradio", { name: "Dark" }));
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(document.documentElement.dataset.themePreference).toBe("dark");
     expect(themeColor.content).toBe(THEME_COLORS.dark);
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
 
     media.setMatches(false);
     expect(screen.getByText("dark:dark")).toBeTruthy();
@@ -91,5 +97,49 @@ describe("theme preference", () => {
     window.localStorage.setItem(THEME_STORAGE_KEY, "sepia");
     renderTheme();
     expect(screen.getByText("system:dark")).toBeTruthy();
+  });
+
+  it("supports keyboard theme selection and Escape focus return", async () => {
+    installMatchMedia(false);
+    const user = userEvent.setup();
+    renderTheme();
+    const trigger = screen.getByRole("button", {
+      name: "Theme preference: System",
+    });
+
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("menu", { name: "Theme preference" })).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toContain("System"),
+    );
+    await user.keyboard("{Home}{Enter}");
+    expect(screen.getByText("light:light")).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+
+    await user.click(
+      screen.getByRole("button", { name: "Theme preference: Light" }),
+    );
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu", { name: "Theme preference" })).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("does not close before Safari delivers a tapped option click", async () => {
+    installMatchMedia(false);
+    const user = userEvent.setup();
+    renderTheme();
+    const trigger = screen.getByRole("button", {
+      name: "Theme preference: System",
+    });
+
+    await user.click(trigger);
+    const dark = screen.getByRole("menuitemradio", { name: "Dark" });
+    fireEvent.blur(trigger, { relatedTarget: null });
+    expect(screen.getByRole("menu", { name: "Theme preference" })).toBeTruthy();
+    fireEvent.click(dark);
+
+    expect(screen.getByText("dark:dark")).toBeTruthy();
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
   });
 });

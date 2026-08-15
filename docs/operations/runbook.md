@@ -70,6 +70,15 @@ An unknown or unsupported AdGuard Home contract remains observable where safe,
 but managed writes are blocked. Do not bypass capability validation; update the
 compatibility fixtures and policy in a reviewed release.
 
+Deleting a node preserves its historical observations, revisions, deployment
+results, health evidence, and audit attribution, but removes that UUID from the
+mutable draft. Re-adding the same URL creates a new node UUID and does not
+inherit maintenance state or node-specific desired values by URL. Refresh the
+replacement's observation, explicitly import it into the draft, validate, and
+publish a new immutable revision before previewing deployment. A preview of a
+pre-replacement revision correctly fails with guidance that the new identity is
+absent; do not edit or delete historical revisions to bypass it.
+
 ## Desired configuration, deployment, and drift
 
 The safe operating sequence is:
@@ -93,6 +102,24 @@ Direct node changes produce drift. In Enforce mode Atlas may restore desired
 state only through the normal verified deployment path. In Alert or Manual mode
 the operator chooses restore or adopt. Maintenance suppresses automatic
 reconciliation but does not erase drift evidence.
+
+Return-to-service runs fresh live checks. Existing drift is reported as a
+warning and reconciliation resumes after maintenance is cleared. A required
+API, observation/capability, DNS, configuration-state, DHCP-safety, applicable
+TLS, or configured-collector failure leaves the node in Maintenance Mode. The
+page reports safe check detail and a Request ID; controller logs retain the safe
+check name/status/code.
+
+The `tls` return check reads redacted state from the fresh AdGuard Home
+`GET /control/tls/status` observation. It is not a connection test to port 443
+or 853. If encryption is disabled, `not_applicable` is expected even when the
+node retains old certificate metadata. If encryption is enabled, repair the
+reported certificate time, certificate/chain validity, key validity, or
+certificate/key pairing issue in AdGuard Home, refresh the node, and retry.
+`unknown` means the fresh observation could not establish TLS applicability and
+fails closed. For an HTTPS administration URL, transport trust and hostname
+failures instead appear in the separate required `api` check as
+`NODE_TLS_FAILED`; Atlas never disables certificate verification.
 
 Archive hides terminal historical records without making them mutable. Hard
 deletion is restricted to unreferenced unused revisions and never-started,

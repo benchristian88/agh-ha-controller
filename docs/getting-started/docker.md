@@ -15,15 +15,15 @@ it does not compile source.
 Go, Node.js, npm, a repository checkout, privileged mode, a Docker socket mount,
 and DNS port exposure are not required.
 
-## Install 1.0.0
+## Install 1.0.1
 
 Create a deployment directory and download the versioned production inputs from
 the GitHub Release:
 
 ```bash
 mkdir atlas-dns && cd atlas-dns
-curl -fsSLO https://github.com/benchristian88/atlas-dns/releases/download/v1.0.0/compose.yaml
-curl -fsSLo .env https://github.com/benchristian88/atlas-dns/releases/download/v1.0.0/atlas-dns.env.example
+curl -fsSLO https://github.com/benchristian88/atlas-dns/releases/download/v1.0.1/compose.yaml
+curl -fsSLo .env https://github.com/benchristian88/atlas-dns/releases/download/v1.0.1/atlas-dns.env.example
 ```
 
 Generate three independent values:
@@ -36,7 +36,7 @@ openssl rand -base64 32
 
 Edit `.env`. Set `POSTGRES_PASSWORD`, `SESSION_SECRET`, and
 `CREDENTIAL_ENCRYPTION_KEY` to those values, set `PUBLIC_BASE_URL` to the
-browser-visible origin, and keep `ATLAS_DNS_VERSION=1.0.0`. The database
+browser-visible origin, and keep `ATLAS_DNS_VERSION=1.0.1`. The database
 password must use URL-safe characters because Compose interpolates it into
 `DATABASE_URL`.
 
@@ -59,7 +59,7 @@ Guide. The named PostgreSQL volume is authoritative persistent state;
 ```bash
 curl --fail http://127.0.0.1:8080/health
 curl --fail http://127.0.0.1:8080/ready
-docker image inspect ghcr.io/benchristian88/atlas-dns:1.0.0
+docker image inspect ghcr.io/benchristian88/atlas-dns:1.0.1
 ```
 
 Then verify login, About version metadata, one node connection, Operational
@@ -90,6 +90,11 @@ docker compose logs --tail=100 atlas-dns
 
 Exact version tags are the supported production pin. Major/minor and `latest`
 tags are convenience pointers, not reproducible deployment identities.
+
+For the supported 1.0.0 to 1.0.1 update, preserve `.env` and the named volumes,
+set `ATLAS_DNS_VERSION=1.0.1`, then run the commands above. Release 1.0.1 has no
+database migration; startup verifies the unchanged v1.0.0 migration ledger and
+data remains in `postgres-data`.
 
 ## Rollback boundary
 

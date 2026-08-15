@@ -9,7 +9,6 @@ import { PageContainer, PageHeader } from "../../components/Page";
 import { ScheduleEditor } from "../../components/ScheduleEditor";
 import {
   CapabilityWarning,
-  ScopeIndicator,
   SettingsGroup,
   UnsavedChangesNotice,
 } from "../../components/Settings";
@@ -19,16 +18,12 @@ import type {
   BlockedServicesCatalogue,
   Cluster,
   ConfigurationDraft,
-  ConfigurationRevision,
-  Node,
   ValidationIssue,
 } from "../../lib/types";
 import { ServiceCatalogue } from "./ServiceCatalogue";
 
 export function BlockedServicesPage({ cluster }: { cluster: Cluster }) {
   const [draft, setDraft] = useState<ConfigurationDraft>();
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [revisions, setRevisions] = useState<ConfigurationRevision[]>([]);
   const [catalogue, setCatalogue] = useState<BlockedServicesCatalogue>();
   const [savedDocument, setSavedDocument] = useState("");
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
@@ -40,19 +35,14 @@ export function BlockedServicesPage({ cluster }: { cluster: Cluster }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [inventory, nodeResult, revisionResult, catalogueResult] =
-        await Promise.all([
-          api.configurationInventory(cluster.id),
-          api.nodes(cluster.id),
-          api.configurationRevisions(cluster.id),
-          api.blockedServicesCatalogue(cluster.id),
-        ]);
+      const [inventory, catalogueResult] = await Promise.all([
+        api.configurationInventory(cluster.id),
+        api.blockedServicesCatalogue(cluster.id),
+      ]);
       setDraft(inventory.draft);
       setSavedDocument(
         inventory.draft ? JSON.stringify(inventory.draft.document) : "",
       );
-      setNodes(nodeResult.items);
-      setRevisions(revisionResult.items);
       setCatalogue(catalogueResult);
       setIssues([]);
       setSaved(false);
@@ -66,10 +56,6 @@ export function BlockedServicesPage({ cluster }: { cluster: Cluster }) {
 
   useEffect(() => void load(), [load]);
 
-  const activeRevision = revisions.find(
-    (revision) => revision.active || revision.id === cluster.activeRevisionId,
-  );
-  const affectedNodes = nodes.filter((node) => node.enabled);
   const dirty =
     draft !== undefined && JSON.stringify(draft.document) !== savedDocument;
   const selectedIDs = draft?.document.shared.services.blockedServiceIds ?? [];
@@ -188,46 +174,6 @@ export function BlockedServicesPage({ cluster }: { cluster: Cluster }) {
             saved={saved}
             onSave={() => void saveDraft()}
           />
-
-          <SettingsGroup title="Scope and state">
-            <dl className="blocked-services-state">
-              <div>
-                <dt>Scope</dt>
-                <dd>
-                  <ScopeIndicator scope="cluster" />
-                </dd>
-              </div>
-              <div>
-                <dt>Current draft</dt>
-                <dd>Version {draft.version}</dd>
-              </div>
-              <div>
-                <dt>Active revision</dt>
-                <dd>
-                  {activeRevision
-                    ? `Revision #${activeRevision.revisionNumber}`
-                    : "None"}
-                </dd>
-              </div>
-              <div>
-                <dt>Affected nodes</dt>
-                <dd>{affectedNodes.length}</dd>
-              </div>
-            </dl>
-            {affectedNodes.length > 0 && (
-              <ul
-                className="blocked-services-node-list"
-                aria-label="Affected nodes"
-              >
-                {affectedNodes.map((node) => (
-                  <li className="entity-badge entity-badge--node" key={node.id}>
-                    <span aria-hidden="true">●</span>
-                    {node.name}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </SettingsGroup>
 
           {catalogue?.stale && (
             <CapabilityWarning state="stale">

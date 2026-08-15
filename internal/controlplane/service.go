@@ -495,6 +495,23 @@ func (s *Service) previewDocument(ctx context.Context, clusterID, revisionID str
 	// A revision remains complete for the whole enabled fleet even when a
 	// deployment targets only a subset or temporarily skips maintenance nodes.
 	preview := Preview{RevisionID: revisionID, Strategy: "sequential", FailurePolicy: "stop", Differences: []configuration.Difference{}, Issues: configuration.ValidateDesired(document, enabledNodeIDs(nodes)), Nodes: []PreviewNode{}}
+	if revisionID != "" {
+		nodeNames := make(map[string]string, len(nodes))
+		for _, node := range nodes {
+			nodeNames[node.ID] = node.Name
+		}
+		for index := range preview.Issues {
+			issue := &preview.Issues[index]
+			if strings.HasPrefix(issue.Field, "nodeOverrides.") && issue.Message == "is required for every enabled node" {
+				nodeID := strings.TrimPrefix(issue.Field, "nodeOverrides.")
+				nodeName := nodeNames[nodeID]
+				if nodeName == "" {
+					nodeName = nodeID
+				}
+				issue.Message = nodeName + " is not present in this immutable revision; refresh and import its latest observation into the draft, then validate and publish a new revision"
+			}
+		}
+	}
 	if document.SchemaVersion >= configuration.SchemaVersion && s.blockedServiceValidator != nil {
 		catalogueIssues, validateErr := s.blockedServiceValidator.ValidateBlockedServiceIDs(ctx, clusterID, document.Shared.Services.BlockedServiceIDs)
 		if validateErr != nil {
@@ -521,6 +538,7 @@ func (s *Service) previewDocument(ctx context.Context, clusterID, revisionID str
 	for index, node := range targets {
 		effective, effectiveErr := configuration.Effective(document, node.ID)
 		if effectiveErr != nil {
+			preview.Nodes = append(preview.Nodes, PreviewNode{NodeID: node.ID, Position: index + 1, Valid: false, Warning: "This revision has no listener override for the current node identity."})
 			continue
 		}
 		_, hash, hashErr := configuration.Marshal(effective)
@@ -537,22 +555,30 @@ func (s *Service) previewDocument(ctx context.Context, clusterID, revisionID str
 			}
 		}
 		capabilitiesOK := profileOK && profile.Compatibility == string(domain.CompatibilitySupported)
+		missingFeatures := []string{}
 		for _, feature := range requiredFeatures {
-			capabilitiesOK = capabilitiesOK && profile.Features[feature]
+			if !profile.Features[feature] {
+				capabilitiesOK = false
+				missingFeatures = append(missingFeatures, feature)
+			}
 		}
 		if document.Shared.Services.SafeSearch.Ecosia && !profile.Features["safe_search_ecosia"] {
 			capabilitiesOK = false
+			missingFeatures = append(missingFeatures, "safe_search_ecosia")
 		}
 		if document.SchemaVersion >= configuration.SchemaVersion {
 			legacyFilterIntervals := map[int]bool{0: true, 1: true, 12: true, 24: true, 72: true, 168: true}
 			if !legacyFilterIntervals[document.Shared.Filtering.UpdateInterval] && !profile.Features["filter_interval_arbitrary"] {
 				capabilitiesOK = false
+				missingFeatures = append(missingFeatures, "filter_interval_arbitrary")
 			}
 			if document.Shared.DNS.CacheEnabled != (document.Shared.DNS.CacheSize > 0) && !profile.Features["cache_toggle"] {
 				capabilitiesOK = false
+				missingFeatures = append(missingFeatures, "cache_toggle")
 			}
 			if document.Shared.DNS.UpstreamTimeout > 0 && !profile.Features["upstream_timeout"] {
 				capabilitiesOK = false
+				missingFeatures = append(missingFeatures, "upstream_timeout")
 			}
 			rewriteToggleRequired := !document.Shared.RewritesEnabled
 			for _, rewrite := range document.Shared.Rewrites {
@@ -560,15 +586,24 @@ func (s *Service) previewDocument(ctx context.Context, clusterID, revisionID str
 			}
 			if rewriteToggleRequired && !profile.Features["rewrite_toggle"] {
 				capabilitiesOK = false
+				missingFeatures = append(missingFeatures, "rewrite_toggle")
 			}
 			ignoredToggleRequired := (!document.Shared.QueryLog.IgnoredEnabled && len(document.Shared.QueryLog.Ignored) > 0) || (!document.Shared.Statistics.IgnoredEnabled && len(document.Shared.Statistics.Ignored) > 0)
 			if ignoredToggleRequired && !profile.Features["ignored_lists_toggle"] {
 				capabilitiesOK = false
+				missingFeatures = append(missingFeatures, "ignored_lists_toggle")
 			}
 		}
 		if !capabilitiesOK {
 			item.Valid = false
-			item.Warning = "Every managed feature must be observed and supported before deployment."
+			switch {
+			case !profileOK:
+				item.Warning = "Node capabilities have not been refreshed; refresh its configuration observation before deployment."
+			case profile.Compatibility != string(domain.CompatibilitySupported):
+				item.Warning = "The node's AdGuard Home API version is outside the tested managed-write range."
+			default:
+				item.Warning = "Required managed capabilities are unavailable: " + strings.Join(missingFeatures, ", ") + "."
+			}
 			preview.Issues = append(preview.Issues, configuration.ValidationIssue{Field: "nodes." + node.ID, Message: item.Warning})
 		}
 		snapshot, snapshotOK := snapshotByNode[node.ID]
@@ -582,6 +617,16 @@ func (s *Service) previewDocument(ctx context.Context, clusterID, revisionID str
 			preview.Issues = append(preview.Issues, configuration.ValidationIssue{Field: "nodeOverrides." + node.ID, Message: item.Warning})
 		}
 		preview.Nodes = append(preview.Nodes, item)
+	}
+	if len(targets) == 0 {
+		message := "No enabled deployment targets are available."
+		for _, node := range nodes {
+			if node.Enabled && node.MaintenanceMode {
+				message = "No deployment targets are eligible while every enabled node is in Maintenance Mode."
+				break
+			}
+		}
+		preview.Issues = append(preview.Issues, configuration.ValidationIssue{Field: "nodes", Message: message})
 	}
 	preview.Valid = len(preview.Issues) == 0 && len(preview.Nodes) > 0
 	return preview, nil

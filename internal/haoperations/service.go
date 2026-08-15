@@ -385,7 +385,10 @@ func (s *Service) Summary(ctx context.Context, clusterID string) (HASummary, err
 	for _, probe := range probes {
 		probeByNode[probe.NodeID] = probe
 	}
-	summary := HASummary{}
+	// Keep the collection shape stable for a valid cluster with no configured
+	// nodes.  A nil slice serializes as null and forces browser clients to treat
+	// an ordinary first-run state as a malformed response.
+	summary := HASummary{Nodes: []HANodeStatus{}}
 	for _, node := range nodes {
 		dnsState := HANodeStatus{NodeID: node.ID, DNSStatus: "unknown", UDPStatus: "unknown", TCPStatus: "unknown"}
 		if probe, ok := probeByNode[node.ID]; ok {
@@ -540,11 +543,12 @@ func (s *Service) MaintenancePreflight(ctx context.Context, nodeID string) (Main
 	if latest, latestErr := s.repository.LatestDNSProbe(ctx, nodeID); latestErr == nil {
 		targetDNSHealthy = latest.Status == "healthy" && s.now().UTC().Sub(latest.ProbedAt) <= 2*time.Minute
 	}
-	certificateState := CertificateUnknown
-	if certificates, certificateErr := s.Certificates(ctx, node.ClusterID); certificateErr == nil {
-		for _, certificate := range certificates {
-			if certificate.NodeID == nodeID {
-				certificateState = certificate.State
+	tlsCheck := Check{Name: "tls", Status: "unknown", ErrorCode: "TLS_STATE_UNAVAILABLE", Message: "TLS configuration state is unavailable"}
+	if snapshots, snapshotErr := s.repository.LatestSuccessfulSnapshots(ctx, node.ClusterID); snapshotErr == nil {
+		for _, snapshot := range snapshots {
+			if snapshot.NodeID == nodeID {
+				tlsCheck = returnTLSCheck(snapshot, nil, s.now().UTC())
+				tlsCheck.Required = false // TLS is informational when entering maintenance.
 				break
 			}
 		}
@@ -563,7 +567,7 @@ func (s *Service) MaintenancePreflight(ctx context.Context, nodeID string) (Main
 		{Name: "active_deployment", Status: ternary(!activeDeployment, "pass", "fail"), Required: true, Message: ternary(!activeDeployment, "No active deployment", "An active deployment must finish first")},
 		{Name: "drift", Status: ternary(!openDrift, "pass", "warning"), Message: ternary(!openDrift, "No open drift", "Open drift remains visible during maintenance")},
 		{Name: "dhcp", Status: ternary(!activeDHCP, "pass", "fail"), Required: true, Message: ternary(!activeDHCP, "Node is not active DHCP", "Complete an audited DHCP handoff before maintenance")},
-		{Name: "tls", Status: ternary(certificateState == CertificateExpired, "fail", ternary(certificateState == CertificateWarning || certificateState == CertificateCritical, "warning", "pass")), Message: "Current redacted certificate state: " + string(certificateState)},
+		tlsCheck,
 		{Name: "peer_compatibility", Status: ternary(peersCompatible, "pass", "warning"), Message: ternary(peersCompatible, "Enabled peers are inside the tested controller compatibility range", "One or more enabled peers are outside the tested controller compatibility range")},
 		{Name: "api", Status: ternary(node.HealthStatus == domain.NodeHealthy, "pass", "warning"), Message: "Management API health is evaluated independently"},
 	}
@@ -572,6 +576,13 @@ func (s *Service) MaintenancePreflight(ctx context.Context, nodeID string) (Main
 }
 
 func (s *Service) EnterMaintenance(ctx context.Context, actor domain.Actor, nodeID string, expectedVersion int, breakGlass bool, confirmation string) (domain.Node, error) {
+	node, err := s.repository.NodeByID(ctx, nodeID)
+	if err != nil {
+		return domain.Node{}, err
+	}
+	if node.MaintenanceMode {
+		return node, nil
+	}
 	preflight, err := s.MaintenancePreflight(ctx, nodeID)
 	if err != nil {
 		return domain.Node{}, err
@@ -582,7 +593,7 @@ func (s *Service) EnterMaintenance(ctx context.Context, actor domain.Actor, node
 	if preflight.BreakGlassRequired && (!breakGlass || confirmation != BreakGlassConfirmation) {
 		return domain.Node{}, domain.Validation("confirmation", "break-glass confirmation is required")
 	}
-	node, err := s.maintenance.SetNodeMaintenance(ctx, actor, nodeID, true, expectedVersion)
+	node, err = s.maintenance.SetNodeMaintenance(ctx, actor, nodeID, true, expectedVersion)
 	if err != nil {
 		return domain.Node{}, err
 	}
@@ -602,6 +613,11 @@ func (s *Service) ReturnToService(ctx context.Context, actor domain.Actor, nodeI
 		return ReturnValidation{}, err
 	}
 	validation := ReturnValidation{NodeID: nodeID}
+	if !record.Node.MaintenanceMode {
+		validation.Succeeded = true
+		validation.Checks = []Check{{Name: "maintenance_state", Status: "pass", Required: true, Message: "Node is already outside maintenance"}}
+		return validation, nil
+	}
 	credentials, credentialErr := s.credentials.Decrypt(nodeID, record.Secrets.Credentials)
 	var apiErr error
 	if credentialErr == nil {
@@ -616,11 +632,29 @@ func (s *Service) ReturnToService(ctx context.Context, actor domain.Actor, nodeI
 	validation.Checks = append(validation.Checks, Check{Name: "dns", Status: ternary(dnsErr == nil && dnsResult.Status == "healthy", "pass", "fail"), Required: true, ErrorCode: dnsResult.ErrorCode, Message: "Active DNS query over configured protocols"})
 	openDrift, driftErr := s.repository.OpenDriftExists(ctx, nodeID)
 	cluster, clusterErr := s.repository.ClusterByID(ctx, record.Node.ClusterID)
-	converged := driftErr == nil && clusterErr == nil && !openDrift && record.Node.ConvergenceStatus != "drifted"
+	configurationStateAvailable := driftErr == nil && clusterErr == nil
+	converged := configurationStateAvailable && !openDrift && record.Node.ConvergenceStatus != "drifted"
 	if clusterErr == nil && cluster.ActiveRevisionID != nil {
 		converged = converged && record.Node.AppliedRevisionID != nil && *record.Node.AppliedRevisionID == *cluster.ActiveRevisionID
 	}
-	validation.Checks = append(validation.Checks, Check{Name: "convergence_drift", Status: ternary(converged, "pass", "fail"), Required: true, ErrorCode: ternary(converged, "", "CONFIGURATION_NOT_CONVERGED"), Message: "No unresolved drift and the active revision is applied"})
+	configurationStatus := "pass"
+	configurationCode := ""
+	configurationMessage := "No unresolved drift and the active revision is applied"
+	configurationRequired := false
+	if !configurationStateAvailable {
+		configurationStatus = "fail"
+		configurationCode = "CONFIGURATION_STATE_UNAVAILABLE"
+		configurationMessage = "Configuration and drift state could not be verified"
+		configurationRequired = true
+	} else if !converged {
+		// Maintenance suppresses deployment and reconciliation.  Existing drift
+		// therefore cannot be a blocking return check: leaving maintenance is the
+		// transition that makes the node eligible for repair again.
+		configurationStatus = "warning"
+		configurationCode = "CONFIGURATION_RECONCILIATION_PENDING"
+		configurationMessage = "Configuration reconciliation is pending and will resume after maintenance"
+	}
+	validation.Checks = append(validation.Checks, Check{Name: "convergence_drift", Status: configurationStatus, Required: configurationRequired, ErrorCode: configurationCode, Message: configurationMessage})
 	activeDHCP := s.nodeActiveDHCP(ctx, record.Node.ClusterID, nodeID)
 	activeDHCPCount, activeDHCPError := s.activeDHCPNodes(ctx, record.Node.ClusterID)
 	dhcpSafe := activeDHCPError == nil && activeDHCPCount <= 1
@@ -631,14 +665,7 @@ func (s *Service) ReturnToService(ctx context.Context, actor domain.Actor, nodeI
 		dhcpCode, dhcpMessage = "MULTIPLE_ACTIVE_DHCP_NODES", "Multiple active DHCP nodes were observed"
 	}
 	validation.Checks = append(validation.Checks, Check{Name: "dhcp_safety", Status: ternary(dhcpSafe, "pass", "fail"), Required: true, ErrorCode: dhcpCode, Message: dhcpMessage})
-	certificates, _ := s.Certificates(ctx, record.Node.ClusterID)
-	certificateOK := true
-	for _, certificate := range certificates {
-		if certificate.NodeID == nodeID && certificate.State == CertificateExpired {
-			certificateOK = false
-		}
-	}
-	validation.Checks = append(validation.Checks, Check{Name: "tls", Status: ternary(certificateOK, "pass", "fail"), Required: true, Message: "Certificate is not expired; key material remains redacted"})
+	validation.Checks = append(validation.Checks, returnTLSCheck(snapshot, observationErr, s.now().UTC()))
 	collectorChecks, collectorErr := s.repository.CollectorChecks(ctx, nodeID)
 	if collectorErr != nil {
 		collectorChecks = []Check{{Name: "collectors", Status: "fail", Required: true, ErrorCode: "COLLECTOR_VALIDATION_FAILED", Message: "Collector state could not be verified"}}
@@ -664,7 +691,7 @@ func (s *Service) ReturnToService(ctx context.Context, actor domain.Actor, nodeI
 		if err := s.repository.RecordHAEventAndAudit(ctx, event, auditEvent); err != nil {
 			return validation, err
 		}
-		return validation, domain.NewError(domain.ErrorVerification, "node remains in maintenance because return-to-service validation failed")
+		return validation, domain.NewError(domain.ErrorVerification, returnValidationFailureMessage(validation.Checks))
 	}
 	node, err := s.maintenance.SetNodeMaintenance(ctx, actor, nodeID, false, expectedVersion)
 	if err != nil {
@@ -880,6 +907,88 @@ func parseCertificateTime(value string) (time.Time, bool) {
 		}
 	}
 	return time.Time{}, false
+}
+
+// returnTLSCheck validates the redacted AdGuard Home /control/tls/status data
+// collected by the fresh configuration observation.  It does not connect to an
+// HTTPS, DNS-over-TLS, or DNS-over-QUIC listener; HTTPS administration transport
+// is independently verified by the required API check when the node URL is HTTPS.
+func returnTLSCheck(snapshot inventory.Snapshot, observationErr error, now time.Time) Check {
+	unknown := Check{
+		Name:      "tls",
+		Status:    "unknown",
+		Required:  true,
+		ErrorCode: "TLS_STATE_UNAVAILABLE",
+		Message:   "TLS configuration state could not be verified from the fresh observation",
+	}
+	if observationErr != nil || snapshot.CollectionStatus != "succeeded" || snapshot.Document == nil {
+		return unknown
+	}
+
+	tls := snapshot.Document.ObservedOnly.TLS
+	if !tls.Enabled {
+		return Check{
+			Name:     "tls",
+			Status:   "not_applicable",
+			Required: false,
+			Message:  "TLS encryption is not enabled on this node; check is not applicable",
+		}
+	}
+
+	failure := func(code, message string) Check {
+		return Check{Name: "tls", Status: "fail", Required: true, ErrorCode: code, Message: message}
+	}
+	if strings.TrimSpace(tls.NotBefore) != "" {
+		notBefore, ok := parseCertificateTime(tls.NotBefore)
+		if !ok {
+			return failure("TLS_CERTIFICATE_TIME_INVALID", "TLS certificate start time could not be interpreted")
+		}
+		if now.Before(notBefore) {
+			return failure("TLS_CERTIFICATE_NOT_YET_VALID", "TLS certificate is not valid before "+notBefore.Format("2006-01-02"))
+		}
+	}
+	if strings.TrimSpace(tls.NotAfter) != "" {
+		notAfter, ok := parseCertificateTime(tls.NotAfter)
+		if !ok {
+			return failure("TLS_CERTIFICATE_TIME_INVALID", "TLS certificate expiry could not be interpreted")
+		}
+		if !now.Before(notAfter) {
+			return failure("TLS_CERTIFICATE_EXPIRED", "TLS certificate expired on "+notAfter.Format("2006-01-02"))
+		}
+	}
+	if !tls.ValidCertificate {
+		return failure("TLS_CERTIFICATE_INVALID", "AdGuard Home reports that the TLS certificate is invalid")
+	}
+	if !tls.ValidChain {
+		return failure("TLS_CERTIFICATE_CHAIN_INVALID", "AdGuard Home reports that the TLS certificate chain is invalid")
+	}
+	if !tls.ValidKey {
+		return failure("TLS_PRIVATE_KEY_INVALID", "AdGuard Home reports that the TLS private key is invalid")
+	}
+	if !tls.ValidPair {
+		return failure("TLS_CERTIFICATE_KEY_MISMATCH", "AdGuard Home reports that the TLS certificate and private key do not match")
+	}
+	return Check{Name: "tls", Status: "pass", Required: true, Message: "TLS encryption is enabled and AdGuard Home reports valid certificate metadata"}
+}
+
+func returnValidationFailureMessage(checks []Check) string {
+	names := failedCheckNames(checks)
+	details := make([]string, 0, len(names))
+	for _, name := range names {
+		for _, check := range checks {
+			if check.Name != name || check.Message == "" {
+				continue
+			}
+			label := strings.ToUpper(strings.ReplaceAll(name, "_", " "))
+			details = append(details, label+": "+check.Message)
+			break
+		}
+	}
+	message := "node remains in maintenance because required return-to-service checks failed: " + strings.Join(names, ", ")
+	if len(details) > 0 {
+		message += ". " + strings.Join(details, "; ")
+	}
+	return message
 }
 func compareVersions(left, right string) int {
 	clean := func(value string) []int {

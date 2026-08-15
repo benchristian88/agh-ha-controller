@@ -13,6 +13,10 @@ import desired configuration, publish a revision, and verify the first
 deployment. Setup Guide derives its steps from actual controller state and can
 be revisited at any time.
 
+A cluster with no nodes is a valid first-run state. Setup Guide renders its
+checklist, marks node-dependent work incomplete, and links to Add first node;
+loading and genuine controller/API failures remain separate states.
+
 ## Users
 
 System → Users creates additional local administrators, disables/re-enables an

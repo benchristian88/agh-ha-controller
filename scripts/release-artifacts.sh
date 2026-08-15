@@ -3,7 +3,7 @@ set -euo pipefail
 
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 go_command=${GO:-go}
-release_version=${ATLAS_DNS_VERSION:?set ATLAS_DNS_VERSION, for example 1.0.0 or 1.0.0-rc.1}
+release_version=${ATLAS_DNS_VERSION:?set ATLAS_DNS_VERSION, for example 1.0.1 or 1.0.1-rc.1}
 release_version=${release_version#v}
 case ${release_version} in
   *[!0-9A-Za-z.+-]*|'') echo "ATLAS_DNS_VERSION contains unsupported characters" >&2; exit 1 ;;

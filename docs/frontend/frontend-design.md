@@ -42,6 +42,9 @@ when present.
 The shell owns navigation, theme selection, user actions, and shared context.
 Feature pages do not reproduce primary navigation or maintain a competing scope
 model. Unknown routes render Not Found and never fall through to Dashboard.
+Settings/Filters pages also do not repeat a generic Scope/state card: the shell
+owns cluster, scope, active revision, health, and deployment context, while page
+notices own unsaved state and page-specific capability impact.
 
 ## Navigation model
 
@@ -122,6 +125,11 @@ and node attribution must remain visible.
 The mobile drawer is an alternate presentation of the same hierarchy, not a
 different information architecture. Controls must not rely on hover, and
 closing a drawer or dialog restores focus to its trigger.
+
+The authenticated shell has an explicit inline-size containment contract. It
+does not depend on document-level overflow clipping; context and data tables own
+their intentional local scrolling. Safari/iOS safe-area insets are respected,
+and browser zoom remains available.
 
 ## Accessibility
 

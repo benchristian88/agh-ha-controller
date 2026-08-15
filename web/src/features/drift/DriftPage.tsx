@@ -140,16 +140,44 @@ export function DriftPage({ cluster }: { cluster: Cluster }) {
   async function maintenance(item: DriftEvent) {
     const node = nodeByID.get(item.nodeId);
     if (!node) return;
-    if (
-      !node.maintenanceMode &&
-      !window.confirm(
-        `Put ${node.name} into maintenance? Deployments and reconciliation will exclude it, but the configuration difference remains.`,
-      )
-    )
-      return;
     setBusy(item.id);
     try {
-      await api.setNodeMaintenance(node, !node.maintenanceMode);
+      if (node.maintenanceMode) {
+        if (
+          !window.confirm(
+            "Run all return-to-service checks? Existing drift remains visible and reconciliation resumes after maintenance.",
+          )
+        )
+          return;
+        await api.returnToService(node);
+      } else {
+        const preflight = await api.maintenancePreflight(node.id);
+        if (!preflight.allowed) {
+          const blockingCheck = preflight.checks.find(
+            (check) => check.required && check.status === "fail",
+          );
+          throw new Error(
+            blockingCheck?.message ??
+              "Maintenance preflight contains a blocking check.",
+          );
+        }
+        let breakGlass = false;
+        let confirmation = "";
+        if (preflight.breakGlassRequired) {
+          breakGlass = window.confirm(
+            "This leaves no verified healthy DNS node. Use break glass?",
+          );
+          if (!breakGlass) return;
+          confirmation =
+            window.prompt("Type CONTINUE_WITHOUT_DNS_REDUNDANCY") ?? "";
+        } else if (
+          !window.confirm(
+            `Put ${node.name} into maintenance? Deployments and reconciliation will exclude it, but the configuration difference remains.`,
+          )
+        )
+          return;
+        await api.enterMaintenance(node, breakGlass, confirmation);
+      }
       await load();
     } catch (caught) {
       setError(caught);

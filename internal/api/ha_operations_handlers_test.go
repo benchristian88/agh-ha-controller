@@ -11,6 +11,7 @@ import (
 
 	"github.com/benchristian88/atlas-dns/internal/auth"
 	"github.com/benchristian88/atlas-dns/internal/domain"
+	"github.com/benchristian88/atlas-dns/internal/haoperations"
 )
 
 func TestHAOperationsRoutesRequireAuthentication(t *testing.T) {
@@ -22,6 +23,7 @@ func TestHAOperationsRoutesRequireAuthentication(t *testing.T) {
 		{http.MethodGet, "/api/v1/clusters/11111111-1111-4111-8111-111111111111/ha-history"},
 		{http.MethodGet, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/lifecycle"},
 		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/dns-probe"},
+		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/maintenance"},
 		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/return-to-service"},
 		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/upgrades"},
 		{http.MethodPost, "/api/v1/clusters/11111111-1111-4111-8111-111111111111/notification-channels"},
@@ -39,6 +41,20 @@ func TestHAOperationsRoutesRequireAuthentication(t *testing.T) {
 				t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 			}
 		})
+	}
+}
+
+func TestReturnToServiceLogDiagnosticsContainOnlySafeFailedCheckFields(t *testing.T) {
+	diagnostics := safeFailedCheckDiagnostics([]haoperations.Check{
+		{Name: "api", Status: "fail", Required: true, ErrorCode: "NODE_UNREACHABLE", Message: "safe presentation"},
+		{Name: "convergence_drift", Status: "warning", Required: false, ErrorCode: "CONFIGURATION_RECONCILIATION_PENDING"},
+		{Name: "dns", Status: "pass", Required: true},
+	})
+	if len(diagnostics) != 1 || diagnostics[0]["name"] != "api" || diagnostics[0]["errorCode"] != "NODE_UNREACHABLE" {
+		t.Fatalf("diagnostics=%#v", diagnostics)
+	}
+	if _, exposed := diagnostics[0]["message"]; exposed {
+		t.Fatalf("diagnostics exposed check message: %#v", diagnostics)
 	}
 }
 
@@ -60,6 +76,7 @@ func TestHAOperationsMutationRequiresMatchingCSRF(t *testing.T) {
 	server.routes()
 	tests := []struct{ method, path string }{
 		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/dns-probe"},
+		{http.MethodPost, "/api/v1/nodes/22222222-2222-4222-8222-222222222222/return-to-service"},
 		{http.MethodPost, "/api/v1/clusters/11111111-1111-4111-8111-111111111111/notification-channels"},
 		{http.MethodPatch, "/api/v1/notification-channels/22222222-2222-4222-8222-222222222222"},
 		{http.MethodPost, "/api/v1/notification-channels/22222222-2222-4222-8222-222222222222/test"},

@@ -175,7 +175,7 @@ export function QueryLogPage({ cluster }: { cluster: Cluster }) {
   ];
 
   return (
-    <PageContainer size="full" className="query-log-page">
+    <PageContainer size="wide" className="query-log-page">
       <PageHeader
         eyebrow={`Observability · ${scopeName}`}
         title="Query Log"

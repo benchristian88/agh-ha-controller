@@ -278,7 +278,11 @@ func (s *Store) CollectorChecks(ctx context.Context, nodeID string) ([]haoperati
 		return nil, fmt.Errorf("read statistics collector state: %w", statisticsErr)
 	}
 	statisticsOK := statisticsUnconfigured || (statisticsErr == nil && (statistics == "succeeded" || statistics == "partial" || statistics == "unsupported" || statistics == "maintenance"))
-	checks = append(checks, haoperations.Check{Name: "statistics_collector", Status: map[bool]string{true: "pass", false: "fail"}[statisticsOK], Required: !statisticsUnconfigured, ErrorCode: map[bool]string{true: "", false: "STATISTICS_COLLECTOR_NOT_READY"}[statisticsOK], Message: map[bool]string{true: "Collector is not configured for this node", false: "Statistics collector has a known resumable state"}[statisticsUnconfigured]})
+	statisticsStatus := map[bool]string{true: "pass", false: "fail"}[statisticsOK]
+	if statisticsUnconfigured {
+		statisticsStatus = "not_applicable"
+	}
+	checks = append(checks, haoperations.Check{Name: "statistics_collector", Status: statisticsStatus, Required: !statisticsUnconfigured, ErrorCode: map[bool]string{true: "", false: "STATISTICS_COLLECTOR_NOT_READY"}[statisticsOK], Message: map[bool]string{true: "Collector is not configured for this node", false: "Statistics collector has a known resumable state"}[statisticsUnconfigured]})
 	var queryLog string
 	queryErr := s.pool.QueryRow(ctx, `SELECT last_status FROM query_ingestion_checkpoints WHERE node_id=$1`, nodeID).Scan(&queryLog)
 	queryUnconfigured := errors.Is(queryErr, pgx.ErrNoRows)
@@ -286,7 +290,11 @@ func (s *Store) CollectorChecks(ctx context.Context, nodeID string) ([]haoperati
 		return nil, fmt.Errorf("read Query Log collector state: %w", queryErr)
 	}
 	queryOK := queryUnconfigured || (queryErr == nil && (queryLog == "succeeded" || queryLog == "partial" || queryLog == "unsupported" || queryLog == "logging_disabled" || queryLog == "maintenance"))
-	checks = append(checks, haoperations.Check{Name: "query_log_collector", Status: map[bool]string{true: "pass", false: "fail"}[queryOK], Required: !queryUnconfigured, ErrorCode: map[bool]string{true: "", false: "QUERY_LOG_COLLECTOR_NOT_READY"}[queryOK], Message: map[bool]string{true: "Collector is not configured for this node", false: "Query Log collector has a known resumable state"}[queryUnconfigured]})
+	queryStatus := map[bool]string{true: "pass", false: "fail"}[queryOK]
+	if queryUnconfigured {
+		queryStatus = "not_applicable"
+	}
+	checks = append(checks, haoperations.Check{Name: "query_log_collector", Status: queryStatus, Required: !queryUnconfigured, ErrorCode: map[bool]string{true: "", false: "QUERY_LOG_COLLECTOR_NOT_READY"}[queryOK], Message: map[bool]string{true: "Collector is not configured for this node", false: "Query Log collector has a known resumable state"}[queryUnconfigured]})
 	return checks, nil
 }
 

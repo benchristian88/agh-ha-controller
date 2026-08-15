@@ -6,7 +6,7 @@ documentation, and release engineering enter the candidate.
 
 ## Candidate gate
 
-1. Select a semantic candidate version such as `1.0.0-rc.1` and freeze scope.
+1. Select a semantic candidate version such as `1.0.1-rc.1` and freeze scope.
 2. Update the changelog, compatibility matrix, support policy, upgrade notes,
    and any schema/API documentation affected by the release.
 3. Run formatting, lint, full Go tests and race tests, frontend unit/Axe/assets/
@@ -32,7 +32,7 @@ documentation, and release engineering enter the candidate.
 Use an unused versioned output directory:
 
 ```bash
-ATLAS_DNS_VERSION=1.0.0-rc.1 scripts/release-artifacts.sh
+ATLAS_DNS_VERSION=1.0.1-rc.1 scripts/release-artifacts.sh
 ```
 
 The script produces self-contained Linux amd64 and arm64 archives, production
@@ -49,7 +49,7 @@ same `linux/amd64` and `linux/arm64` OCI image. A publish-enabled run uses the
 repository `GITHUB_TOKEN` to create a GitHub Release and publish the linked GHCR
 package; no personal access token is required.
 
-Stable `v1.0.0` publishes image tags `1.0.0`, `1.0`, `1`, and `latest`.
+Stable `v1.0.1` publishes image tags `1.0.1`, `1.0`, `1`, and `latest`.
 Prereleases publish only their exact tag and never move `latest`. The workflow
 refuses to replace an existing exact GitHub Release or image tag. Operators
 should pin exact versions.
@@ -61,7 +61,7 @@ published images.
 
 ## External release validation
 
-Before final `v1.0.0`, publish and install at least one release candidate. Verify:
+Before final `v1.0.1`, publish and install at least one release candidate. Verify:
 
 - both native archive checksums and runtime contents;
 - anonymous pulls and the amd64/arm64 manifest from GHCR;

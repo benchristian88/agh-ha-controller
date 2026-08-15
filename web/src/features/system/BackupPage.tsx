@@ -61,7 +61,7 @@ export function BackupPage() {
     }
   }
   return (
-    <PageContainer size="wide">
+    <PageContainer size="standard">
       <PageHeader
         eyebrow="System · Data"
         title="Backup & Restore"

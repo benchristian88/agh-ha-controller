@@ -198,10 +198,10 @@ describe("DNS Settings", () => {
     const user = userEvent.setup();
     const { container } = render(<DNSSettingsPage cluster={cluster} />);
 
-    expect(await screen.findByText("Revision #12")).not.toBeNull();
-    expect(container.querySelector(".page-container--full")).not.toBeNull();
-    expect(screen.getByText("Version 4")).not.toBeNull();
-    expect(screen.getByText("2", { selector: "dd" })).not.toBeNull();
+    expect(await screen.findByText("Upstream DNS")).not.toBeNull();
+    expect(container.querySelector(".page-container--wide")).not.toBeNull();
+    expect(screen.queryByText("Draft and scope")).toBeNull();
+    expect(screen.queryByText("Revision #12")).toBeNull();
     expect(
       (screen.getByLabelText("Primary upstreams") as HTMLTextAreaElement).value,
     ).toBe("[/internal.example/]192.0.2.53\nhttps://dns.example/dns-query");

@@ -19,6 +19,7 @@ a compatibility commitment. **Unsupported** must not be advertised as working.
 | Browser | Current Firefox and Safari/iOS | Supported release target; external gate pending | Automated DOM checks do not substitute for packaged browser evidence. |
 | PWA | Current Chromium/Android and Safari/iOS Add to Home Screen | Supported metadata; external gate pending | Standalone metadata/icons; no offline service worker. |
 | Upgrade | 1.0.x → later documented 1.x | Supported policy | Backup first; ordered forward migrations and release notes. |
+| Upgrade | 1.0.0 → 1.0.1 | Supported, schema-neutral | Preserve environment/volumes; the v1.0.0 migration ledger is accepted unchanged. |
 | Upgrade | Any pre-1.0 installation → 1.0 | Unsupported in place | Destroy/rebuild and fresh Atlas installation. |
 | Backup | Atlas backup format v1 within compatible 1.x schema | Supported | Newer application/schema inputs fail closed. |
 | Backup | Pre-1.0 `.aghhabackup`/`AGHHABACKUP` | Unsupported | Not interpreted as Atlas backup v1. |

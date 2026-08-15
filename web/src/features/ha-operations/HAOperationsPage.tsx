@@ -6,6 +6,7 @@ import {
   ErrorState,
   Loading,
 } from "../../components/Feedback";
+import { PageHeader } from "../../components/Page";
 import { Field, SettingsGroup } from "../../components/Settings";
 import { StatusBadge } from "../../components/StatusBadge";
 import { api } from "../../lib/api";
@@ -88,20 +89,17 @@ export function HAOperationsPage({ cluster }: { cluster: Cluster }) {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">HA Controller</p>
-          <h1>HA Operations</h1>
-          <p>
-            DNS redundancy, lifecycle work, certificates, software, and
-            operational history.
-          </p>
-        </div>
-        <StatusBadge
-          status={summary.state === "at_risk" ? "failed" : summary.state}
-          label={summary.state === "at_risk" ? "At Risk" : undefined}
-        />
-      </header>
+      <PageHeader
+        eyebrow="HA Controller"
+        title="HA Operations"
+        description="DNS redundancy, lifecycle work, certificates, software, and operational history."
+        primaryAction={
+          <StatusBadge
+            status={summary.state === "at_risk" ? "failed" : summary.state}
+            label={summary.state === "at_risk" ? "At Risk" : undefined}
+          />
+        }
+      />
       {error !== undefined && (
         <Banner tone="warning" title="Refresh failed">
           Showing the last complete HA snapshot.

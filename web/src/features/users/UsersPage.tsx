@@ -65,7 +65,7 @@ export function UsersPage({ currentUser }: { currentUser: User }) {
   }
 
   return (
-    <PageContainer size="wide">
+    <PageContainer size="standard">
       <PageHeader
         eyebrow="System"
         title="Users"

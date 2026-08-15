@@ -197,9 +197,9 @@ describe("General Settings", () => {
       }));
     render(<GeneralSettingsPage cluster={cluster} />);
 
-    expect(await screen.findByText("Revision #12")).not.toBeNull();
-    expect(screen.getByText("Version 4")).not.toBeNull();
-    expect(screen.getByText("2")).not.toBeNull();
+    expect(await screen.findByText("Protection and filtering")).not.toBeNull();
+    expect(screen.queryByText("Draft and scope")).toBeNull();
+    expect(screen.queryByText("Revision #12")).toBeNull();
     expect(
       (screen.getByLabelText("Filter update interval") as HTMLSelectElement)
         .value,
@@ -351,7 +351,7 @@ describe("General Settings", () => {
     expect(await screen.findByText("Protection and filtering")).not.toBeNull();
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(
-      desktop.container.querySelector(".page-container--full"),
+      desktop.container.querySelector(".page-container--wide"),
     ).not.toBeNull();
     desktop.unmount();
 
@@ -368,7 +368,7 @@ describe("General Settings", () => {
     await user.keyboard(" ");
     expect((protection as HTMLInputElement).checked).toBe(false);
     expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(container.querySelector(".page-container--full")).not.toBeNull();
+    expect(container.querySelector(".page-container--wide")).not.toBeNull();
   });
 
   it("renders loading, retryable error, and missing-draft states", async () => {

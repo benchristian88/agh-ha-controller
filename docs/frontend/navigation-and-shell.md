@@ -6,7 +6,7 @@ Use horizontal desktop navigation.
 
 ```text
 Brand | Dashboard | Statistics | Settings ▾ | Filters ▾ | Query Log
-      | HA Controller ▾ | Setup Guide         Theme     User/System
+      | HA Controller ▾ | Setup Guide         Theme ◐   User/System
 ```
 
 ### Settings menu
@@ -96,9 +96,13 @@ Required context:
 - Settings, Filters, and HA Controller become expandable sections.
 - Context row remains visible or opens as a dedicated context sheet.
 - No mobile-only alternate hierarchy.
-- Theme selection remains a labelled native select in the header.
+- Theme selection remains a compact labelled icon button in the header; its menu
+  exposes Light, Dark, and System.
 - Only one controlled peer section is expanded. Escape closes the drawer and
   restores focus to its trigger.
+- The shell, header, and content stay within the layout viewport. The context
+  row and wide tables may scroll inside their own contained regions. iOS safe
+  areas are applied without disabling accessibility zoom.
 
 ## Menu interaction convention
 

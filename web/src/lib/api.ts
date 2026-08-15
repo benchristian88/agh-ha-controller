@@ -568,11 +568,6 @@ export const api = {
     request<{ items: DhcpOperation[] }>(
       `/api/v1/nodes/${nodeId}/dhcp/operations?limit=10`,
     ),
-  setNodeMaintenance: (node: Node, enabled: boolean) =>
-    request<Node>(`/api/v1/nodes/${node.id}/maintenance`, {
-      method: "POST",
-      body: JSON.stringify({ enabled, recordVersion: node.recordVersion }),
-    }),
   configurationInventory: (clusterId: string) =>
     request<{
       schemaVersion: number;

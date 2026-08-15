@@ -52,7 +52,7 @@ draft → validation → immutable revision → deployment → verification
 See the [architecture overview](docs/architecture/architecture.md) and
 [security guide](docs/security/security.md).
 
-## Install Atlas DNS Controller 1.0
+## Install Atlas DNS Controller 1.0.1
 
 Supported production installation methods consume prebuilt release artefacts.
 Operators do not need Go, Node.js, npm, Make, or a source checkout.
@@ -103,7 +103,8 @@ and [SECURITY.md](SECURITY.md).
 
 ## Upgrades and support
 
-Release 1.0 is the stable baseline for supported 1.x upgrades. Database
+Release 1.0.0 is the stable database baseline for supported 1.x upgrades. The
+1.0.1 patch is schema-neutral. Database
 migrations are ordered, checksum-verified, append-only, and forward-only unless
 a release explicitly documents otherwise. The supported transition from any
 pre-1.0 installation is destroy/rebuild followed by a fresh Atlas DNS Controller

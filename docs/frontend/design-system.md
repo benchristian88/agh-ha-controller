@@ -118,8 +118,8 @@ Lower-frequency administration belongs in the user or system menu:
 - About
 - Sign Out
 
-The labelled System/Light/Dark control sits immediately before the desktop
-administration menu. Atlas theme-specific lockup assets provide the visual
+The compact theme icon button sits immediately before the desktop administration
+menu and opens explicit Light, Dark, and System choices. Atlas theme-specific lockup assets provide the visual
 brand foundation; phone layouts use the approved symbol-only asset rather than
 compressing the lockup.
 
@@ -151,6 +151,11 @@ Below the desktop breakpoint:
 - Show Settings, Filters, and HA Controller as expandable groups.
 - Keep cluster and scope context visible or accessible through a context sheet.
 - Do not invent a separate mobile-only information architecture.
+- Keep the authenticated shell within the layout viewport on first render.
+  Document-level horizontal scrolling or clipping is not a responsive strategy;
+  wide tables and the context row own their deliberate contained scrolling.
+- Respect iOS safe-area insets in browser and standalone modes while preserving
+  normal browser zoom.
 
 ---
 
@@ -432,44 +437,61 @@ visual inset.
 
 ## Page width classes
 
-Pages must use one shared width class.
+Every canonical route receives one shared width class from the route table.
+Feature code must not rely on an omitted container to become accidentally Full
+or define arbitrary max-width values.
 
 ### Narrow
 
 Use for:
 
 - Login.
-- Setup steps.
 - Focused forms.
+- Route-state pages.
 
 ### Standard
 
 Use for:
 
-- General settings.
-- DNS settings.
-- Encryption.
-- DHCP configuration.
+- Setup Guide.
+- All System administration routes.
 
 ### Wide
 
 Use for:
 
+- Dashboard.
+- Statistics and Query Log.
+- Settings and Filters.
 - Nodes.
-- Clients.
-- Filter lists.
+- Node Detail and HA Operations.
+- Configuration Control.
 - Revisions.
 - Deployments.
 - Drift.
 
 ### Full
 
-Use only where justified:
+Reserved for a future route whose content demonstrably requires the complete
+available desktop width. No current canonical route uses Full.
 
-- Query Log.
-- Data-heavy Statistics pages.
+Dashboard, Statistics, and Query Log share the Wide primary-application
+measure. Filters are one Wide family. All System administration pages,
+including Audit Log and Operational Status, use Standard consistently. Mobile
+always uses the available inline size regardless of the desktop maximum.
 
-Feature pages must not define arbitrary max-width values.
+### Canonical route assignment
+
+| Routes | Width | Content reason |
+|---|---|---|
+| `/` | Wide | Dashboard cards and node overview. |
+| `/statistics` | Wide | Matches Dashboard and provides room for charts, rankings, and node coverage. |
+| `/settings/general`, `/settings/dns`, `/settings/encryption`, `/settings/clients`, `/settings/dhcp` | Wide | Primary configuration forms, capability context, and structured tables. |
+| `/filters/blocklists`, `/filters/allowlists`, `/filters/rewrites`, `/filters/blocked-services`, `/filters/custom-rules` | Wide | One coherent Filters family with tables, catalogues, and editors. |
+| `/query-log` | Wide | Matches Dashboard while its investigation table scrolls locally when required. |
+| `/ha/nodes`, `/ha/nodes/{nodeId}`, `/ha/operations`, `/ha/configuration`, `/ha/revisions`, `/ha/deployments`, `/ha/drift` | Wide | Operational tables, comparisons, grids, and lifecycle controls. |
+| `/setup-guide` | Standard | Linear onboarding checklist. |
+| `/system/users`, `/system/audit`, `/system/operational-status`, `/system/settings`, `/system/backups`, `/system/updates`, `/system/about` | Standard | One coherent administration measure; dense tables remain locally scrollable. |
 
 ---
 
@@ -689,6 +711,12 @@ subsystems are operating, what DNS is doing, and the state of each node.
   panel anatomy.
 - Unknown data is not rendered as zero. Loading, unavailable, refresh-error,
   and partial-report copy remains explicit while the panels stay discoverable.
+
+The HA Controller Nodes inventory summary is the five-tile variant of the
+shared convergence surface. It uses five equal `minmax(0, 1fr)` columns above
+the existing 1100px desktop breakpoint, three columns below that breakpoint,
+and one column at the 620px phone breakpoint. The shared four-tile convergence
+summary remains unchanged for Drift and other consumers.
 
 ---
 
@@ -929,6 +957,10 @@ The UI must:
   theme-colour metadata synchronized.
 - Review charts, tooltips, dialogs, code editors, badges, and tables separately in both themes.
 - Avoid neon effects or excessive contrast in dark mode.
+- Use a real approximately 44px icon button and an explicit keyboard/touch menu
+  for Light, Dark, and System. The selected preference remains visible through
+  icon, accessible name, and checked menu state; no hidden gesture is required
+  to return to System.
 
 Approved brand colours are Atlas Blue `#2563EB`, Atlas Teal `#0EA5A3`, Atlas
 Charcoal `#111111`, and White `#FFFFFF`. Primary interaction may use Atlas Blue;

@@ -4,6 +4,12 @@
 
 PostgreSQL is the initial primary database.
 
+The supported database compatibility baseline is Atlas DNS Controller v1.0.0.
+Physically, a clean database reaches that baseline by applying the immutable
+embedded `000001`–`000014` chain shipped in v1.0.0. The release-era names are
+historical labels, not support promises for pre-1.0 databases. Release 1.0.1 is
+schema-neutral and reuses the same ledger unchanged.
+
 Release 0.7 adds no parallel health tables. Durable node, observation,
 Statistics, Query Log, deployment, and drift records remain authoritative;
 short-lived worker-running state stays in process and becomes unknown after a

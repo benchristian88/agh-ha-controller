@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { MetricCard } from "../../components/DataDisplay";
 import { EmptyState, ErrorState, Loading } from "../../components/Feedback";
+import { PageHeader } from "../../components/Page";
 import { StatusBadge, type StatusKind } from "../../components/StatusBadge";
 import { api } from "../../lib/api";
 import type {
@@ -57,32 +58,29 @@ export function StatisticsPage({ cluster }: { cluster: Cluster }) {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Observability · {scopeName}</p>
-          <h1>Statistics</h1>
-          <p className="page-description">
-            Controller-collected DNS activity across the selected scope. No
-            query-log records are used.
-          </p>
-        </div>
-        <fieldset className="statistics-range">
-          <legend className="visually-hidden">Statistics range</legend>
-          {ranges.map((item) => (
-            <button
-              className={
-                item.value === range ? "button" : "button button--secondary"
-              }
-              type="button"
-              key={item.value}
-              aria-pressed={item.value === range}
-              onClick={() => setRange(item.value)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </fieldset>
-      </header>
+      <PageHeader
+        eyebrow={`Observability · ${scopeName}`}
+        title="Statistics"
+        description="Controller-collected DNS activity across the selected scope. No query-log records are used."
+        primaryAction={
+          <fieldset className="statistics-range">
+            <legend className="visually-hidden">Statistics range</legend>
+            {ranges.map((item) => (
+              <button
+                className={
+                  item.value === range ? "button" : "button button--secondary"
+                }
+                type="button"
+                key={item.value}
+                aria-pressed={item.value === range}
+                onClick={() => setRange(item.value)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </fieldset>
+        }
+      />
 
       {error !== undefined && (
         <div className="notice notice--warning">

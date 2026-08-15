@@ -20,9 +20,14 @@ summary, records state transitions, and gates maintenance on verified remaining
 DNS capacity, active deployments, and DHCP ownership.
 
 Return to service is fail-closed. AGH HA Controller requires authenticated API access, a
-fresh capability/configuration observation, the configured DNS queries, no open
-drift, the active revision applied, non-expired TLS inventory, safe DHCP state,
-and resumable configured collectors before clearing maintenance.
+fresh capability/configuration observation, the configured DNS queries,
+readable configuration/drift state, safe applicable TLS inventory, safe DHCP
+state, and resumable configured collectors before clearing maintenance. Drift
+or an unapplied active revision is a non-blocking reconciliation warning because
+maintenance itself suppresses repair. TLS is conditional on the fresh AdGuard
+Home observation reporting encryption enabled; disabled TLS is explicitly not
+applicable, while unknown applicability and genuine enabled-TLS validation
+failures remain blocking.
 
 Upgrade execution is guided in Release 0.8. Native/systemd and Docker installs
 are supported as operator-executed workflows: AGH HA Controller freezes the target in

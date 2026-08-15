@@ -102,19 +102,33 @@ bounded to avoid long uninterruptible transactions.
 
 ## Migration ledger
 
-| Version | Current schema purpose |
-|---|---|
-| `000001` | Users, sessions, audit, clusters/nodes, encrypted credentials, health. |
-| `000002` | Immutable observations, capabilities, and configuration inventory/draft. |
-| `000003` | Immutable revisions, deployments/results, drift, reconciliation state. |
-| `000004` | Canonical configuration schema v2 capability. |
-| `000005`–`000008` | Operational commands, UI/control-plane hardening, query/health support. |
-| `000009` | Statistics attempts, snapshots, and buckets. |
-| `000010` | Query Log events, checkpoints, attempts, and search indexes. |
-| `000011` | Operational-health retained-time indexes. |
-| `000012` | DNS probes, HA events, lifecycle settings, guided upgrades, webhooks/deliveries. |
-| `000013` | Users/product settings, controller release cache, backup productization. |
-| `000014` | Revision/deployment archive metadata and non-cascading webhook delivery identity. |
+The files below are development-era milestones that were all shipped unchanged
+in v1.0.0. Every up file is embedded in the controller, applied during clean
+bootstrap, and recorded by version/name/SHA-256 in `schema_migrations`.
+
+| Version and filename | Current schema purpose | v1.0 decision |
+|---|---|---|
+| `000001_release_0_1` | Users, sessions, audit, clusters/nodes, encrypted credentials, health. | Retain; clean-bootstrap root and released checksum. |
+| `000002_release_0_2` | Immutable observations, capabilities, and configuration inventory/draft. | Retain; bootstrap dependency and released checksum. |
+| `000003_release_0_3` | Immutable revisions, deployments/results, drift, reconciliation state. | Retain; bootstrap dependency and released checksum. |
+| `000004_release_0_4` | Canonical configuration schema-v2 capability. | Retain; bootstrap dependency and released checksum. |
+| `000005_release_0_4_1_dhcp_operations` | Durable DHCP commands and per-node results. | Retain; bootstrap dependency and released checksum. |
+| `000006_release_0_4_1_dns_operations` | Durable encrypted-input DNS command lifecycle. | Retain; bootstrap dependency and released checksum. |
+| `000007_release_0_4_1_host_filter_operation` | Host-filter test command capability. | Retain; bootstrap dependency and released checksum. |
+| `000008_release_0_4_1_policy_operations` | Query Log clear and Statistics reset commands. | Retain; bootstrap dependency and released checksum. |
+| `000009_release_0_5_statistics` | Statistics attempts, snapshots, and buckets. | Retain; bootstrap dependency and released checksum. |
+| `000010_release_0_6_query_log` | Query Log events, checkpoints, attempts, extension, and search indexes. | Retain; bootstrap dependency and released checksum. |
+| `000011_release_0_7_operational_health` | Operational-health retained-time indexes. | Retain; bootstrap dependency and released checksum. |
+| `000012_release_0_8_ha_operations` | DNS probes, HA events, lifecycle settings, guided upgrades, webhooks/deliveries. | Retain; bootstrap dependency and released checksum. |
+| `000013_release_0_9_productisation` | Product settings and controller release cache. | Retain; bootstrap dependency and released checksum. |
+| `000014_release_0_9_2_lifecycle_polish` | Revision/deployment archive metadata and retained webhook delivery identity. | Retain; final v1.0.0 schema and released checksum. |
+
+The complete chain is the physical v1.0.0 baseline. Pre-1.0 databases are not
+supported for in-place upgrade, but removing or squashing the chain would break
+empty-database creation and v1.0.0 checksum recognition. Release 1.0.1 uses the
+same schema and adds no migration. Future schema-changing 1.x releases append
+new immutable, never-renumbered forward migrations after `000014`; schema-neutral
+patches do not add placeholders.
 
 Down migrations exist for development and controlled rollback analysis. They may
 be destructive—especially where newer history cannot fit the older model—and
