@@ -10,7 +10,7 @@
 </p>
 
 Atlas DNS Controller is a management plane for multiple
-AdGuard Home nodes. It gives homelab users what they have always wanted, High Availablity Adguard Home, without the hassle of syncing config, and loosing statistics and logs.    Atlas DNS Controller provides one desired configuration, verified
+AdGuard Home nodes. It gives homelab users what they have always wanted, High Availablity Adguard Home with ability to deploy, rollback, and visibility accross multiple nodes in a single dashboard.Atlas DNS Controller provides one desired configuration, verified
 deployment, drift detection, immutable revision history, aggregated visibility,
 and safe lifecycle coordination while remaining outside the DNS request path.
 
