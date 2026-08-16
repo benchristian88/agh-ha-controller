@@ -1,7 +1,16 @@
-# Atlas DNS Controller
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="web/public/branding/atlas-dns-lockup-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="web/public/branding/atlas-dns-lockup-light.svg">
+    <img
+      alt="Atlas DNS Controller"
+      src="web/public/branding/atlas-dns-lockup-light.svg"
+      width="420">
+  </picture>
+</p>
 
-Atlas DNS Controller is a source-available management plane for multiple
-AdGuard Home nodes. It gives operators one desired configuration, verified
+Atlas DNS Controller is a management plane for multiple
+AdGuard Home nodes. It gives homelab users what they have always wanted, High Availablity Adguard Home with ability to deploy, rollback, and visibility accross multiple nodes in a single dashboard. Atlas DNS Controller provides one desired configuration, verified
 deployment, drift detection, immutable revision history, aggregated visibility,
 and safe lifecycle coordination while remaining outside the DNS request path.
 
@@ -10,6 +19,12 @@ if Atlas DNS Controller or PostgreSQL is unavailable.
 
 > Atlas DNS Controller is an independent project. It is not an official AdGuard
 > product and is not endorsed by AdGuard Software Ltd.
+
+<p align="center">
+  <img src="docs/images/atlas-dns-dashboard.png"
+       alt="Atlas DNS Controller Dashboard"
+       width="800">
+</p>
 
 ## Capabilities
 
@@ -27,7 +42,46 @@ if Atlas DNS Controller or PostgreSQL is unavailable.
   metadata.
 
 The [feature catalogue](docs/reference/features.md) is the authoritative current
-capability and boundary reference.
+capability and reference.
+
+## Configuration Control
+
+Atlas DNS Controller separates editing, publishing and deployment so configuration changes remain controlled, auditable and recoverable.
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/images/atlas-dns-configcontrol.png">
+        <img src="docs/images/atlas-dns-configcontrol.png" alt="Configuration Control" width="250">
+      </a>
+    </td>
+    <td align="center">
+      <a href="docs/images/atlas-dns-revisions.png">
+        <img src="docs/images/atlas-dns-revisions.png" alt="Configuration Revisions" width="250">
+      </a>
+    </td>
+    <td align="center">
+      <a href="docs/images/atlas-dns-deployments.png">
+        <img src="docs/images/atlas-dns-deployments.png" alt="Configuration Deployment" width="250">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <strong>Configuration Control</strong><br>
+      Manage the desired DNS configuration from one place.
+    </td>
+    <td align="center">
+      <strong>Immutable Revisions</strong><br>
+      Publish versioned configuration with a permanent change history.
+    </td>
+    <td align="center">
+      <strong>Verified Deployments</strong><br>
+      Validate and deploy configuration safely across every managed node.
+    </td>
+  </tr>
+</table>
+
 
 ## Architecture
 
@@ -52,7 +106,7 @@ draft → validation → immutable revision → deployment → verification
 See the [architecture overview](docs/architecture/architecture.md) and
 [security guide](docs/security/security.md).
 
-## Install Atlas DNS Controller 1.0.1
+## Install Atlas DNS Controller
 
 Supported production installation methods consume prebuilt release artefacts.
 Operators do not need Go, Node.js, npm, Make, or a source checkout.
@@ -97,18 +151,14 @@ node credentials and webhook destinations are encrypted and write-only; the
 container is unprivileged and has no Docker socket.
 
 Backups use the Atlas `.atlasdnsbackup` format and require a protected
-passphrase. Restore is offline into a new empty database. Pre-1.0 backups are not
-guaranteed compatible with 1.0. See [backup and restore](docs/operations/backup-and-restore.md)
-and [SECURITY.md](SECURITY.md).
+passphrase. Restore is offline into a new empty database. See [backup and restore](docs/operations/backup-and-restore.md) and [SECURITY.md](SECURITY.md).
 
 ## Upgrades and support
 
 Release 1.0.0 is the stable database baseline for supported 1.x upgrades. The
 1.0.1 patch is schema-neutral. Database
 migrations are ordered, checksum-verified, append-only, and forward-only unless
-a release explicitly documents otherwise. The supported transition from any
-pre-1.0 installation is destroy/rebuild followed by a fresh Atlas DNS Controller
-1.0 installation.
+a release explicitly documents otherwise. 
 
 Community support is best-effort with no SLA. Read the
 [support and deprecation policy](docs/product/support-and-deprecation-policy.md),
