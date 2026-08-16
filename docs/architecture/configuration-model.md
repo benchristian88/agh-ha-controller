@@ -132,6 +132,18 @@ Schema-v2 deployment extends the supported API writer through existing sequentia
 
 `ValidateDesired` requires a listener override for every enabled node, validates schema-v2 ranges and schedules, and permits DHCP enablement on at most one node. A role handoff orders desired-disabled DHCP nodes before the desired-enabled node. DNS listener identity and TLS remain non-writable.
 
+`nodeOverrides` is therefore a required per-enabled-node desired-state map, not
+a sparse list of deviations from cluster defaults. An empty override is not a
+valid substitute because bind hosts and DNS port are node identity used during
+read-back verification. A newly added or newly enabled node must first have a
+successful capability/configuration observation explicitly imported into the
+mutable draft. Disabling a node retains its override so the same identity can
+be re-enabled deliberately. Deleting a node atomically removes only its mutable
+draft key and increments the draft version; immutable revisions and historical
+node attribution keep the deleted UUID. Re-adding the same endpoint creates a
+new UUID and requires refresh, import, validation, and publication of a new
+revision before deployment. Atlas never copies an old override by URL.
+
 ## Adoption behaviour
 
 When drift is detected, manual adoption should:

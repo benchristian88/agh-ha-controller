@@ -14,7 +14,7 @@ by the systemd installer.
 Example for Linux amd64:
 
 ```bash
-version=1.0.0
+version=1.0.1
 curl -fsSLO "https://github.com/benchristian88/atlas-dns/releases/download/v${version}/atlas-dns_${version}_linux_amd64.tar.gz"
 curl -fsSLO "https://github.com/benchristian88/atlas-dns/releases/download/v${version}/checksums.txt"
 grep " atlas-dns_${version}_linux_amd64.tar.gz$" checksums.txt | sha256sum --check
@@ -33,13 +33,13 @@ bundle's `web/` directory, and run the matching migration/controller binaries:
 export APP_ENV=production
 export INSTALLATION_TYPE=manual
 export HTTP_ADDR=:8080
-export WEB_DIST_DIR="$PWD/atlas-dns_1.0.0_linux_amd64/web"
+export WEB_DIST_DIR="$PWD/atlas-dns_1.0.1_linux_amd64/web"
 export DATABASE_URL='postgres://atlas_dns:URL_SAFE_PASSWORD@127.0.0.1:5432/atlas_dns?sslmode=disable'
 export PUBLIC_BASE_URL='https://controller.example.test'
 export SESSION_SECRET='replace-with-openssl-rand-base64-48'
 export CREDENTIAL_ENCRYPTION_KEY='replace-with-openssl-rand-base64-32'
 export AUTO_MIGRATE=true
-./atlas-dns_1.0.0_linux_amd64/bin/atlas-dns
+./atlas-dns_1.0.1_linux_amd64/bin/atlas-dns
 ```
 
 Do not place real secret values in shell history. Prefer a protected service

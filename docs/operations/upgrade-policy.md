@@ -5,6 +5,9 @@ upgrade or backup-restore guarantee from the pre-1.0 product.
 
 ## Database migrations
 
+- The immutable `000001`–`000014` chain shipped in v1.0.0 is the physical clean
+  bootstrap and checksum ledger for the supported baseline. It is retained even
+  though its filenames describe pre-1.0 development milestones.
 - Released migrations are immutable and append-only.
 - The embedded runner applies pending migrations in numeric order inside the
   migration's defined transaction boundary and records name, checksum, and UTC
@@ -13,6 +16,8 @@ upgrade or backup-restore guarantee from the pre-1.0 product.
 - A migration checksum mismatch fails closed.
 - Schema downgrade is not generally supported. A down migration in source is a
   development aid unless release notes explicitly authorize it for rollback.
+- Schema-neutral patch releases do not add empty migrations. Release 1.0.1 uses
+  the v1.0.0 schema unchanged.
 
 ## Supported 1.x upgrade flow
 

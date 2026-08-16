@@ -189,6 +189,25 @@ func (s *Store) SoftDeleteNode(ctx context.Context, id string, expectedVersion i
 			return err
 		}
 	}
+	// A deleted node remains referenced by immutable observations, revisions,
+	// deployments, and audit history.  Only its mutable draft override is no
+	// longer current cluster intent, so remove that key in the same transaction
+	// as the soft delete.  Clearing the cached hash lets DraftByCluster
+	// deterministically recompute it from the updated document.
+	var updatedBy any
+	if event.ActorUserID != nil {
+		updatedBy = *event.ActorUserID
+	}
+	if _, err := tx.Exec(ctx, `UPDATE configuration_drafts
+		SET document_json=jsonb_set(
+			document_json,
+			'{nodeOverrides}',
+			COALESCE(document_json->'nodeOverrides','{}'::jsonb) - $1::text
+		), canonical_hash='', version=version+1, updated_by=COALESCE($3,updated_by), updated_at=$2
+		WHERE cluster_id=(SELECT cluster_id FROM nodes WHERE id=$1)
+		  AND COALESCE(document_json->'nodeOverrides','{}'::jsonb) ? $1::text`, id, at, updatedBy); err != nil {
+		return fmt.Errorf("remove deleted node from configuration draft: %w", err)
+	}
 	if _, err := tx.Exec(ctx, `UPDATE drift_events SET status='resolved',reconciliation_status='resolved',resolved_at=$2,resolution='node_removed' WHERE node_id=$1 AND status='open'`, id, at); err != nil {
 		return fmt.Errorf("resolve removed node drift: %w", err)
 	}

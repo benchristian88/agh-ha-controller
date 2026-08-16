@@ -10,7 +10,6 @@ import { OperationalCommandDialog } from "../../components/Overlays";
 import { PageContainer, PageHeader } from "../../components/Page";
 import {
   CapabilityWarning,
-  ScopeIndicator,
   SettingRow,
   SettingsGroup,
   UnsavedChangesNotice,
@@ -27,7 +26,6 @@ import type {
   CapabilityProfile,
   Cluster,
   ConfigurationDraft,
-  ConfigurationRevision,
   DNSOperationalCommand,
   Node,
   OperationalTarget,
@@ -49,7 +47,6 @@ const LEGACY_FILTER_INTERVALS = new Set([0, 1, 12, 24, 72, 168]);
 export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
   const [draft, setDraft] = useState<ConfigurationDraft>();
   const [nodes, setNodes] = useState<Node[]>([]);
-  const [revisions, setRevisions] = useState<ConfigurationRevision[]>([]);
   const [capabilities, setCapabilities] = useState<CapabilityProfile[]>([]);
   const [savedDocument, setSavedDocument] = useState("");
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
@@ -68,17 +65,15 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [inventory, nodeResult, revisionResult] = await Promise.all([
+      const [inventory, nodeResult] = await Promise.all([
         api.configurationInventory(cluster.id),
         api.nodes(cluster.id),
-        api.configurationRevisions(cluster.id),
       ]);
       setDraft(inventory.draft);
       setSavedDocument(
         inventory.draft ? JSON.stringify(inventory.draft.document) : "",
       );
       setNodes(nodeResult.items);
-      setRevisions(revisionResult.items);
       setCapabilities(inventory.capabilities);
       setIssues([]);
       setSaved(false);
@@ -131,9 +126,6 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
   }, [cluster.id]);
 
   const affectedNodes = nodes.filter((node) => node.enabled);
-  const activeRevision = revisions.find(
-    (revision) => revision.active || revision.id === cluster.activeRevisionId,
-  );
   const dirty =
     draft !== undefined && JSON.stringify(draft.document) !== savedDocument;
   const nodeNames = useMemo(
@@ -158,7 +150,7 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
 
   if (loading && draft === undefined) {
     return (
-      <PageContainer size="full">
+      <PageContainer size="wide">
         <PageHeader title="General settings" />
         <LoadingSkeleton label="Loading General Settings" rows={8} />
       </PageContainer>
@@ -166,7 +158,7 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
   }
   if (error !== undefined && draft === undefined) {
     return (
-      <PageContainer size="full">
+      <PageContainer size="wide">
         <PageHeader title="General settings" />
         <ErrorState error={error} retry={() => void load()} />
       </PageContainer>
@@ -296,7 +288,7 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
     !LEGACY_FILTER_INTERVALS.has(shared.filtering.updateIntervalHours);
 
   return (
-    <PageContainer size="full" className="general-settings-page">
+    <PageContainer size="wide" className="general-settings-page">
       <PageHeader
         eyebrow="Settings"
         title="General settings"
@@ -335,35 +327,6 @@ export function GeneralSettingsPage({ cluster }: { cluster: Cluster }) {
       ) : (
         <>
           <UnsavedChangesNotice dirty={dirty} saving={saving} saved={saved} />
-
-          <SettingsGroup title="Draft and scope">
-            <dl className="general-settings-state">
-              <div>
-                <dt>Scope</dt>
-                <dd>
-                  <ScopeIndicator scope="cluster" />
-                </dd>
-              </div>
-              <div>
-                <dt>Draft status</dt>
-                <dd>
-                  {dirty ? "Unsaved changes" : `Version ${draft.version}`}
-                </dd>
-              </div>
-              <div>
-                <dt>Active revision</dt>
-                <dd>
-                  {activeRevision
-                    ? `Revision #${activeRevision.revisionNumber}`
-                    : "None"}
-                </dd>
-              </div>
-              <div>
-                <dt>Affected nodes</dt>
-                <dd>{affectedNodes.length}</dd>
-              </div>
-            </dl>
-          </SettingsGroup>
 
           <Banner tone="info" title="Revisioned desired state">
             Saving updates the mutable draft only. Publish an immutable revision

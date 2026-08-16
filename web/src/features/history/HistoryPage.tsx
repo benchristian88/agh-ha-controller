@@ -643,7 +643,7 @@ function DeploymentReviewDialog({
               <ul>
                 {preview.issues.map((issue) => (
                   <li key={`${issue.field}-${issue.message}`}>
-                    {issue.field}: {issue.message}
+                    {formatDeploymentValidationIssue(issue)}
                   </li>
                 ))}
               </ul>
@@ -677,6 +677,19 @@ function DeploymentReviewDialog({
       )}
     </Dialog>
   );
+}
+
+function formatDeploymentValidationIssue(issue: {
+  field: string;
+  message: string;
+}): string {
+  if (
+    /^nodeOverrides\.[^.]+$/.test(issue.field) &&
+    issue.message.includes("is not present in this immutable revision")
+  ) {
+    return issue.message;
+  }
+  return `${issue.field}: ${issue.message}`;
 }
 
 function RevisionSelect({

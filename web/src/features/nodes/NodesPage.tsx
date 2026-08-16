@@ -25,6 +25,8 @@ export function NodesPage({ cluster }: { cluster: Cluster }) {
   const [revisions, setRevisions] = useState<ConfigurationRevision[]>([]);
   const [drift, setDrift] = useState<DriftEvent[]>([]);
   const [error, setError] = useState<unknown>();
+  const [maintenanceError, setMaintenanceError] = useState<unknown>();
+  const [maintenanceNodeId, setMaintenanceNodeId] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<Node>();
 
@@ -115,6 +117,12 @@ export function NodesPage({ cluster }: { cluster: Cluster }) {
       {nodes === undefined && error !== undefined && (
         <ErrorState error={error} retry={() => void load()} />
       )}
+      {maintenanceError !== undefined && (
+        <ErrorState
+          error={maintenanceError}
+          title="Unable to update maintenance mode"
+        />
+      )}
       {nodes?.length === 0 && !showAdd && (
         <EmptyState title="No managed nodes">
           <p>Add an AdGuard Home node to begin automatic status polling.</p>
@@ -123,7 +131,7 @@ export function NodesPage({ cluster }: { cluster: Cluster }) {
       {nodes !== undefined && nodes.length > 0 && (
         <>
           <section
-            className="convergence-summary"
+            className="convergence-summary convergence-summary--five"
             aria-label="Cluster node summary"
           >
             <div>
@@ -283,11 +291,14 @@ export function NodesPage({ cluster }: { cluster: Cluster }) {
                         <button
                           type="button"
                           className="button button--quiet"
+                          disabled={maintenanceNodeId === node.id}
                           onClick={() => void maintenance(node)}
                         >
-                          {node.maintenanceMode
-                            ? "Leave maintenance"
-                            : "Maintenance"}
+                          {maintenanceNodeId === node.id
+                            ? "Updating…"
+                            : node.maintenanceMode
+                              ? "Leave maintenance"
+                              : "Maintenance"}
                         </button>
                         <button
                           type="button"
@@ -349,18 +360,51 @@ export function NodesPage({ cluster }: { cluster: Cluster }) {
   }
 
   async function maintenance(node: Node) {
-    if (
-      !node.maintenanceMode &&
-      !window.confirm(
-        `Put ${node.name} into maintenance? Automatic deployment and reconciliation will skip it until maintenance is removed.`,
-      )
-    )
-      return;
+    setMaintenanceError(undefined);
+    setMaintenanceNodeId(node.id);
     try {
-      await api.setNodeMaintenance(node, !node.maintenanceMode);
+      if (node.maintenanceMode) {
+        if (
+          !window.confirm(
+            "Run all return-to-service checks? The node stays in maintenance if any required check fails.",
+          )
+        )
+          return;
+        await api.returnToService(node);
+      } else {
+        const preflight = await api.maintenancePreflight(node.id);
+        if (!preflight.allowed) {
+          const blockingCheck = preflight.checks.find(
+            (check) => check.required && check.status === "fail",
+          );
+          throw new Error(
+            blockingCheck?.message ??
+              "Maintenance preflight contains a blocking check.",
+          );
+        }
+        let breakGlass = false;
+        let confirmation = "";
+        if (preflight.breakGlassRequired) {
+          breakGlass = window.confirm(
+            "This leaves no verified healthy DNS node. Use break glass?",
+          );
+          if (!breakGlass) return;
+          confirmation =
+            window.prompt("Type CONTINUE_WITHOUT_DNS_REDUNDANCY") ?? "";
+        } else if (
+          !window.confirm(
+            `Put ${node.name} into maintenance? Automatic deployment and reconciliation will skip it until maintenance is removed.`,
+          )
+        )
+          return;
+        await api.enterMaintenance(node, breakGlass, confirmation);
+      }
       await load();
     } catch (caught) {
-      setError(caught);
+      setMaintenanceError(caught);
+      await load();
+    } finally {
+      setMaintenanceNodeId("");
     }
   }
 }

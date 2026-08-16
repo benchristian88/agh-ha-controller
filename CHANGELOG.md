@@ -5,7 +5,55 @@ All notable changes to Atlas DNS Controller are documented in this file.
 The stable 1.x line follows Semantic Versioning for documented public
 interfaces.
 
-## 1.0.0 - Unreleased
+## 1.0.1 - Unreleased
+
+### Fixed
+
+- Nodes can return a node from Maintenance Mode through the canonical
+  fail-closed return-to-service lifecycle, reconcile the persisted server
+  state, and display validation or request failures instead of silently
+  leaving the action unchanged.
+- Return-to-service no longer deadlocks on drift that maintenance itself keeps
+  from reconciling. Required live checks still fail closed; existing drift is
+  retained as an actionable warning and reconciliation resumes after exit.
+- Return-to-service now treats disabled AdGuard Home TLS as explicitly not
+  applicable instead of failing on retained certificate metadata. Enabled TLS
+  remains fail-closed for invalid, mismatched, not-yet-valid, or expired
+  certificates and returns a safe actionable reason.
+- Dashboard Statistics health now retains still-fresh successful evidence
+  across an intentional maintenance poll skip, and correctly rolls a genuine
+  per-node partial collection up to the controller's degraded state.
+- Deleting and re-adding a node now prunes only the deleted UUID's mutable draft
+  override, preserves immutable history, and gives deployment preview clear
+  refresh/import/publish guidance for a replacement node's new identity.
+- Deployment preview now distinguishes missing capability discovery, an
+  unsupported API version, unavailable feature capabilities, missing current
+  observations, and an all-maintenance target set.
+- The five HA Controller → Nodes summary tiles share one row above the desktop
+  breakpoint and wrap to three and one columns at smaller viewports without
+  changing other convergence summaries.
+- Setup Guide treats a new cluster with no configured nodes as incomplete
+  onboarding and keeps genuine API failures distinct from empty state.
+- Authenticated layouts are width-contained on iPhone-class viewports and use
+  iOS safe-area insets without disabling browser zoom.
+
+### Changed
+
+- Every canonical route now has a deliberate page-width assignment; Filters
+  are consistently Wide, Statistics and Query Log match the Wide Dashboard,
+  and all System routes use Standard.
+- Replaced the header theme select with a compact accessible icon menu that
+  preserves System, Light, and Dark preferences.
+- Removed redundant page-local Scope/state summaries from General, DNS,
+  Blocklists, Allowlists, and Blocked Services.
+
+### Internal
+
+- Confirmed that the immutable `000001`–`000014` migration chain shipped in
+  1.0.0 is the physical v1.0 database baseline. Release 1.0.1 is schema-neutral
+  and adds no migration.
+
+## 1.0.0 - 2026-08-13
 
 ### Changed
 

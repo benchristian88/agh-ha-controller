@@ -249,8 +249,23 @@ describe("revision lifecycle workflow", () => {
       differences: [],
       restartRequired: false,
       valid: false,
-      issues: [{ field: "nodes", message: "One target is unavailable" }],
-      nodes: [],
+      issues: [
+        {
+          field: "nodeOverrides.replacement-node-id",
+          message:
+            "Replacement DNS is not present in this immutable revision; refresh and import its latest observation into the draft, then validate and publish a new revision",
+        },
+      ],
+      nodes: [
+        {
+          nodeId: "replacement-node-id",
+          position: 1,
+          effectiveHash: "",
+          valid: false,
+          warning:
+            "This revision has no listener override for the current node identity.",
+        },
+      ],
     });
     const start = vi.spyOn(api, "startDeployment");
 
@@ -276,8 +291,13 @@ describe("revision lifecycle workflow", () => {
       }),
     ).toBeTruthy();
     expect(
-      await screen.findByText("nodes: One target is unavailable"),
+      await screen.findByText(
+        "Replacement DNS is not present in this immutable revision; refresh and import its latest observation into the draft, then validate and publish a new revision",
+      ),
     ).toBeTruthy();
+    expect(
+      screen.queryByText(/nodeOverrides\.replacement-node-id:/),
+    ).toBeNull();
     expect(
       screen
         .getByRole("button", { name: "Confirm deployment" })

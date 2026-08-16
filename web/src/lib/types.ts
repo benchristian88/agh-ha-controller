@@ -909,7 +909,7 @@ export interface MaintenancePreflight {
 
 export interface LifecycleCheck {
   name: string;
-  status: "pass" | "warning" | "fail";
+  status: "pass" | "warning" | "fail" | "not_applicable" | "unknown";
   required: boolean;
   errorCode?: string;
   message: string;

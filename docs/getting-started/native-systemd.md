@@ -19,8 +19,8 @@ Go, Node.js, npm, Make, Git, and a repository checkout are not required.
 
 ```bash
 mkdir atlas-dns-install && cd atlas-dns-install
-curl -fsSLO https://github.com/benchristian88/atlas-dns/releases/download/v1.0.0/install-systemd.sh
-curl -fsSLO https://github.com/benchristian88/atlas-dns/releases/download/v1.0.0/checksums.txt
+curl -fsSLO https://github.com/benchristian88/atlas-dns/releases/download/v1.0.1/install-systemd.sh
+curl -fsSLO https://github.com/benchristian88/atlas-dns/releases/download/v1.0.1/checksums.txt
 grep ' install-systemd.sh$' checksums.txt | sha256sum --check
 chmod 0755 install-systemd.sh
 ```
@@ -28,7 +28,7 @@ chmod 0755 install-systemd.sh
 Review the verified script, then run it with an exact version:
 
 ```bash
-sudo ATLAS_DNS_VERSION=1.0.0 \
+sudo ATLAS_DNS_VERSION=1.0.1 \
   PUBLIC_BASE_URL=https://controller.example.test \
   ./install-systemd.sh
 ```
@@ -85,6 +85,12 @@ Downgrading a binary after a forward schema migration is unsupported unless the
 release notes explicitly say otherwise. Recover by stopping the service and
 restoring a verified backup into a new empty database; follow the
 [backup and restore guide](../operations/backup-and-restore.md).
+
+For 1.0.0 to 1.0.1, download and verify the 1.0.1 installer/checksums and rerun
+the command above with `ATLAS_DNS_VERSION=1.0.1`. The installer preserves
+`/etc/atlas-dns/atlas-dns.env` and PostgreSQL state. The patch adds no schema
+migration; verify the existing users, nodes, revisions, collectors, and About
+metadata after restart.
 
 ## Uninstall or rebuild
 

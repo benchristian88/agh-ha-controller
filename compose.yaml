@@ -19,7 +19,7 @@ services:
       - no-new-privileges:true
 
   atlas-dns:
-    image: ghcr.io/benchristian88/atlas-dns:${ATLAS_DNS_VERSION:?set ATLAS_DNS_VERSION to an exact release such as 1.0.0}
+    image: ghcr.io/benchristian88/atlas-dns:${ATLAS_DNS_VERSION:?set ATLAS_DNS_VERSION to an exact release such as 1.0.1}
     restart: unless-stopped
     depends_on:
       postgres:

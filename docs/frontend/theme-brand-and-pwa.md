@@ -49,10 +49,12 @@ theme colours.
 
 ## Theme control and artwork
 
-The labelled native theme select is immediately before the desktop
-administration menu and remains available beside the mobile drawer button.
-The current preference is its visible value, and normal select keyboard and
-touch behaviour applies.
+The compact 44px theme icon button is immediately before the desktop
+administration menu and remains available beside the mobile drawer button. Its
+icon and accessible name reflect the selected preference. Activating it opens a
+three-option menu for Light, Dark, and System with checked state, arrow/Home/End
+navigation, Escape close/focus return, outside-click close, and ordinary touch
+activation. System is always explicit; there is no hidden gesture.
 
 The header and authentication layout use the supplied light/dark Atlas DNS
 lockup SVGs. The header uses the approved symbol-only fallback at phone widths.
@@ -105,6 +107,8 @@ retains the Atlas DNS Controller name, root identity/scope, standalone display,
 and only the approved opaque 192px and 512px icons. It does not claim maskable
 safe-area behavior that the source manifest does not specify. No service
 worker, offline cache, or background update mechanism is introduced.
+The viewport uses `viewport-fit=cover`; the authenticated shell applies safe-area
+insets in Safari and standalone mode while leaving pinch zoom enabled.
 
 Run `npm run test:assets` in `web/` to validate manifest JSON and naming,
 runtime/source equality, exact PNG dimensions, HTML references, the approved
@@ -112,7 +116,8 @@ runtime branding set, and removal of the legacy neutral icon references.
 
 ## Accessibility and browser validation
 
-- Theme selection uses a labelled native control and visible focus styling.
+- Theme selection uses a labelled button/menu, checked preference state, visible
+  focus styling, keyboard navigation, and a 44px touch target.
 - Menus remain available through click/touch and keyboard without hover.
 - Theme-specific SVGs are selected as assets rather than transformed.
 - Status meaning remains text-backed and independent from brand colour.
