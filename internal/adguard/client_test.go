@@ -23,7 +23,7 @@ func TestProbeStatus(t *testing.T) {
 		if request.URL.Path != "/control/status" {
 			t.Errorf("path = %q", request.URL.Path)
 		}
-		_, _ = response.Write([]byte(`{"version":"v0.107.65","running":true}`))
+		_, _ = response.Write([]byte(`{"version":"v0.107.65","running":true,"protection_enabled":true,"protection_disabled_duration":0}`))
 	}))
 	defer server.Close()
 	result, err := NewProbe(time.Second).Status(context.Background(), domain.NodeProbeRequest{
@@ -50,7 +50,7 @@ func TestProbeSeparatesAuthenticationAndTLSFailures(t *testing.T) {
 	assertDomainErrorKind(t, authErr, domain.ErrorNodeAuth)
 
 	tlsServer := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		_, _ = response.Write([]byte(`{"version":"v0.107.65","running":true}`))
+		_, _ = response.Write([]byte(`{"version":"v0.107.65","running":true,"protection_enabled":true,"protection_disabled_duration":0}`))
 	}))
 	defer tlsServer.Close()
 	_, tlsErr := NewProbe(time.Second).Status(context.Background(), domain.NodeProbeRequest{
@@ -62,7 +62,7 @@ func TestProbeSeparatesAuthenticationAndTLSFailures(t *testing.T) {
 func TestProbeSupportsCustomCA(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		_, _ = response.Write([]byte(`{"version":"v0.107.65","running":true}`))
+		_, _ = response.Write([]byte(`{"version":"v0.107.65","running":true,"protection_enabled":true,"protection_disabled_duration":0}`))
 	}))
 	defer server.Close()
 	certificate := server.Certificate()
@@ -81,10 +81,13 @@ func TestProbeSupportsCustomCA(t *testing.T) {
 func TestVersionCompatibility(t *testing.T) {
 	t.Parallel()
 	for version, want := range map[string]domain.Compatibility{
-		"v0.107.0": domain.CompatibilitySupported,
-		"v0.106.3": domain.CompatibilityUnsupported,
-		"v1.0.0":   domain.CompatibilitySupported,
-		"invalid":  domain.CompatibilityUnknown,
+		"v0.107.0":  domain.CompatibilityUnsupported,
+		"v0.107.79": domain.CompatibilitySupported,
+		"v0.107.80": domain.CompatibilitySupported,
+		"v0.106.3":  domain.CompatibilityUnsupported,
+		"v0.108.0":  domain.CompatibilityUnknown,
+		"v1.0.0":    domain.CompatibilityUnknown,
+		"invalid":   domain.CompatibilityUnknown,
 	} {
 		if got := VersionCompatibility(version); got != want {
 			t.Errorf("VersionCompatibility(%q) = %q, want %q", version, got, want)
@@ -99,7 +102,8 @@ func TestConfigurationCompatibilityBoundaries(t *testing.T) {
 		"v0.107.52": domain.CompatibilitySupported,
 		"v0.107.53": domain.CompatibilitySupported,
 		"v0.107.78": domain.CompatibilitySupported,
-		"v0.107.79": domain.CompatibilityUnknown,
+		"v0.107.79": domain.CompatibilitySupported,
+		"v0.107.80": domain.CompatibilitySupported,
 		"v0.108.0":  domain.CompatibilityUnknown,
 		"invalid":   domain.CompatibilityUnknown,
 	} {
@@ -109,6 +113,9 @@ func TestConfigurationCompatibilityBoundaries(t *testing.T) {
 	}
 	if supportsSchemaV2("v0.107.52") || !supportsSchemaV2("v0.107.53") {
 		t.Fatal("schema-v2 compatibility boundary must start at v0.107.53")
+	}
+	if IsProvisionallyCompatible("v0.107.79") || !IsProvisionallyCompatible("v0.107.80") || IsProvisionallyCompatible("v0.108.0") {
+		t.Fatal("provisional compatibility must be limited to newer patches in the 0.107 API generation")
 	}
 }
 
