@@ -5,6 +5,8 @@ import (
 	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -35,6 +37,39 @@ func TestProbeStatus(t *testing.T) {
 	}
 	if result.Version != "v0.107.65" || result.Compatibility != domain.CompatibilitySupported || !result.Running {
 		t.Fatalf("Status() = %#v", result)
+	}
+}
+
+func TestProbeAcceptsSupportedStatusFixtures(t *testing.T) {
+	for _, version := range []string{"v0.107.78", "v0.107.79"} {
+		version := version
+		t.Run(version, func(t *testing.T) {
+			body, err := os.ReadFile(filepath.Join("testdata", version, "status.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				response.Header().Set("Content-Type", "application/json")
+				_, _ = response.Write(body)
+			}))
+			defer server.Close()
+
+			result, err := NewProbe(time.Second).Status(context.Background(), domain.NodeProbeRequest{
+				BaseURL: server.URL, CertificatePolicy: domain.CertificateInsecureHTTP,
+			})
+			if err != nil {
+				t.Fatalf("Status(%s) error = %v", version, err)
+			}
+			if result.Version != version || result.Compatibility != domain.CompatibilitySupported {
+				t.Fatalf("Status(%s) = %#v", version, result)
+			}
+			if version == "v0.107.78" && (!result.ProtectionEnabled || result.ProtectionDisabledDurationMS != 0) {
+				t.Fatalf("Status(%s) protection = %#v", version, result)
+			}
+			if version == "v0.107.79" && (result.ProtectionEnabled || result.ProtectionDisabledDurationMS != 60_000) {
+				t.Fatalf("Status(%s) protection = %#v", version, result)
+			}
+		})
 	}
 }
 
@@ -119,16 +154,26 @@ func TestConfigurationCompatibilityBoundaries(t *testing.T) {
 	}
 }
 
-func TestProbeRejectsIncompleteStatusDocument(t *testing.T) {
-	t.Parallel()
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		_, _ = response.Write([]byte(`{"version":"v0.107.65"}`))
-	}))
-	defer server.Close()
-	_, err := NewProbe(time.Second).Status(context.Background(), domain.NodeProbeRequest{
-		BaseURL: server.URL, CertificatePolicy: domain.CertificateInsecureHTTP,
-	})
-	assertDomainErrorKind(t, err, domain.ErrorNodeResponse)
+func TestProbeRejectsInvalidStatusSemantics(t *testing.T) {
+	for name, body := range map[string]string{
+		"missing running":            `{"version":"v0.107.79","protection_enabled":true,"protection_disabled_duration":0}`,
+		"missing protection enabled": `{"version":"v0.107.79","running":true,"protection_disabled_duration":0}`,
+		"missing pause duration":     `{"version":"v0.107.79","running":true,"protection_enabled":true}`,
+		"contradictory protection":   `{"version":"v0.107.79","running":true,"protection_enabled":true,"protection_disabled_duration":60000}`,
+		"wrong duration type":        `{"version":"v0.107.79","running":true,"protection_enabled":false,"protection_disabled_duration":"60000"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				response.Header().Set("Content-Type", "application/json")
+				_, _ = response.Write([]byte(body))
+			}))
+			defer server.Close()
+			_, err := NewProbe(time.Second).Status(context.Background(), domain.NodeProbeRequest{
+				BaseURL: server.URL, CertificatePolicy: domain.CertificateInsecureHTTP,
+			})
+			assertDomainErrorKind(t, err, domain.ErrorNodeResponse)
+		})
+	}
 }
 
 func assertDomainErrorKind(t *testing.T, err error, want domain.ErrorKind) {
