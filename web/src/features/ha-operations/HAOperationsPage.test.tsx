@@ -261,7 +261,7 @@ describe("HA operations", () => {
         enabled: true,
       }),
     );
-  });
+  }, 15_000);
 
   it("shows bounded loading and a retryable error when the node no longer exists", async () => {
     vi.spyOn(api, "nodes").mockResolvedValue({

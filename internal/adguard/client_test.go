@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -110,6 +111,45 @@ func TestProbeSupportsCustomCA(t *testing.T) {
 	}
 	if !result.Running {
 		t.Fatal("Status(custom CA) reported node not running")
+	}
+}
+
+func TestProbeRejectsRedirects(t *testing.T) {
+	t.Parallel()
+	var redirectTargetReached atomic.Bool
+	target := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		redirectTargetReached.Store(true)
+		_, _ = response.Write([]byte(`{"version":"v0.107.79","running":true,"protection_enabled":true,"protection_disabled_duration":0}`))
+	}))
+	defer target.Close()
+	redirector := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		http.Redirect(response, &http.Request{}, target.URL, http.StatusFound)
+	}))
+	defer redirector.Close()
+
+	_, err := NewProbe(time.Second).Status(context.Background(), domain.NodeProbeRequest{
+		BaseURL: redirector.URL, CertificatePolicy: domain.CertificateInsecureHTTP,
+	})
+	assertDomainErrorKind(t, err, domain.ErrorNodeUnreachable)
+	if redirectTargetReached.Load() {
+		t.Fatal("probe followed a node-controlled redirect")
+	}
+}
+
+func TestProbeRejectsOversizedStatusResponse(t *testing.T) {
+	t.Parallel()
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(strings.Repeat("x", maxResponseBytes+1)))
+	}))
+	defer server.Close()
+
+	_, err := NewProbe(time.Second).Status(context.Background(), domain.NodeProbeRequest{
+		BaseURL: server.URL, CertificatePolicy: domain.CertificateInsecureHTTP,
+	})
+	assertDomainErrorKind(t, err, domain.ErrorNodeResponse)
+	if !strings.Contains(err.Error(), "too large") {
+		t.Fatalf("error = %v, want bounded-response failure", err)
 	}
 }
 
