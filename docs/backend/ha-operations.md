@@ -75,7 +75,9 @@ paths never enter this model.
 The AdGuard Home release checker reads the official GitHub latest-release API at
 most every six hours and retains safe stale-cache state after failure.
 Compatibility remains derived from explicit adapter profiles, not an upstream
-tag alone.
+tag alone. During a rolling upgrade, v0.107.78 and v0.107.79 nodes may coexist;
+the upgraded node stops showing an available v0.107.79 update while the older
+peer continues to show it, without requiring equal patch versions.
 
 ## Guided upgrades
 

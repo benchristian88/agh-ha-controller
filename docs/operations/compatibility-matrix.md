@@ -7,8 +7,10 @@ a compatibility commitment. **Unsupported** must not be advertised as working.
 | Area | Version/platform | Status | Boundary |
 |---|---|---|---|
 | AdGuard Home | v0.107.52 | Tested | Frozen configuration schema v1. |
-| AdGuard Home | v0.107.53–v0.107.78 | Tested and supported | Schema v2 with explicit patch capabilities. |
-| AdGuard Home | Newer/unreviewed contracts | Unsupported for managed writes | Inventory reports unknown; writes are blocked pending review. |
+| AdGuard Home | v0.107.53–v0.107.77 | Supported | Schema v2 with explicit patch capabilities. |
+| AdGuard Home | v0.107.78 and v0.107.79 | Tested and supported | Schema v2; node observation, Query Log, Statistics, configuration adapters, and rolling mixed-patch operation are contract-tested. |
+| AdGuard Home | Newer v0.107 patch | Provisionally compatible | Atlas attempts normal typed capability/API validation and operates when it succeeds; capability-specific incompatibility fails safely. |
+| AdGuard Home | Other newer API generations | Unknown | Inventory and managed writes are blocked pending review; unknown is not reported as unsupported evidence. |
 | PostgreSQL | 17 | Tested and supported | Matching PostgreSQL 17 `pg_dump`/`pg_restore` required. |
 | PostgreSQL | Other majors | Unsupported | No schema or backup claim. |
 | Native | Debian 13 with systemd, amd64/arm64 | Supported release target; RC gate pending | Prebuilt release archive; no build toolchain. Do not mark 1.0 final until clean-host evidence is recorded. |

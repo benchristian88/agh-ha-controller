@@ -229,6 +229,31 @@ func TestSummaryReturnsEmptyNodeCollectionForNewCluster(t *testing.T) {
 	}
 }
 
+func TestVersionsSupportsRollingV010778ToV010779(t *testing.T) {
+	now := time.Date(2026, 8, 19, 0, 0, 0, 0, time.UTC)
+	nodeA, nodeB := healthyNode(serviceNodeA), healthyNode(serviceNodeB)
+	nodeB.Version = "v0.107.79"
+	repository := &serviceRepositoryFake{
+		nodes:   []domain.Node{nodeA, nodeB},
+		release: ReleaseCache{Version: "v0.107.79", CheckedAt: now, ExpiresAt: now.Add(time.Hour)},
+		settings: map[string]NodeSettings{
+			serviceNodeA: {NodeID: serviceNodeA, InstallationType: InstallationDocker},
+			serviceNodeB: {NodeID: serviceNodeB, InstallationType: InstallationDocker},
+		},
+	}
+	service := NewService(repository, nil, nil, nil, nil, nil)
+	service.now = func() time.Time { return now }
+	versions, err := service.Versions(context.Background(), serviceClusterID)
+	if err != nil || !versions[0].UpdateAvailable || versions[1].UpdateAvailable {
+		t.Fatalf("mixed rolling versions=%+v err=%v", versions, err)
+	}
+	repository.nodes[0].Version = "v0.107.79"
+	versions, err = service.Versions(context.Background(), serviceClusterID)
+	if err != nil || versions[0].UpdateAvailable || versions[1].UpdateAvailable {
+		t.Fatalf("completed rolling versions=%+v err=%v", versions, err)
+	}
+}
+
 func TestMaintenancePreflightBlocksDeploymentAndActiveDHCP(t *testing.T) {
 	now := time.Date(2026, 8, 9, 0, 0, 0, 0, time.UTC)
 	document := configuration.Document{NodeSpecific: configuration.NodeSpecific{DHCP: &configuration.DHCPConfig{Enabled: true}}}

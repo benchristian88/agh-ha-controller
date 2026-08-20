@@ -5,6 +5,39 @@ All notable changes to Atlas DNS Controller are documented in this file.
 The stable 1.x line follows Semantic Versioning for documented public
 interfaces.
 
+## 1.0.2 - Unreleased
+
+### Fixed
+
+- Added AdGuard Home v0.107.79 compatibility for node observation, Query Log,
+  exact-range Statistics, configuration inventory/write verification, and
+  mixed v0.107.78/v0.107.79 rolling upgrades.
+- Removed the v0.107.78 patch ceiling that rejected node observation and
+  disabled collectors before making an AdGuard API request.
+- Query Log now reserves `QUERY_LOG_UNSUPPORTED` for an old contract or a
+  proven missing endpoint; unknown API generations and transport/response
+  failures remain distinct failed/unknown states.
+
+### Changed
+
+- AdGuard Home v0.107.52 remains the minimum managed version. v0.107.79 is the
+  latest explicitly tested patch. Newer patches in the v0.107 API generation
+  are provisionally compatible only after Atlas's typed capability and semantic
+  validation succeeds; other API generations remain unknown and fail closed.
+- Status and DNS inventory now validate and normalize the distinct
+  `protection_disabled_duration` and `protection_disabled_until` runtime
+  semantics. Additive upstream fields remain tolerated.
+- Safe node diagnostics now identify the AdGuard version, method, endpoint,
+  HTTP status/content type, and decode/semantic failure without retaining
+  response bodies or secrets.
+
+### Internal
+
+- Added representative v0.107.78/v0.107.79 status, DNS, Query Log, and
+  Statistics fixtures plus mixed-version, rolling-upgrade, additive-field,
+  provisional-patch, missing-endpoint, and malformed-contract regressions.
+- Release 1.0.2 is schema-neutral and preserves the v1.0.0 migration ledger.
+
 ## 1.0.1 - Unreleased
 
 ### Fixed

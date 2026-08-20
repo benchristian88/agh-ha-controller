@@ -16,8 +16,8 @@ upgrade or backup-restore guarantee from the pre-1.0 product.
 - A migration checksum mismatch fails closed.
 - Schema downgrade is not generally supported. A down migration in source is a
   development aid unless release notes explicitly authorize it for rollback.
-- Schema-neutral patch releases do not add empty migrations. Release 1.0.1 uses
-  the v1.0.0 schema unchanged.
+- Schema-neutral patch releases do not add empty migrations. Releases 1.0.1 and
+  1.0.2 use the v1.0.0 schema unchanged.
 
 ## Supported 1.x upgrade flow
 
