@@ -7,6 +7,15 @@ interfaces.
 
 ## 1.0.2 - Unreleased
 
+### Added
+
+- Webhook delivery outcomes now appear as separate rows in HA Controller → HA
+  Operations → Operational History, including destination name, test/real
+  identity, delivery state, attempts, HTTP status, and a bounded sanitized
+  failure reason.
+- Operational History now uses authenticated server-side cursor pagination with
+  a 50-row default, 100-row maximum, and accessible Previous/Next controls.
+
 ### Security
 
 - Upgraded the supported Go toolchain to Go 1.27 and updated `pgx`,
@@ -21,6 +30,13 @@ interfaces.
 
 ### Fixed
 
+- HA DNS failure and recovery transitions now have end-to-end regression
+  coverage across durable event creation, per-channel queueing, webhook
+  delivery, deduplication, and Operational History. Test Webhook now records
+  the same safe operational delivery evidence as real notifications.
+- Fixed the PostgreSQL notification-queue INSERT type inference error that
+  rolled back real HA transition events/deliveries while the direct Test
+  Webhook path continued to succeed.
 - Added AdGuard Home v0.107.79 compatibility for node observation, Query Log,
   exact-range Statistics, configuration inventory/write verification, and
   mixed v0.107.78/v0.107.79 rolling upgrades.
@@ -48,7 +64,9 @@ interfaces.
 - Added representative v0.107.78/v0.107.79 status, DNS, Query Log, and
   Statistics fixtures plus mixed-version, rolling-upgrade, additive-field,
   provisional-patch, missing-endpoint, and malformed-contract regressions.
-- Release 1.0.2 is schema-neutral and preserves the v1.0.0 migration ledger.
+- Added append-only migration `000015_release_1_0_2_notification_history` for
+  bounded delivery diagnostics and the delivery/event history query index. The
+  released `000001`–`000014` baseline remains unchanged.
 
 ## 1.0.1 - Unreleased
 

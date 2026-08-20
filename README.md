@@ -157,9 +157,9 @@ passphrase. Restore is offline into a new empty database. See [backup and restor
 ## Upgrades and support
 
 Release 1.0.0 is the stable database baseline for supported 1.x upgrades. The
-1.0.1 and 1.0.2 patches are schema-neutral. Database
-migrations are ordered, checksum-verified, append-only, and forward-only unless
-a release explicitly documents otherwise. 
+1.0.1 patch is schema-neutral; 1.0.2 appends the notification-history migration.
+Database migrations are ordered, checksum-verified, append-only, and
+forward-only unless a release explicitly documents otherwise.
 
 Community support is best-effort with no SLA. Read the
 [support and deprecation policy](docs/product/support-and-deprecation-policy.md),

@@ -30,6 +30,8 @@ type serviceRepositoryFake struct {
 	release          ReleaseCache
 	cluster          domain.Cluster
 	events           []Event
+	history          []HistoryItem
+	lastHistoryQuery HistoryQuery
 	audits           []domain.AuditEvent
 	collectorChecks  []Check
 }
@@ -102,6 +104,20 @@ func (r *serviceRepositoryFake) RecordHAEventAndAudit(_ context.Context, event E
 	r.events = append(r.events, event)
 	r.audits = append(r.audits, audit)
 	return nil
+}
+func (r *serviceRepositoryFake) ListHAHistory(_ context.Context, query HistoryQuery) ([]HistoryItem, error) {
+	r.lastHistoryQuery = query
+	result := make([]HistoryItem, 0, len(r.history))
+	for _, item := range r.history {
+		if query.BeforeAt != nil && (item.OccurredAt.After(*query.BeforeAt) || item.OccurredAt.Equal(*query.BeforeAt) && item.ID >= query.BeforeID) {
+			continue
+		}
+		result = append(result, item)
+		if len(result) == query.Limit {
+			break
+		}
+	}
+	return result, nil
 }
 func (r *serviceRepositoryFake) CollectorChecks(context.Context, string) ([]Check, error) {
 	return r.collectorChecks, nil
@@ -202,6 +218,52 @@ func TestSummarySeparatesNNodeDNSAPIAndMaintenance(t *testing.T) {
 		t.Fatalf("maintenance DNS dimension=%#v", summary.Nodes[2])
 	}
 }
+
+func TestOperationalHistoryUsesStableBoundedCursorPagination(t *testing.T) {
+	now := time.Date(2026, 8, 20, 2, 0, 0, 0, time.UTC)
+	repository := &serviceRepositoryFake{
+		nodes: []domain.Node{healthyNode(serviceNodeA)},
+		history: []HistoryItem{
+			{ID: "90000000-0000-4000-8000-000000000003", Kind: "event", ClusterID: serviceClusterID, NodeID: stringPointer(serviceNodeA), OccurredAt: now},
+			{ID: "90000000-0000-4000-8000-000000000002", Kind: "notification", ClusterID: serviceClusterID, NodeID: stringPointer(serviceNodeA), OccurredAt: now},
+			{ID: "90000000-0000-4000-8000-000000000001", Kind: "event", ClusterID: serviceClusterID, NodeID: stringPointer(serviceNodeA), OccurredAt: now.Add(-time.Minute)},
+		},
+	}
+	service := NewService(repository, nil, nil, nil, nil, nil)
+	first, err := service.History(context.Background(), HistoryRequest{ClusterID: serviceClusterID, NodeID: serviceNodeA, Limit: 2})
+	if err != nil || len(first.Items) != 2 || !first.HasMore || first.NextCursor == "" {
+		t.Fatalf("first=%#v err=%v", first, err)
+	}
+	if repository.lastHistoryQuery.Limit != 3 || repository.lastHistoryQuery.BeforeAt != nil {
+		t.Fatalf("first query=%#v", repository.lastHistoryQuery)
+	}
+	second, err := service.History(context.Background(), HistoryRequest{ClusterID: serviceClusterID, NodeID: serviceNodeA, Limit: 2, Cursor: first.NextCursor})
+	if err != nil || len(second.Items) != 1 || second.HasMore || second.NextCursor != "" || second.Items[0].ID != repository.history[2].ID {
+		t.Fatalf("second=%#v err=%v", second, err)
+	}
+	if repository.lastHistoryQuery.BeforeAt == nil || repository.lastHistoryQuery.BeforeID != repository.history[1].ID {
+		t.Fatalf("second query=%#v", repository.lastHistoryQuery)
+	}
+}
+
+func TestOperationalHistoryRejectsInvalidCursorLimitAndCrossClusterNode(t *testing.T) {
+	repository := &serviceRepositoryFake{nodes: []domain.Node{healthyNode(serviceNodeA)}}
+	service := NewService(repository, nil, nil, nil, nil, nil)
+	for _, request := range []HistoryRequest{
+		{ClusterID: serviceClusterID, Limit: 101},
+		{ClusterID: serviceClusterID, Limit: 50, Cursor: "not-a-cursor"},
+	} {
+		if _, err := service.History(context.Background(), request); err == nil {
+			t.Fatalf("invalid request accepted: %#v", request)
+		}
+	}
+	repository.nodes[0].ClusterID = serviceNodeB
+	if _, err := service.History(context.Background(), HistoryRequest{ClusterID: serviceClusterID, NodeID: serviceNodeA, Limit: 50}); err == nil {
+		t.Fatal("cross-cluster node filter accepted")
+	}
+}
+
+func stringPointer(value string) *string { return &value }
 
 func TestSummaryReportsAllDNSFailedAtRisk(t *testing.T) {
 	now := time.Date(2026, 8, 9, 0, 0, 0, 0, time.UTC)

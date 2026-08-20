@@ -423,7 +423,7 @@ return node credentials or webhook destinations.
 
 ```text
 GET  /api/v1/clusters/{clusterId}/ha-status
-GET  /api/v1/clusters/{clusterId}/ha-history?nodeId={nodeId}&limit=100
+GET  /api/v1/clusters/{clusterId}/ha-history?nodeId={nodeId}&limit=50&cursor={cursor}
 GET  /api/v1/clusters/{clusterId}/certificates
 GET  /api/v1/clusters/{clusterId}/versions
 GET  /api/v1/clusters/{clusterId}/upgrades
@@ -457,6 +457,15 @@ only safe success/status/error data. Delete requires
 channel foreign key rather than cascading history; `channelName` remains as the
 safe historical snapshot. Create, update, enable/disable, test, and delete are
 administrator-only, CSRF-protected, and audited.
+
+HA history is ordered by `(occurredAt DESC, id DESC)` and accepts `limit=1..100`
+(default 50), optional cluster-owned `nodeId`, and the same opaque versioned
+base64url keyset-cursor convention as Query Log. The response contains `items`,
+optional `nextCursor`, and `hasMore`. Items have `kind=event|notification`;
+notification items add safe channel name, delivered/failed/suppressed/pending
+state, attempt count, optional HTTP status/sanitized reason, completion time,
+and Test identity. Synthetic Test parent events are not duplicated as ordinary
+HA transition rows. No destination URL or response body is returned.
 
 Lifecycle settings use optimistic `recordVersion` and configure DNS host/port,
 query name/type, expected RCODE, UDP/TCP, and installation type. An empty host
