@@ -7,6 +7,18 @@ interfaces.
 
 ## 1.0.2 - Unreleased
 
+### Security
+
+- Upgraded the supported Go toolchain to Go 1.27 and updated `pgx`,
+  `golang.org/x/crypto`, and `golang.org/x/text` past the vulnerabilities
+  identified by `govulncheck` during the 1.0.2 audit.
+- Added `govulncheck` to pull-request, branch, and release gates, restricted CI
+  workflow permissions to read-only repository contents, and refreshed every
+  third-party GitHub Action to a current immutable commit pin.
+- Added adversarial regression coverage for authenticated route boundaries,
+  session and CSRF failures, mass-assignment rejection, node URL validation,
+  redirect refusal, and bounded AdGuard response bodies.
+
 ### Fixed
 
 - Added AdGuard Home v0.107.79 compatibility for node observation, Query Log,

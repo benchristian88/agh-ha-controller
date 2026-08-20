@@ -45,7 +45,11 @@ type statusResponse struct {
 }
 
 func (p *Probe) Status(ctx context.Context, request domain.NodeProbeRequest) (domain.NodeProbeResult, error) {
-	endpoint, err := statusEndpoint(request.BaseURL)
+	baseURL, err := domain.NormaliseNodeURL(request.BaseURL, request.CertificatePolicy)
+	if err != nil {
+		return domain.NodeProbeResult{}, err
+	}
+	endpoint, err := statusEndpoint(baseURL)
 	if err != nil {
 		return domain.NodeProbeResult{}, domain.Validation("baseUrl", "is not a valid node URL")
 	}
@@ -154,7 +158,8 @@ func (p *Probe) transport(policy domain.CertificatePolicy, customCAPEM string) (
 
 func statusEndpoint(baseURL string) (string, error) {
 	parsed, err := url.Parse(baseURL)
-	if err != nil || parsed.Host == "" {
+	if err != nil || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" ||
+		(parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return "", errors.New("invalid base URL")
 	}
 	parsed.Path = strings.TrimRight(parsed.Path, "/") + "/control/status"
